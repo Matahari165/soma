@@ -5,6 +5,9 @@ const state = vi.hoisted(() => ({
   fetch: vi.fn(),
   stored: [] as Array<Record<string, unknown>>,
   connected: true,
+  personalBpm: 200 as number | null,
+  dateOfBirth: "1986-02-01" as string | null,
+  zoneFetch: vi.fn(),
 }));
 vi.mock("@/lib/crypto", () => ({ decryptSecret: () => "synthetic-token", encryptSecret: () => "synthetic-ciphertext" }));
 vi.mock("@/lib/r2", () => ({ getR2ArchiveObject: vi.fn() }));
@@ -15,7 +18,7 @@ vi.mock("@/integrations/google-health/client", () => ({
 }));
 vi.mock("@/integrations/google-health/session-heart-rate", () => ({
   fetchGoogleHealthSessionHeartRate: state.fetch,
-  fetchGoogleHealthSessionDailyZones: async () => ({ dataPoints: [], limited: false }),
+  fetchGoogleHealthSessionDailyZones: state.zoneFetch,
 }));
 vi.mock("@/integrations/google-health/normalize", () => ({
   normalizeGoogleHealthPoint: (_user: string, _type: string, point: Record<string, unknown>) => point,
@@ -31,7 +34,7 @@ vi.mock("@/lib/cloudflare/db", () => ({
         gte: () => query, lte: () => query, lt: () => query, gt: () => query,
         order: () => query, limit: () => query, in: () => query,
         range: async () => result(),
-        maybeSingle: async () => ({ data: table === "profiles" ? { timezone: "UTC" } : state.connected ? {
+        maybeSingle: async () => ({ data: table === "profiles" ? { timezone: "UTC", date_of_birth: state.dateOfBirth, maximum_heart_rate_bpm: state.personalBpm } : state.connected ? {
           id: "synthetic-connection", status: "connected", scopes: ["heart"],
           access_token_ciphertext: "synthetic-ciphertext", token_expires_at: "2099-01-01T00:00:00Z",
         } : null, error: null }),
@@ -58,6 +61,9 @@ describe("workout heart-rate completion", () => {
     state.rows = [row(0), row(10)];
     state.stored = [];
     state.connected = true;
+    state.personalBpm = 200;
+    state.dateOfBirth = "1986-02-01";
+    state.zoneFetch.mockReset();
     state.fetch.mockReset();
     state.fetch.mockResolvedValue({ dataPoints: [row(10), row(20), row(30), row(40)], limited: false });
   });
@@ -69,6 +75,24 @@ describe("workout heart-rate completion", () => {
     expect(result.coverage.percent).toBe(100);
     expect(result.heartRateFetchStatus).toBe("fetched");
     expect(state.stored).toHaveLength(4);
+    expect(state.zoneFetch).not.toHaveBeenCalled();
+    expect(result.calculatedZones?.maximumHeartRate).toEqual({ bpm: 200, source: "personal" });
+    expect(result.calculatedZones?.seconds.z2).toBe(40);
+  });
+
+  it("uses an explicitly estimated reference if the personal maximum is absent", async () => {
+    state.personalBpm = null;
+    const result = await getActivitySessionTelemetry("synthetic-user", range);
+    expect(result.calculatedZones?.maximumHeartRate).toEqual({ bpm: 180, source: "age_estimate" });
+    expect(state.zoneFetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps the trace without inventing zone thresholds when no reference can be resolved", async () => {
+    state.personalBpm = null;
+    state.dateOfBirth = null;
+    const result = await getActivitySessionTelemetry("synthetic-user", range);
+    expect(result.heartRateSampleCount).toBe(5);
+    expect(result.calculatedZones).toBeNull();
   });
 
   it("keeps imported readings and reports failure if Google is unavailable", async () => {

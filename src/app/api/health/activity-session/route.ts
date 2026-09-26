@@ -5,6 +5,7 @@ import { activitySessionPreview } from "@/domain/health/activity-session-preview
 import { getCurrentUser } from "@/lib/auth";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { isLocalPreviewMode } from "@/lib/env";
+import { loadHeartRateReferenceForUser } from "@/services/heart-rate-reference";
 import { getActivitySessionTelemetry } from "@/services/activity-session-telemetry";
 
 export async function GET(request: Request) {
@@ -14,7 +15,8 @@ export async function GET(request: Request) {
   if (!recordId || recordId.length > 500) return NextResponse.json({ error: "Invalid workout." }, { status: 400 });
 
   if (isLocalPreviewMode()) {
-    const telemetry = activitySessionPreview(recordId);
+    const reference = await loadHeartRateReferenceForUser(user.id);
+    const telemetry = activitySessionPreview(recordId, new Date(), reference.maximumHeartRate);
     if (!telemetry) return NextResponse.json({ error: "Workout not found." }, { status: 404 });
     return NextResponse.json(telemetry, { headers: { "Cache-Control": "private, no-store" } });
   }

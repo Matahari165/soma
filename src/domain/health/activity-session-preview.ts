@@ -1,7 +1,7 @@
-import { calculateActivitySessionTelemetry } from "./activity-session-telemetry";
+import { calculateActivitySessionTelemetry, type ActivitySessionTelemetryInput } from "./activity-session-telemetry";
 
 /** Synthetic traces used only by the explicitly marked local preview. */
-export function activitySessionPreview(recordId: string, now = new Date()) {
+export function activitySessionPreview(recordId: string, now = new Date(), maximumHeartRate: ActivitySessionTelemetryInput["maximumHeartRate"] = { bpm: 190, source: "personal" }) {
   const configs: Record<string, { minutes: number; daysAgo: number; base: number; amplitude: number }> = {
     "preview-run": { minutes: 44, daysAgo: 0, base: 151, amplitude: 18 },
     "preview-boxing": { minutes: 45, daysAgo: 1, base: 145, amplitude: 27 },
@@ -20,14 +20,9 @@ export function activitySessionPreview(recordId: string, now = new Date()) {
     payload: { heartRate: { beatsPerMinute: recordId === "preview-run" && index === 200 ? 178 : Math.round(config.base + Math.sin(index / 21) * config.amplitude) } },
   }));
   return calculateActivitySessionTelemetry({
-    startTime: at(0), endTime: at(config.minutes * 60), date, timeZone: "Europe/Paris",
+    startTime: at(0), endTime: at(config.minutes * 60),
     heartRateRecords,
-    dailyZoneRecords: [{ civilDate: date, payload: { dailyHeartRateZones: { heartRateZones: [
-      { heartRateZoneType: "LIGHT", minBeatsPerMinute: 30, maxBeatsPerMinute: 110 },
-      { heartRateZoneType: "MODERATE", minBeatsPerMinute: 111, maxBeatsPerMinute: 130 },
-      { heartRateZoneType: "VIGOROUS", minBeatsPerMinute: 131, maxBeatsPerMinute: 150 },
-      { heartRateZoneType: "PEAK", minBeatsPerMinute: 151, maxBeatsPerMinute: 220 },
-    ] } } }],
+    maximumHeartRate,
     exercisePayloads: [{ exercise: { exerciseEvents: recordId === "preview-strength" ? [
       { eventTime: at(20 * 60), exerciseEventType: "PAUSE" },
       { eventTime: at(29 * 60), exerciseEventType: "RESUME" },

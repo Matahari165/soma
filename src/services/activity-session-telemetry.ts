@@ -1,8 +1,8 @@
 import "server-only";
 
+import { resolveMaximumHeartRate } from "@/domain/health/heart-rate-zones";
 import { decodeHealthArchive } from "@/domain/health/archive-codec";
 import {
-  activitySessionZoneDates,
   calculateActivitySessionTelemetry,
   type ActivitySessionTelemetry,
 } from "@/domain/health/activity-session-telemetry";
@@ -12,7 +12,6 @@ import { getR2ArchiveObject } from "@/lib/r2";
 import { GOOGLE_HEALTH_SCOPES, refreshGoogleHealthToken, rollUpGoogleHealthSessionHeartRate } from "@/integrations/google-health/client";
 import { normalizeGoogleHealthPoint } from "@/integrations/google-health/normalize";
 import {
-  fetchGoogleHealthSessionDailyZones,
   fetchGoogleHealthSessionHeartRate,
 } from "@/integrations/google-health/session-heart-rate";
 
@@ -142,11 +141,15 @@ async function readExercisePayloads(userId: string, startTime: string, endTime: 
   });
 }
 
-async function readTimeZone(userId: string) {
+async function readSessionProfile(userId: string) {
   const result = await createCloudflareAdminClient().from("profiles")
-    .select("timezone").eq("user_id", userId).maybeSingle();
+    .select("timezone,date_of_birth,maximum_heart_rate_bpm").eq("user_id", userId).maybeSingle();
   if (result.error) throw new Error("Session timezone could not be loaded.");
-  return typeof result.data?.timezone === "string" ? result.data.timezone : "Europe/Paris";
+  return {
+    timeZone: typeof result.data?.timezone === "string" ? result.data.timezone : "Europe/Paris",
+    dateOfBirth: typeof result.data?.date_of_birth === "string" ? result.data.date_of_birth : null,
+    personalBpm: result.data?.maximum_heart_rate_bpm,
+  };
 }
 
 function deduplicateRows(rows: HealthRow[]) {
@@ -221,29 +224,6 @@ async function fetchAndStoreSessionHeartRate(userId: string, startTime: string, 
   };
 }
 
-async function fetchAndStoreSessionZones(userId: string, startTime: string, endTime: string, accessToken: string, neededDates: string[]) {
-  const fetched = await fetchGoogleHealthSessionDailyZones({
-    accessToken,
-    start: new Date(startTime),
-    end: new Date(endTime),
-  });
-  const needed = new Set(neededDates);
-  const normalized = fetched.dataPoints
-    .map((point) => normalizeGoogleHealthPoint(userId, "daily-heart-rate-zones", point))
-    .filter((row) => Boolean(row.civil_date && needed.has(row.civil_date)));
-  const admin = createCloudflareAdminClient();
-  for (let offset = 0; offset < normalized.length; offset += 500) {
-    const result = await admin.from("health_records").upsert(normalized.slice(offset, offset + 500), {
-      onConflict: "user_id,provider,data_type,source_record_id",
-    });
-    if (result.error) throw new Error("Google Health session zone thresholds could not be stored.");
-  }
-  return {
-    records: normalized.map((row) => ({ civilDate: row.civil_date, payload: row.payload })),
-    limited: fetched.limited,
-  };
-}
-
 /**
  * Loads only the selected exercise window from live Google Health records and
  * overlapping verified R2 heart-rate archives, then derives session telemetry.
@@ -255,12 +235,15 @@ export async function getActivitySessionTelemetry(
   if (!userId || !validRange(range)) throw new Error("Activity session telemetry requires a valid time range.");
   const startTime = new Date(range.startTime).toISOString();
   const endTime = new Date(range.endTime).toISOString();
-  const [liveRows, manifests, exercisePayloads, timeZone] = await Promise.all([
+  const [liveRows, manifests, exercisePayloads, profile] = await Promise.all([
     readLiveHeartRateRows(userId, startTime, endTime),
     readArchiveManifests(userId, startTime, endTime),
     readExercisePayloads(userId, startTime, endTime),
-    readTimeZone(userId),
+    readSessionProfile(userId),
   ]);
+  const { timeZone } = profile;
+  const localDate = new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date(startTime));
+  const maximumHeartRate = resolveMaximumHeartRate({ ...profile, date: localDate });
   const archivedRows = await readR2ArchiveRows(userId, manifests, startTime, endTime);
   let heartRateRecords = deduplicateRows([...liveRows, ...archivedRows]).map((row) => ({
     sourceRecordId: row.source_record_id,
@@ -271,10 +254,8 @@ export async function getActivitySessionTelemetry(
   let telemetry = calculateActivitySessionTelemetry({
     startTime,
     endTime,
-    date: range.date,
-    timeZone,
     heartRateRecords,
-    dailyZoneRecords: [],
+    maximumHeartRate,
     exercisePayloads,
   });
   let heartRateSampleSource: ActivitySessionTelemetry["heartRateSampleSource"] = telemetry.heartRateSampleCount ? "health_records" : "none";
@@ -309,8 +290,8 @@ export async function getActivitySessionTelemetry(
             payload: row.payload,
           }));
           telemetry = calculateActivitySessionTelemetry({
-            startTime, endTime, date: range.date, timeZone,
-            heartRateRecords, dailyZoneRecords: [], exercisePayloads,
+            startTime, endTime,
+            heartRateRecords, maximumHeartRate, exercisePayloads,
           });
           heartRateSampleSource = telemetry.heartRateSampleCount ? "google_health_api" : "none";
           if (!telemetry.heartRateSampleCount) heartRateFetchStatus = "empty";
@@ -320,55 +301,15 @@ export async function getActivitySessionTelemetry(
       heartRateFetchStatus = "failed";
     }
   }
-  const zoneDates = activitySessionZoneDates({ ...range, startTime, endTime, timeZone });
-  let dailyZoneRecords: Array<{ civilDate: string | null; payload: unknown }> = [];
-  let zoneThresholdFetchStatus: ActivitySessionTelemetry["zoneThresholdFetchStatus"] = "unavailable";
-  let zoneThresholdFetchLimited = false;
-  let dailyZoneQueryFailed = false;
-  if (zoneDates.length) {
-    try {
-      const zones = await createCloudflareAdminClient().from("health_records")
-        .select("civil_date,payload")
-        .eq("user_id", userId)
-        .eq("provider", "google_health")
-        .eq("data_type", "daily-heart-rate-zones")
-        .in("civil_date", zoneDates);
-      if (zones.error) throw new Error("Session heart-rate zone thresholds could not be loaded.");
-      dailyZoneRecords = (zones.data ?? []).map((row) => ({ civilDate: row.civil_date ?? null, payload: row.payload }));
-      zoneThresholdFetchStatus = dailyZoneRecords.length ? "stored" : "unavailable";
-    } catch {
-      dailyZoneQueryFailed = true;
-      zoneThresholdFetchStatus = "failed";
-    }
-  }
-  const zonesWithData = new Set(dailyZoneRecords.flatMap((record) => record.civilDate ? [record.civilDate] : []));
-  const missingZoneDates = zoneDates.filter((date) => !zonesWithData.has(date));
-  if (missingZoneDates.length && !dailyZoneQueryFailed) {
-    try {
-      accessToken ??= await googleHealthAccessToken(userId);
-      if (accessToken) {
-        const fetchedZones = await fetchAndStoreSessionZones(userId, startTime, endTime, accessToken, missingZoneDates);
-        dailyZoneRecords = [...dailyZoneRecords, ...fetchedZones.records];
-        zoneThresholdFetchLimited = fetchedZones.limited;
-        if (fetchedZones.records.length) zoneThresholdFetchStatus = "fetched";
-      }
-    } catch {
-      zoneThresholdFetchStatus = "failed";
-    }
-  }
   const result = calculateActivitySessionTelemetry({
     startTime,
     endTime,
-    date: range.date,
-    timeZone,
     heartRateRecords,
-    dailyZoneRecords,
+    maximumHeartRate,
     exercisePayloads,
     heartRateSampleSource,
     heartRateFetchLimited,
     heartRateFetchStatus,
-    zoneThresholdFetchStatus,
-    zoneThresholdFetchLimited,
   });
   result.maxHeartRateSource = result.maxHeartRateBpm === null ? "none" : "recorded_samples";
   try {

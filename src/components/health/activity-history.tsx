@@ -3,21 +3,12 @@
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
+import type { ActivitySessionTelemetry } from "@/domain/health/activity-session-telemetry";
 import type { ExerciseSummary } from "@/services/health-analytics";
 
 import styles from "./activity-redesign.module.css";
 
-type SessionTelemetry = {
-  maxHeartRateBpm: number | null;
-  maxHeartRateSource?: "google_health_rollup" | "recorded_samples" | "none";
-  heartRateSampleCount: number;
-  heartRateSamples: Array<{ measuredAt: string; bpm: number }>;
-  heartRateSamplesDownsampled: boolean;
-  heartRateFetchLimited: boolean;
-  heartRateFetchStatus: "not_needed" | "fetched" | "empty" | "unavailable" | "failed";
-  coverage: { sessionSeconds: number; observedSeconds: number; percent: number | null };
-  calculatedZones: { seconds: { light: number; moderate: number; vigorous: number; peak: number }; classifiedSeconds: number; observedSeconds: number; thresholdCoveragePercent: number | null; complete: boolean } | null;
-};
+type SessionTelemetry = ActivitySessionTelemetry;
 type EstimatedSplit = { index: number; distanceKm: number; paceSecondsPerKm: number; partial: boolean };
 
 type ActivityFilter = "all" | "run" | "boxing" | "hiking" | "walking" | "strength";
@@ -134,9 +125,11 @@ function ActivitySession({ exercise }: { exercise: ExerciseSummary }) {
   const reportedZones = exercise.heartRateZones;
   const hasReportedZones = reportedZones && Object.values(reportedZones).some((value) => typeof value === "number" && Number.isFinite(value));
   const calculatedZones = telemetry?.calculatedZones;
-  const zones = hasReportedZones
+  const hasDetailedHeartRate = Boolean(telemetry?.heartRateSampleCount);
+  const showReportedZones = !hasDetailedHeartRate && telemetryState === "ready" && hasReportedZones;
+  const reportedSeconds = showReportedZones
     ? [reportedZones.lightMinutes, reportedZones.moderateMinutes, reportedZones.vigorousMinutes, reportedZones.peakMinutes].map((value) => value === null ? null : value * 60)
-    : calculatedZones ? [calculatedZones.seconds.light, calculatedZones.seconds.moderate, calculatedZones.seconds.vigorous, calculatedZones.seconds.peak] : null;
+    : null;
   const maxHeartRate = telemetry?.maxHeartRateBpm ?? exercise.maximumHeartRate ?? null;
   const maxHeartRateText = maxHeartRate === null && telemetryState === "loading" ? "Loading…" : `${telemetry?.heartRateFetchLimited && telemetry.maxHeartRateSource !== "google_health_rollup" && maxHeartRate !== null ? "≥" : ""}${metric(maxHeartRate, "bpm")}`;
   return <li className={styles.activitySession}>
@@ -158,7 +151,15 @@ function ActivitySession({ exercise }: { exercise: ExerciseSummary }) {
         </div>}
         <div className={styles.activityDetailSection}>
           <h3>Heart-rate zones</h3>
-          {zones ? <><ol className={styles.activityZones}>{["Light", "Moderate", "Vigorous", "Peak"].map((label, index) => <li key={label}><span>{label}</span><strong>{minutes(zones[index])}</strong></li>)}</ol><p>{hasReportedZones ? "Recorded by Google Health" : `Calculated by Soma from recorded heart rate and Google Health zone limits · ${telemetry?.coverage.percent === null ? "coverage unknown" : `${Math.round(telemetry?.coverage.percent ?? 0)}% of active time measured`}${calculatedZones?.complete ? "" : " · some readings could not be classified"}`}</p></> : <p>{telemetryState === "loading" ? "Checking heart-rate readings…" : "Zone durations are unavailable: this workout has no recorded zone summary or usable daily limits."}</p>}
+          {hasDetailedHeartRate && calculatedZones ? <>
+            <ol className={styles.activityZones}>{(["z1", "z2", "z3", "z4", "z5"] as const).map((zone, index) => <li key={zone}><span>{zone.toUpperCase()} · {50 + index * 10}–{60 + index * 10}%</span><strong>{minutes(calculatedZones.seconds[zone])}</strong></li>)}</ol>
+            {calculatedZones.belowZoneSeconds > 0 && <p>Below 50% of maximum: {minutes(calculatedZones.belowZoneSeconds)}.</p>}
+            {calculatedZones.aboveMaximumSeconds > 0 && <p>Above reference maximum: {minutes(calculatedZones.aboveMaximumSeconds)}. <a href="/settings?tab=profile">Review your maximum heart rate</a>.</p>}
+            <p>Calculated by Soma · % of maximum heart rate · reference {calculatedZones.maximumHeartRate.bpm} bpm ({calculatedZones.maximumHeartRate.source === "personal" ? "personal" : "estimated from age"}) · {telemetry?.coverage.percent === null ? "coverage unknown" : `${Math.round(telemetry?.coverage.percent ?? 0)}% of active time measured`}{calculatedZones.complete ? "" : " · some readings could not be classified"}.</p>
+          </> : reportedSeconds ? <>
+            <ol className={styles.activityZones}>{["Light", "Moderate", "Vigorous", "Peak"].map((label, index) => <li key={label}><span>{label}</span><strong>{minutes(reportedSeconds[index])}</strong></li>)}</ol>
+            <p>Recorded by Google Health · no detailed heart-rate measurements available for calculation by Soma.</p>
+          </> : <p>{telemetryState === "loading" ? "Checking heart-rate readings…" : hasDetailedHeartRate ? <>Zones could not be calculated from these readings. <a href="/settings?tab=profile">Check your maximum heart rate</a> and measurement coverage.</> : "Zone durations are unavailable: no detailed heart-rate measurements or recorded zone summary."}</p>}
         </div>
         <div className={styles.activityDetailSection} aria-live="polite">
           <h3>Heart rate during workout</h3>
