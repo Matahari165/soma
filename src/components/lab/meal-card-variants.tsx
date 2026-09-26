@@ -583,8 +583,8 @@ export function LabMealCard({
               type="button"
               className={
                 canAnalyze
-                  ? "!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 py-1.5 rounded transition-colors text-xs font-sans active:scale-[0.98] transition-transform duration-150"
-                  : "!bg-[#161616] !text-[#777777] border border-hairline cursor-not-allowed px-3.5 py-1.5 rounded text-xs font-sans font-medium"
+                  ? "!text-[var(--lab-canvas)] !bg-[var(--lab-brand)] hover:!bg-[var(--lab-text-primary)] font-medium px-3.5 py-1.5 rounded transition-colors text-xs font-sans active:scale-[0.98] transition-transform duration-150"
+                  : "!bg-[var(--lab-surface-subtle)] !text-[var(--lab-text-muted)] border border-hairline cursor-not-allowed px-3.5 py-1.5 rounded text-xs font-sans font-medium"
               }
               disabled={!canAnalyze || disabled || processingFiles || mutationBusy}
               onClick={handleAnalyzeClick}
@@ -761,8 +761,8 @@ export function LabMealCard({
               type="button"
               className={
                 canAnalyze
-                  ? `!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 rounded transition-colors text-xs font-sans flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150 ${styles.captureAction}`
-                  : `!bg-[#161616] !text-[#777777] border border-hairline cursor-not-allowed px-3.5 rounded text-xs font-sans font-medium flex items-center gap-1.5 ${styles.captureAction}`
+                  ? `!text-[var(--lab-canvas)] !bg-[var(--lab-brand)] hover:!bg-[var(--lab-text-primary)] font-medium px-3.5 rounded transition-colors text-xs font-sans flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150 ${styles.captureAction}`
+                  : `!bg-[var(--lab-surface-subtle)] !text-[var(--lab-text-muted)] border border-hairline cursor-not-allowed px-3.5 rounded text-xs font-sans font-medium flex items-center gap-1.5 ${styles.captureAction}`
               }
               disabled={!canAnalyze || disabled || processingFiles || mutationBusy}
               onClick={handleAnalyzeClick}
