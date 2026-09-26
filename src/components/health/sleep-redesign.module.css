@@ -618,8 +618,7 @@
   .root *::after {
     scroll-behavior: auto !important;
     transition-duration: .01ms !important;
-    animation-duration: .01ms !important;
-    animation-iteration-count: 1 !important;
+    animation: none !important;
   }
   .reading summary:hover strong,
   .reading summary:focus-visible strong,

@@ -596,5 +596,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .content [data-scroll-reveal] { opacity: 1 !important; transform: none !important; clip-path: none !important; transition: none !important; animation: none !important; }
-  .root *, .root *::before, .root *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+  .root *, .root *::before, .root *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation: none !important; }
 }

@@ -1182,7 +1182,7 @@
   .summaryRail span { transition: none; }
 
   .page :global(*) {
-    animation-duration: 0ms !important;
+    animation: none !important;
     scroll-behavior: auto !important;
     transition-duration: 0ms !important;
   }
