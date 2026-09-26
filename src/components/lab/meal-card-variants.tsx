@@ -321,7 +321,6 @@ export function LabMealCard({
   const isFilled = isConfirmedOrReview && Boolean(meal?.analysis) && !isLocalEditing;
   const previousResultState = useRef({ status, analysis: meal?.analysis ?? null });
   const resultArrivalRef = useRef<HTMLElement | null>(null);
-  const confirmationRef = useRef<SVGSVGElement | null>(null);
 
   const photos = meal?.status === "confirmed"
     ? []
@@ -366,9 +365,6 @@ export function LabMealCard({
       && !meal?.error;
 
     if (receivedNewAnalysis && resultArrivalRef.current) resultArrivalRef.current.classList.add(styles.analysisResultArrival);
-    if (status === "confirmed" && previous.status !== "confirmed" && !meal?.error && confirmationRef.current) {
-      confirmationRef.current.classList.add(styles.confirmationTickArrival);
-    }
     previousResultState.current = { status, analysis: meal?.analysis ?? null };
   }, [isAnalyzing, meal?.analysis, meal?.error, status]);
 
@@ -565,11 +561,6 @@ export function LabMealCard({
     return <MealAnalysisScreen slot={slot} stage={analysisProgress?.stage ?? (status === "analyzing" ? "analyzing" : "queued")} note={noteText} photoCount={photos.length} phase={analysisProgress?.phase} onCancel={onCancelAnalysis} />;
   }
 
-  const confirmedIndicator = status === "confirmed" && !meal?.error ? <span className={styles.confirmedIndicator}>
-    <Check ref={confirmationRef} size={14} aria-hidden="true" onAnimationEnd={(event: React.AnimationEvent<SVGSVGElement>) => event.currentTarget.classList.remove(styles.confirmationTickArrival)} />
-    Confirmed
-  </span> : null;
-
   if (status === "error") {
     if (designVariant === "v1") {
       return (
@@ -664,7 +655,6 @@ export function LabMealCard({
               <h3 className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
             </div>
             <div className={styles.v1FilledActions}>
-              {confirmedIndicator}
               <button type="button" className={styles.mealDisclosureButton} onClick={() => setShowDetails((open) => !open)} aria-label={`${showDetails ? "Replier" : "Déplier"} ${slotLabel}`} aria-expanded={showDetails} aria-controls={detailsId}>
                 <ChevronDown size={18} strokeWidth={1.75} aria-hidden="true" className={showDetails ? styles.mealDisclosureOpen : undefined} />
               </button>
@@ -800,7 +790,6 @@ export function LabMealCard({
           </div>
           {isFilled && (
             <div className={styles.headerActions}>
-              {confirmedIndicator}
               <button
                 type="button"
                 className={styles.editButton}
@@ -915,7 +904,6 @@ export function LabMealCard({
       <div className={styles.v3Row}>
         <div className={styles.v3SlotSide}>
           <h3 id={headingId} className={styles.v3SlotHeading}>{slotLabel}</h3>
-          {confirmedIndicator}
           {isFilled && (
             <button
               type="button"
