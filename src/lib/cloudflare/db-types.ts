@@ -93,9 +93,10 @@ export type SupabaseStoredRow = {
   table_name: string;
   row_key: string;
   user_id: string | null;
-  json_data: Row;
-  created_at: string | null;
-  updated_at: string | null;
+  json_data?: Row;
+  created_at?: string | null;
+  updated_at?: string | null;
+  [key: string]: unknown;
 };
 
 export type SupabaseFilter = Filter & { field: string };

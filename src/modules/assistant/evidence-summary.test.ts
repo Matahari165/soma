@@ -9,7 +9,7 @@ function result(cursor: string | null, returnedItems: number, complete: boolean)
     output: { manifest: {
       dataset: "daily_health", requestedPeriod: { from: "2026-01-01", to: "2026-04-30" },
       coveredPeriod: { from: "2026-01-01", to: "2026-04-30" }, timezone: "Europe/Zurich",
-      totalItems: 120, returnedItems, hasMore: !complete, nextCursor: complete ? null : "next-page",
+      totalItems: 120, totalKnown: true, returnedItems, hasMore: !complete, nextCursor: complete ? null : "next-page",
       complete, generatedAt: "2026-09-23T10:00:00.000Z",
     } },
   };

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { assistantHealthMetricFields } from "./data/health-catalog";
 
 export const assistantQualitySchema = z.enum(["fast", "balanced", "deep"]);
 export type AssistantQuality = z.infer<typeof assistantQualitySchema>;
@@ -126,14 +127,7 @@ export const assistantPlanBodySchema = z.object({
   detailedThrough: z.iso.date(), reviewOn: z.iso.date(), sections: z.array(assistantPlanSectionSchema).min(1).max(20),
 });
 
-export const healthDailyMetricSchema = z.enum([
-  "sleep_minutes", "sleep_need_minutes", "sleep_efficiency", "sleep_regularity", "sleep_latency_minutes",
-  "sleep_awake_minutes", "sleep_deep_minutes", "sleep_rem_minutes", "daily_sleep_debt_minutes",
-  "cumulative_sleep_debt_minutes", "hrv_ms", "resting_heart_rate", "respiratory_rate", "oxygen_saturation",
-  "skin_temperature_delta", "steps", "active_energy_kcal", "total_energy_kcal", "zone_minutes", "active_minutes",
-  "exercise_minutes", "distance_km", "running_distance_km", "running_duration_minutes", "running_pace_seconds_per_km",
-  "running_average_heart_rate", "weight_kg", "body_fat_percent", "vo2_max", "weekly_load", "acute_chronic_load_ratio",
-]);
+export const healthDailyMetricSchema = z.enum(assistantHealthMetricFields);
 export const nutritionDailyMetricSchema = z.enum([
   "calories_kcal", "protein_g", "carbs_g", "fat_g", "fiber_g", "sugar_g", "added_sugar_g", "meal_count",
   "meal_coverage", "analysis_coverage", "analysis_confidence", "food_variety_count", "food_group_count",
@@ -147,7 +141,7 @@ const paginationSchema = z.object({
   order: z.enum(["asc", "desc"]).default("asc"),
 });
 export const assistantSemanticQuerySchema = z.discriminatedUnion("dataset", [
-  z.object({ dataset: z.literal("daily_health"), period: assistantPeriodSchema, metrics: z.array(healthDailyMetricSchema).min(1).max(20), pagination: paginationSchema.default({ limit: 100, cursor: null, order: "asc" }) }),
+  z.object({ dataset: z.literal("daily_health"), period: assistantPeriodSchema, metrics: z.array(healthDailyMetricSchema).min(1).max(assistantHealthMetricFields.length), pagination: paginationSchema.default({ limit: 100, cursor: null, order: "asc" }) }),
   z.object({ dataset: z.literal("scores"), period: assistantPeriodSchema, kinds: z.array(z.enum(["sleep", "recovery", "effort"])).min(1).max(3), pagination: paginationSchema.default({ limit: 100, cursor: null, order: "asc" }) }),
   z.object({ dataset: z.literal("nutrition_daily"), period: assistantPeriodSchema, metrics: z.array(nutritionDailyMetricSchema).min(1).max(13), pagination: paginationSchema.default({ limit: 100, cursor: null, order: "asc" }) }),
   z.object({ dataset: z.literal("activities"), period: assistantPeriodSchema, activityTypes: z.array(z.string().trim().min(1).max(80)).max(20).default([]), pagination: paginationSchema.default({ limit: 100, cursor: null, order: "desc" }) }),
@@ -156,7 +150,7 @@ export type AssistantSemanticQuery = z.infer<typeof assistantSemanticQuerySchema
 
 export const assistantAvailabilitySchema = z.enum(["observed", "partial", "missing", "not_calculable"]);
 export const assistantObservationSchema = z.object({
-  metric: z.string().min(1).max(120), value: z.number().finite().nullable(), unit: z.string().max(40).nullable(),
+  metric: z.string().min(1).max(120), value: z.union([z.number().finite(), z.string().max(120), z.boolean()]).nullable(), unit: z.string().max(40).nullable(),
   availability: assistantAvailabilitySchema, coverage: z.number().min(0).max(1), measuredAt: z.iso.datetime().nullable(),
   importedAt: z.iso.datetime().nullable(), freshness: z.enum(["current", "partial", "stale", "missing"]),
   provenance: z.object({ source: z.enum(["confirmed_meals", "health_source", "soma_calculation"]), provider: z.string().max(120).nullable(), algorithmVersion: z.string().max(120).nullable() }),
@@ -169,11 +163,12 @@ export const assistantObservationSchema = z.object({
 });
 export const assistantQueryManifestSchema = z.object({
   dataset: z.enum(["daily_health", "scores", "nutrition_daily", "activities"]), requestedPeriod: assistantPeriodSchema,
-  coveredPeriod: assistantPeriodSchema.nullable(), timezone: z.string().min(1).max(100), totalItems: z.number().int().nonnegative(),
+  coveredPeriod: assistantPeriodSchema.nullable(), timezone: z.string().min(1).max(100), totalItems: z.number().int().nonnegative().nullable(), totalKnown: z.boolean(),
   returnedItems: z.number().int().nonnegative(), hasMore: z.boolean(), nextCursor: z.string().nullable(), complete: z.boolean(),
   generatedAt: z.iso.datetime(),
 }).superRefine((value, context) => {
-  if (value.returnedItems > value.totalItems) context.addIssue({ code: "custom", message: "Returned items cannot exceed total items.", path: ["returnedItems"] });
+  if (value.totalKnown !== (value.totalItems !== null)) context.addIssue({ code: "custom", message: "Total count availability must match totalItems.", path: ["totalKnown"] });
+  if (value.totalItems !== null && value.returnedItems > value.totalItems) context.addIssue({ code: "custom", message: "Returned items cannot exceed total items.", path: ["returnedItems"] });
   if (value.complete !== !value.hasMore) context.addIssue({ code: "custom", message: "Completeness must be the inverse of hasMore.", path: ["complete"] });
   if (value.hasMore !== Boolean(value.nextCursor)) context.addIssue({ code: "custom", message: "Pagination cursor must match hasMore.", path: ["nextCursor"] });
 });

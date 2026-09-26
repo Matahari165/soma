@@ -106,7 +106,7 @@ describe("respondToAssistant", () => {
       steps: [{ toolResults: [{ toolName: "querySomaData", input: { dataset: "scores", kinds: ["sleep"] }, output: {
         manifest: { dataset: "scores", requestedPeriod: { from: "2026-09-01", to: "2026-09-07" },
           coveredPeriod: { from: "2026-09-01", to: "2026-09-07" }, timezone: "Europe/Zurich",
-          totalItems: 7, returnedItems: 7, hasMore: false, nextCursor: null, complete: true,
+          totalItems: 7, totalKnown: true, returnedItems: 7, hasMore: false, nextCursor: null, complete: true,
           generatedAt: "2026-09-23T10:00:00.000Z" },
       } }] }],
     } as never);

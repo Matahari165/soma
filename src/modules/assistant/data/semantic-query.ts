@@ -5,8 +5,14 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { calculateSignalFreshness } from "@/domain/health/freshness";
 import { aggregateConfirmedMeals, type MealDailyAggregate } from "@/domain/lab/meals";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
-import { allImportedExercises, type ExerciseSummary, type HealthMetricDay, type ScoreDay } from "@/services/health-analytics";
+import { exerciseSummaryFromRecord, type ExerciseSummary, type HealthMetricDay, type ScoreDay } from "@/services/health-analytics";
 import { loadConfirmedMealRecords } from "@/services/meals";
+
+import {
+  assistantActivityTypeFilterValues,
+  assistantActivityTypeMatches,
+  assistantHealthMetricCatalog,
+} from "./health-catalog";
 
 import {
   assistantSemanticQuerySchema,
@@ -18,7 +24,7 @@ type AssistantFreshness = "current" | "partial" | "stale" | "missing";
 
 export type AssistantObservation = {
   metric: string;
-  value: number | null;
+  value: number | string | boolean | null;
   unit: string | null;
   availability: AssistantAvailability;
   coverage: number;
@@ -42,7 +48,8 @@ export type AssistantQueryManifest = {
   requestedPeriod: { from: string; to: string };
   coveredPeriod: { from: string; to: string } | null;
   timezone: string;
-  totalItems: number;
+  totalItems: number | null;
+  totalKnown: boolean;
   returnedItems: number;
   hasMore: boolean;
   nextCursor: string | null;
@@ -52,52 +59,21 @@ export type AssistantQueryManifest = {
 
 export type AssistantSemanticResult = { items: AssistantSemanticRecord[]; manifest: AssistantQueryManifest };
 
-type AssistantDataSources = {
+export type AssistantDataSources = {
   profile(userId: string): Promise<{ timezone: string; importedAt: string | null }>;
-  health(userId: string, period: { from: string; to: string }): Promise<HealthMetricDay[]>;
-  scores(userId: string, period: { from: string; to: string }): Promise<ScoreDay[]>;
+  health(userId: string, period: { from: string; to: string }, metrics: string[], page: AssistantPageRequest): Promise<HealthMetricDay[] | AssistantSourcePage<HealthMetricDay>>;
+  scores(userId: string, period: { from: string; to: string }, kinds: ScoreDay["kind"][], page: AssistantPageRequest): Promise<ScoreDay[] | AssistantSourcePage<ScoreDay>>;
   nutrition(userId: string, period: { from: string; to: string }): Promise<MealDailyAggregate[]>;
-  activities(userId: string, period: { from: string; to: string }): Promise<ExerciseSummary[]>;
+  activities(userId: string, period: { from: string; to: string }, activityTypes: string[], page: AssistantPageRequest): Promise<ExerciseSummary[] | AssistantSourcePage<ExerciseSummary>>;
 };
+
+export type AssistantPageRequest = { limit: number; position: string | null; order: "asc" | "desc" };
+export type AssistantSourcePage<T> = { items: T[]; hasMore: boolean; nextPosition: string | null; totalItems: number | null };
 
 type CursorPayload = { version: 1; dataset: AssistantSemanticQuery["dataset"]; queryHash: string; position: string };
 
 const MAX_PERIOD_DAYS = 3_660;
-const STORAGE_PAGE_SIZE = 500;
-
-const healthMetricMetadata: Record<string, { unit: string | null; source: AssistantObservation["provenance"]["source"] }> = {
-  sleep_minutes: { unit: "min", source: "soma_calculation" },
-  sleep_need_minutes: { unit: "min", source: "soma_calculation" },
-  sleep_efficiency: { unit: "%", source: "soma_calculation" },
-  sleep_regularity: { unit: "%", source: "soma_calculation" },
-  sleep_latency_minutes: { unit: "min", source: "health_source" },
-  sleep_awake_minutes: { unit: "min", source: "health_source" },
-  sleep_deep_minutes: { unit: "min", source: "health_source" },
-  sleep_rem_minutes: { unit: "min", source: "health_source" },
-  daily_sleep_debt_minutes: { unit: "min", source: "soma_calculation" },
-  cumulative_sleep_debt_minutes: { unit: "min", source: "soma_calculation" },
-  hrv_ms: { unit: "ms", source: "health_source" },
-  resting_heart_rate: { unit: "bpm", source: "health_source" },
-  respiratory_rate: { unit: "breaths/min", source: "health_source" },
-  oxygen_saturation: { unit: "%", source: "health_source" },
-  skin_temperature_delta: { unit: "°C", source: "health_source" },
-  steps: { unit: "steps", source: "health_source" },
-  active_energy_kcal: { unit: "kcal", source: "health_source" },
-  total_energy_kcal: { unit: "kcal", source: "health_source" },
-  zone_minutes: { unit: "min", source: "health_source" },
-  active_minutes: { unit: "min", source: "health_source" },
-  exercise_minutes: { unit: "min", source: "health_source" },
-  distance_km: { unit: "km", source: "health_source" },
-  running_distance_km: { unit: "km", source: "soma_calculation" },
-  running_duration_minutes: { unit: "min", source: "soma_calculation" },
-  running_pace_seconds_per_km: { unit: "s/km", source: "soma_calculation" },
-  running_average_heart_rate: { unit: "bpm", source: "soma_calculation" },
-  weight_kg: { unit: "kg", source: "health_source" },
-  body_fat_percent: { unit: "%", source: "health_source" },
-  vo2_max: { unit: "ml/kg/min", source: "health_source" },
-  weekly_load: { unit: "load", source: "soma_calculation" },
-  acute_chronic_load_ratio: { unit: "ratio", source: "soma_calculation" },
-};
+const healthMetricMetadata = new Map(assistantHealthMetricCatalog.map((metric) => [metric.key, metric]));
 
 const nutritionMetricMetadata: Record<string, { field: keyof MealDailyAggregate; unit: string | null }> = {
   calories_kcal: { field: "caloriesKcal", unit: "kcal" },
@@ -155,13 +131,14 @@ export function decodeAssistantCursor(value: string, dataset: AssistantSemanticQ
   return candidate as CursorPayload;
 }
 
-function queryHash(query: AssistantSemanticQuery) {
+function queryHash(query: AssistantSemanticQuery, userId: string) {
   const filters = query.dataset === "daily_health" || query.dataset === "nutrition_daily"
     ? query.metrics
     : query.dataset === "scores"
       ? query.kinds
       : query.activityTypes;
   return createHash("sha256").update(JSON.stringify({
+    userId,
     dataset: query.dataset,
     period: query.period,
     filters,
@@ -169,16 +146,23 @@ function queryHash(query: AssistantSemanticQuery) {
   })).digest("hex");
 }
 
-async function readAllRows(table: string, userId: string, period: { from: string; to: string }, dateField: string) {
-  const admin = createCloudflareAdminClient();
-  const rows: Array<Record<string, unknown>> = [];
-  for (let offset = 0; ; offset += STORAGE_PAGE_SIZE) {
-    const result = await admin.from(table).select("*").eq("user_id", userId).gte(dateField, period.from).lte(dateField, period.to)
-      .order(dateField, { ascending: true }).range(offset, offset + STORAGE_PAGE_SIZE - 1);
-    if (result.error) throw new Error(`Assistant ${table} data could not be loaded.`);
-    const page = (result.data ?? []) as Array<Record<string, unknown>>;
-    rows.push(...page);
-    if (page.length < STORAGE_PAGE_SIZE) return rows;
+function pageOffset(position: string | null) {
+  if (position === null) return 0;
+  const offset = Number(position);
+  if (!Number.isSafeInteger(offset) || offset < 0) throw new Error("Assistant cursor has an invalid page offset.");
+  return offset;
+}
+
+function activityOffsets(position: string | null) {
+  if (position === null) return { civilDate: 0, startTime: 0 };
+  try {
+    const parsed = JSON.parse(position) as Partial<{ civilDate: number; startTime: number }>;
+    const civilDate = parsed.civilDate;
+    const startTime = parsed.startTime;
+    if (!Number.isSafeInteger(civilDate) || !Number.isSafeInteger(startTime) || (civilDate ?? -1) < 0 || (startTime ?? -1) < 0) throw new Error();
+    return { civilDate: civilDate as number, startTime: startTime as number };
+  } catch {
+    throw new Error("Assistant cursor has an invalid activity position.");
   }
 }
 
@@ -192,17 +176,76 @@ const defaultSources: AssistantDataSources = {
     if (profileResult.error) throw new Error("Assistant profile context could not be loaded.");
     return { timezone: profileResult.data?.timezone ?? "Europe/Paris", importedAt: connectionResult.data?.last_synced_at ?? null };
   },
-  async health(userId, period) {
-    return await readAllRows("daily_health_metrics", userId, period, "metric_date") as unknown as HealthMetricDay[];
+  async health(userId, period, metrics, pageRequest) {
+    const admin = createCloudflareAdminClient();
+    const selectedMetrics = assistantHealthMetricCatalog.filter((metric) => metrics.includes(metric.key)).map((metric) => metric.key);
+    let query = admin.from("daily_health_metrics").select(["metric_date", "source_freshness", "data_quality", ...selectedMetrics].join(","))
+      .eq("user_id", userId).gte("metric_date", period.from).lte("metric_date", period.to);
+    if (pageRequest.position) query = pageRequest.order === "asc"
+      ? query.gt("metric_date", pageRequest.position)
+      : query.lt("metric_date", pageRequest.position);
+    const result = await query.order("metric_date", { ascending: pageRequest.order === "asc" }).range(0, pageRequest.limit);
+    if (result.error) throw new Error("Assistant daily health data could not be loaded.");
+    const rows = (result.data ?? []) as unknown as HealthMetricDay[];
+    const items = rows.slice(0, pageRequest.limit);
+    const hasMore = rows.length > items.length;
+    return { items, hasMore, nextPosition: hasMore ? items.at(-1)?.metric_date ?? null : null, totalItems: null };
   },
-  async scores(userId, period) {
-    return await readAllRows("daily_scores", userId, period, "score_date") as unknown as ScoreDay[];
+  async scores(userId, period, kinds, pageRequest) {
+    const offset = pageOffset(pageRequest.position);
+    const result = await createCloudflareAdminClient().from("daily_scores").select("score_date,kind,score,algorithm_version")
+      .eq("user_id", userId).gte("score_date", period.from).lte("score_date", period.to).in("kind", kinds)
+      .order("score_date", { ascending: pageRequest.order === "asc" }).order("kind", { ascending: pageRequest.order === "asc" })
+      .range(offset, offset + pageRequest.limit);
+    if (result.error) throw new Error("Assistant score data could not be loaded.");
+    const rows = (result.data ?? []) as unknown as ScoreDay[];
+    const items = rows.slice(0, pageRequest.limit);
+    const hasMore = rows.length > items.length;
+    return { items, hasMore, nextPosition: hasMore ? String(offset + items.length) : null, totalItems: null };
   },
   async nutrition(userId, period) {
     return aggregateConfirmedMeals(await loadConfirmedMealRecords(userId, period));
   },
-  async activities(userId, period) {
-    return (await allImportedExercises(userId)).filter((activity) => activity.date >= period.from && activity.date <= period.to);
+  async activities(userId, period, activityTypes, pageRequest) {
+    const admin = createCloudflareAdminClient();
+    const nativeTypes = assistantActivityTypeFilterValues(activityTypes);
+    const offsets = activityOffsets(pageRequest.position);
+    const endExclusive = new Date(Date.parse(`${period.to}T00:00:00.000Z`) + 86_400_000).toISOString();
+    const queryDate = async (field: "civil_date" | "start_time", offset: number) => {
+      let query = admin.from("health_records").select("source_record_id,civil_date,start_time,end_time,payload")
+        .eq("user_id", userId).eq("data_type", "exercise");
+      if (field === "civil_date") query = query.gte("civil_date", period.from).lte("civil_date", period.to);
+      else query = query.is("civil_date", null).gte("start_time", `${period.from}T00:00:00.000Z`).lt("start_time", endExclusive);
+      if (nativeTypes.length) query = query.in("payload.exercise.exerciseType", nativeTypes);
+      let ordered = query.order(field, { ascending: pageRequest.order === "asc" });
+      if (field !== "start_time") ordered = ordered.order("start_time", { ascending: pageRequest.order === "asc" });
+      const result = await ordered.order("source_record_id", { ascending: pageRequest.order === "asc" })
+        .range(offset, offset + pageRequest.limit);
+      if (result.error) throw new Error("Exercise history could not be loaded.");
+      const rows = (result.data ?? []) as Array<Record<string, unknown>>;
+      return {
+        items: rows.slice(0, pageRequest.limit).map((row) => exerciseSummaryFromRecord(row as Parameters<typeof exerciseSummaryFromRecord>[0])),
+        hasMore: rows.length > pageRequest.limit,
+      };
+    };
+    const [civilDate, startTime] = await Promise.all([
+      queryDate("civil_date", offsets.civilDate), queryDate("start_time", offsets.startTime),
+    ]);
+    const combined = [
+      ...civilDate.items.filter((item) => assistantActivityTypeMatches(item.type, activityTypes)).map((item) => ({ source: "civilDate" as const, item })),
+      ...startTime.items.filter((item) => assistantActivityTypeMatches(item.type, activityTypes)).map((item) => ({ source: "startTime" as const, item })),
+    ].sort((left, right) => activityPosition(left.item).localeCompare(activityPosition(right.item)) * (pageRequest.order === "asc" ? 1 : -1));
+    const selected = combined.slice(0, pageRequest.limit);
+    const consumed = {
+      civilDate: selected.filter((entry) => entry.source === "civilDate").length,
+      startTime: selected.filter((entry) => entry.source === "startTime").length,
+    };
+    const hasMore = combined.length > pageRequest.limit || civilDate.hasMore || startTime.hasMore;
+    const nextPosition = hasMore ? JSON.stringify({
+      civilDate: offsets.civilDate + consumed.civilDate,
+      startTime: offsets.startTime + consumed.startTime,
+    }) : null;
+    return { items: selected.map((entry) => entry.item), hasMore, nextPosition, totalItems: null };
   },
 };
 
@@ -210,34 +253,52 @@ function finiteNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function healthMeasuredAt(day: HealthMetricDay) {
-  const latest = day.source_freshness?.latestMeasuredAt;
-  return typeof latest === "string" ? latest : null;
+function healthMetricValue(day: HealthMetricDay, metric: string) {
+  const metadata = healthMetricMetadata.get(metric);
+  const value = (day as unknown as Record<string, unknown>)[metric];
+  if (value == null) return null;
+  if (metadata?.format === "boolean") return typeof value === "boolean" ? value : null;
+  if (metadata?.format === "clock") return typeof value === "string" ? value : null;
+  return finiteNumber(value);
 }
 
-function availability(value: number | null, coverage: number): AssistantAvailability {
+function healthMeasuredAt(day: HealthMetricDay, metric: string) {
+  const sourceTypes = healthMetricMetadata.get(metric)?.sourceDataTypes ?? [];
+  const measuredAt = sourceTypes.map((type) => day.source_freshness?.byType?.[type])
+    .filter((value): value is string => typeof value === "string")
+    .sort();
+  return measuredAt.at(-1) ?? null;
+}
+
+function availability(value: AssistantObservation["value"], coverage: number): AssistantAvailability {
   if (value === null) return coverage > 0 ? "partial" : "missing";
   return coverage < 1 ? "partial" : "observed";
 }
 
 function healthRecords(rows: HealthMetricDay[], query: Extract<AssistantSemanticQuery, { dataset: "daily_health" }>, importedAt: string | null): AssistantDailyRecord[] {
-  return rows.map((day) => {
-    const measuredAt = healthMeasuredAt(day);
-    const freshness = calculateSignalFreshness({ measuredAt, importedAt, coverage: measuredAt ? 1 : 0 });
+  return rows.filter((day) => day.metric_date >= query.period.from && day.metric_date <= query.period.to).map((day) => {
     return {
       type: "daily" as const,
       date: day.metric_date,
       observations: query.metrics.map((metric) => {
-        const value = finiteNumber(day[metric]);
-        const metadata = healthMetricMetadata[metric];
+        const value = healthMetricValue(day, metric);
+        const metadata = healthMetricMetadata.get(metric);
         const coverage = value === null ? 0 : 1;
+        const measuredAt = healthMeasuredAt(day, metric);
+        const providers = day.data_quality?.providers ?? [];
+        const provider = providers.length === 1 ? providers[0] ?? null : null;
+        const metricImportedAt = day.data_quality?.importedAt
+          ?? (provider?.toLocaleLowerCase("en-US").includes("google") ? importedAt : null);
+        const freshness = value === null ? "missing" : measuredAt
+          ? calculateSignalFreshness({ measuredAt, importedAt: metricImportedAt, coverage }).state
+          : "partial";
         const metricAvailability = value === null && metadata?.source === "soma_calculation"
           ? "not_calculable"
           : availability(value, coverage);
         return {
           metric, value, unit: metadata?.unit ?? null, availability: metricAvailability, coverage,
-          measuredAt, importedAt, freshness: freshness.state,
-          provenance: { source: metadata?.source ?? "health_source", provider: null, algorithmVersion: metadata?.source === "soma_calculation" ? "daily-health-metrics" : null },
+          measuredAt, importedAt: metricImportedAt, freshness,
+          provenance: { source: metadata?.source ?? "health_source", provider, algorithmVersion: null },
         };
       }),
     };
@@ -246,7 +307,7 @@ function healthRecords(rows: HealthMetricDay[], query: Extract<AssistantSemantic
 
 function scoreRecords(rows: ScoreDay[], query: Extract<AssistantSemanticQuery, { dataset: "scores" }>, importedAt: string | null): AssistantScoreRecord[] {
   const kinds = new Set(query.kinds);
-  return rows.filter((row) => kinds.has(row.kind)).map((row) => {
+  return rows.filter((row) => kinds.has(row.kind) && row.score_date >= query.period.from && row.score_date <= query.period.to).map((row) => {
     const value = finiteNumber(row.score);
     return {
       type: "score" as const, date: row.score_date, kind: row.kind,
@@ -261,7 +322,7 @@ function scoreRecords(rows: ScoreDay[], query: Extract<AssistantSemanticQuery, {
 }
 
 function nutritionRecords(rows: MealDailyAggregate[], query: Extract<AssistantSemanticQuery, { dataset: "nutrition_daily" }>): AssistantDailyRecord[] {
-  return rows.map((day) => ({
+  return rows.filter((day) => day.date >= query.period.from && day.date <= query.period.to).map((day) => ({
     type: "daily" as const,
     date: day.date,
     observations: query.metrics.map((metric) => {
@@ -279,19 +340,22 @@ function nutritionRecords(rows: MealDailyAggregate[], query: Extract<AssistantSe
 }
 
 function activityRecords(rows: ExerciseSummary[], query: Extract<AssistantSemanticQuery, { dataset: "activities" }>): AssistantActivityRecord[] {
-  const types = new Set(query.activityTypes.map((value) => value.toLocaleUpperCase("en-US")));
-  return rows.filter((activity) => !types.size || types.has(activity.type.toLocaleUpperCase("en-US")))
+  return rows.filter((activity) => activity.date >= query.period.from && activity.date <= query.period.to && assistantActivityTypeMatches(activity.type, query.activityTypes))
     .map((activity) => ({ type: "activity" as const, date: activity.date, activity }));
 }
 
 function recordPosition(record: AssistantSemanticRecord) {
-  return record.type === "score" ? `${record.date}|${record.kind}` : record.type === "activity" ? `${record.date}|${record.activity.id}` : record.date;
+  return record.type === "score" ? `${record.date}|${record.kind}` : record.type === "activity" ? activityPosition(record.activity) : record.date;
 }
 
-function paginate(records: AssistantSemanticRecord[], query: AssistantSemanticQuery, explicitSecret?: string) {
+function activityPosition(activity: ExerciseSummary) {
+  return `${activity.date}|${activity.startTime ?? "~"}|${activity.id}`;
+}
+
+function paginate(records: AssistantSemanticRecord[], query: AssistantSemanticQuery, userId: string, explicitSecret?: string) {
   const direction = query.pagination.order === "asc" ? 1 : -1;
   const sorted = [...records].sort((left, right) => recordPosition(left).localeCompare(recordPosition(right)) * direction);
-  const fingerprint = queryHash(query);
+  const fingerprint = queryHash(query, userId);
   const cursor = query.pagination.cursor ? decodeAssistantCursor(query.pagination.cursor, query.dataset, explicitSecret, fingerprint) : null;
   const eligible = cursor ? sorted.filter((record) => recordPosition(record).localeCompare(cursor.position) * direction > 0) : sorted;
   const page = eligible.slice(0, query.pagination.limit);
@@ -315,14 +379,72 @@ export async function queryAssistantData(
   if (periodDays(query.period) > MAX_PERIOD_DAYS) throw new Error(`Assistant queries are limited to ${MAX_PERIOD_DAYS} days per request.`);
   const sources = options.sources ?? defaultSources;
   const profile = await sources.profile(userId);
+  const fingerprint = queryHash(query, userId);
+  const cursor = query.pagination.cursor
+    ? decodeAssistantCursor(query.pagination.cursor, query.dataset, options.cursorSecret, fingerprint)
+    : null;
+  const pageRequest: AssistantPageRequest = {
+    limit: query.pagination.limit,
+    position: cursor?.position ?? null,
+    order: query.pagination.order,
+  };
 
   let records: AssistantSemanticRecord[];
-  if (query.dataset === "daily_health") records = healthRecords(await sources.health(userId, query.period), query, profile.importedAt);
-  else if (query.dataset === "scores") records = scoreRecords(await sources.scores(userId, query.period), query, profile.importedAt);
-  else if (query.dataset === "nutrition_daily") records = nutritionRecords(await sources.nutrition(userId, query.period), query);
-  else records = activityRecords(await sources.activities(userId, query.period), query);
+  let paginated: { page: AssistantSemanticRecord[]; total: number | null; totalKnown: boolean; hasMore: boolean; nextCursor: string | null };
+  if (query.dataset === "daily_health") {
+    const sourceResult = await sources.health(userId, query.period, query.metrics, pageRequest);
+    if (Array.isArray(sourceResult)) {
+      records = healthRecords(sourceResult, query, profile.importedAt);
+      const legacy = paginate(records, query, userId, options.cursorSecret);
+      paginated = { ...legacy, totalKnown: true };
+    } else {
+      records = healthRecords(sourceResult.items, query, profile.importedAt);
+      paginated = {
+        page: records, total: sourceResult.totalItems, totalKnown: sourceResult.totalItems !== null,
+        hasMore: sourceResult.hasMore,
+        nextCursor: sourceResult.hasMore && sourceResult.nextPosition
+          ? encodeAssistantCursor({ version: 1, dataset: query.dataset, queryHash: fingerprint, position: sourceResult.nextPosition }, options.cursorSecret)
+          : null,
+      };
+    }
+  } else if (query.dataset === "scores") {
+    const sourceResult = await sources.scores(userId, query.period, query.kinds, pageRequest);
+    if (Array.isArray(sourceResult)) {
+      records = scoreRecords(sourceResult, query, profile.importedAt);
+      const legacy = paginate(records, query, userId, options.cursorSecret);
+      paginated = { ...legacy, totalKnown: true };
+    } else {
+      records = scoreRecords(sourceResult.items, query, profile.importedAt);
+      paginated = {
+        page: records, total: sourceResult.totalItems, totalKnown: sourceResult.totalItems !== null,
+        hasMore: sourceResult.hasMore,
+        nextCursor: sourceResult.hasMore && sourceResult.nextPosition
+          ? encodeAssistantCursor({ version: 1, dataset: query.dataset, queryHash: fingerprint, position: sourceResult.nextPosition }, options.cursorSecret)
+          : null,
+      };
+    }
+  } else if (query.dataset === "nutrition_daily") {
+    records = nutritionRecords(await sources.nutrition(userId, query.period), query);
+    const legacy = paginate(records, query, userId, options.cursorSecret);
+    paginated = { ...legacy, totalKnown: true };
+  } else {
+    const sourceResult = await sources.activities(userId, query.period, query.activityTypes, pageRequest);
+    if (Array.isArray(sourceResult)) {
+      records = activityRecords(sourceResult, query);
+      const legacy = paginate(records, query, userId, options.cursorSecret);
+      paginated = { ...legacy, totalKnown: true };
+    } else {
+      records = activityRecords(sourceResult.items, query);
+      paginated = {
+        page: records, total: sourceResult.totalItems, totalKnown: sourceResult.totalItems !== null,
+        hasMore: sourceResult.hasMore,
+        nextCursor: sourceResult.hasMore && sourceResult.nextPosition
+          ? encodeAssistantCursor({ version: 1, dataset: query.dataset, queryHash: fingerprint, position: sourceResult.nextPosition }, options.cursorSecret)
+          : null,
+      };
+    }
+  }
 
-  const paginated = paginate(records, query, options.cursorSecret);
   const coveredDates = records.map((record) => record.date).sort();
   return {
     items: paginated.page,
@@ -332,6 +454,7 @@ export async function queryAssistantData(
       coveredPeriod: coveredDates.length ? { from: coveredDates[0], to: coveredDates.at(-1) as string } : null,
       timezone: profile.timezone,
       totalItems: paginated.total,
+      totalKnown: paginated.totalKnown,
       returnedItems: paginated.page.length,
       hasMore: paginated.hasMore,
       nextCursor: paginated.nextCursor,

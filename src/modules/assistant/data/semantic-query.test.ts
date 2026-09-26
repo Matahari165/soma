@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import type { HealthMetricDay, ScoreDay } from "@/services/health-analytics";
-import { decodeAssistantCursor, encodeAssistantCursor, queryAssistantData } from "./semantic-query";
+import type { ExerciseSummary, HealthMetricDay, ScoreDay } from "@/services/health-analytics";
+import { decodeAssistantCursor, encodeAssistantCursor, queryAssistantData, type AssistantPageRequest } from "./semantic-query";
+import { assistantHealthMetricCatalog } from "./health-catalog";
 
 const secret = "test-assistant-cursor-secret-123456";
 const baseHealthDay = (date: string, steps: number | null): HealthMetricDay => ({
@@ -23,10 +24,20 @@ const baseHealthDay = (date: string, steps: number | null): HealthMetricDay => (
   source_freshness: { latestMeasuredAt: `${date}T08:00:00.000Z` },
 });
 
-function sources(input: { health?: HealthMetricDay[]; scores?: ScoreDay[] } = {}) {
+function sources(input: { health?: HealthMetricDay[]; scores?: ScoreDay[]; activities?: ExerciseSummary[] } = {}) {
   return {
     profile: async () => ({ timezone: "Europe/Zurich", importedAt: "2026-09-21T09:00:00.000Z" }),
-    health: async () => input.health ?? [], scores: async () => input.scores ?? [], nutrition: async () => [], activities: async () => [],
+    health: async () => input.health ?? [], scores: async () => input.scores ?? [], nutrition: async () => [], activities: async () => input.activities ?? [],
+  };
+}
+
+function activity(id: string, date: string, type: string): ExerciseSummary {
+  return {
+    id, date, type, name: type, durationMinutes: 45, activeMinutes: 40, calories: 300, distanceKm: null,
+    averageHeartRate: 145, maximumHeartRate: 180, zoneMinutes: 30, averageSpeedKph: null,
+    averagePaceSecondsPerKm: null, elevationGainMeters: null, steps: null, runVo2Max: null,
+    swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null,
+    verticalOscillationMillimeters: null, verticalRatio: null,
   };
 }
 
@@ -53,6 +64,49 @@ describe("assistant semantic data queries", () => {
     });
   });
 
+  it("returns clock and boolean health metrics in their native types", async () => {
+    const day = { ...baseHealthDay("2026-09-21", 0), bedtime: "2026-09-20T22:40:00.000Z", active_day: false };
+    const result = await queryAssistantData("user-1", {
+      dataset: "daily_health", period: { from: "2026-09-21", to: "2026-09-21" }, metrics: ["bedtime", "active_day"], pagination: { limit: 100, cursor: null, order: "asc" },
+    }, { sources: sources({ health: [day] }), cursorSecret: secret });
+
+    expect(result.items[0]).toMatchObject({ observations: [
+      { metric: "bedtime", value: "2026-09-20T22:40:00.000Z", availability: "observed", unit: "local time" },
+      { metric: "active_day", value: false, availability: "observed", unit: "yes/no" },
+    ] });
+  });
+
+  it("filters more than 500 activities by period and French activity alias before reporting totals and pages", async () => {
+    const activities = [
+      ...Array.from({ length: 520 }, (_, index) => activity(`run-${index.toString().padStart(4, "0")}`, "2026-09-10", "RUNNING")),
+      ...Array.from({ length: 8 }, (_, index) => activity(`boxing-${index.toString().padStart(2, "0")}`, "2026-09-10", "BOXING")),
+      activity("boxing-outside-period", "2026-08-26", "BOXING"),
+    ];
+    const first = await queryAssistantData("user-1", {
+      dataset: "activities", period: { from: "2026-08-27", to: "2026-09-26" }, activityTypes: ["boxe"], pagination: { limit: 5, cursor: null, order: "desc" },
+    }, { sources: sources({ activities }), cursorSecret: secret });
+
+    expect(first.manifest).toMatchObject({ totalItems: 8, returnedItems: 5, hasMore: true });
+    expect(first.items.every((item) => item.type === "activity" && item.activity.type === "BOXING")).toBe(true);
+
+    const second = await queryAssistantData("user-1", {
+      dataset: "activities", period: { from: "2026-08-27", to: "2026-09-26" }, activityTypes: ["boxe"], pagination: { limit: 5, cursor: first.manifest.nextCursor, order: "desc" },
+    }, { sources: sources({ activities }), cursorSecret: secret });
+    expect(second.manifest).toMatchObject({ totalItems: 8, returnedItems: 3, hasMore: false, complete: true });
+  });
+
+  it("allows the full health metric catalog as a targeted query", async () => {
+    const result = await queryAssistantData("user-1", {
+      dataset: "daily_health", period: { from: "2026-09-21", to: "2026-09-21" },
+      metrics: assistantHealthMetricCatalog.map((metric) => metric.key), pagination: { limit: 10, cursor: null, order: "asc" },
+    }, { sources: sources({ health: [baseHealthDay("2026-09-21", 42)] }), cursorSecret: secret });
+
+    expect(result.items[0]?.type === "daily" ? result.items[0].observations : []).toHaveLength(assistantHealthMetricCatalog.length);
+    const observations = result.items[0]?.type === "daily" ? result.items[0].observations : [];
+    expect(observations.find((observation) => observation.metric === "steps")).toMatchObject({ value: 42, availability: "observed" });
+    expect(observations.find((observation) => observation.metric === "bedtime")).toMatchObject({ value: null, availability: "missing" });
+  });
+
   it("paginates without silent truncation and reports completeness", async () => {
     const health = [baseHealthDay("2026-09-19", 1), baseHealthDay("2026-09-20", 2), baseHealthDay("2026-09-21", 3)];
     const first = await queryAssistantData("user-1", {
@@ -65,6 +119,23 @@ describe("assistant semantic data queries", () => {
     }, { sources: sources({ health }), cursorSecret: secret });
     expect(second.items).toHaveLength(1);
     expect(second.manifest).toMatchObject({ hasMore: false, complete: true });
+  });
+
+  it("uses a signed storage cursor and reports unknown totals without inventing a count", async () => {
+    const source = sources();
+    const health = vi.fn(async (_userId: string, _period: { from: string; to: string }, _metrics: string[], page: AssistantPageRequest) => page.position === null
+      ? { items: [baseHealthDay("2026-09-20", 1)], hasMore: true, nextPosition: "2026-09-20", totalItems: null }
+      : { items: [baseHealthDay("2026-09-21", 2)], hasMore: false, nextPosition: null, totalItems: null });
+    const first = await queryAssistantData("user-1", {
+      dataset: "daily_health", period: { from: "2026-09-20", to: "2026-09-21" }, metrics: ["steps"], pagination: { limit: 1, cursor: null, order: "asc" },
+    }, { sources: { ...source, health }, cursorSecret: secret });
+    expect(first.manifest).toMatchObject({ totalItems: null, totalKnown: false, hasMore: true, complete: false });
+
+    const second = await queryAssistantData("user-1", {
+      dataset: "daily_health", period: { from: "2026-09-20", to: "2026-09-21" }, metrics: ["steps"], pagination: { limit: 1, cursor: first.manifest.nextCursor, order: "asc" },
+    }, { sources: { ...source, health }, cursorSecret: secret });
+    expect(health.mock.calls[1]?.[3]).toMatchObject({ limit: 1, position: "2026-09-20", order: "asc" });
+    expect(second.manifest).toMatchObject({ totalItems: null, totalKnown: false, returnedItems: 1, hasMore: false, complete: true });
   });
 
   it("retrieves a four-month history across pages without losing days", async () => {
@@ -99,6 +170,17 @@ describe("assistant semantic data queries", () => {
 
     await expect(queryAssistantData("user-1", {
       dataset: "daily_health", period: { from: "2026-09-19", to: "2026-09-21" }, metrics: ["steps"], pagination: { limit: 1, cursor: first.manifest.nextCursor, order: "asc" },
+    }, { sources: sources({ health }), cursorSecret: secret })).rejects.toThrow(/does not match/);
+  });
+
+  it("binds pagination cursors to the authenticated user", async () => {
+    const health = [baseHealthDay("2026-09-20", 1), baseHealthDay("2026-09-21", 2)];
+    const first = await queryAssistantData("user-1", {
+      dataset: "daily_health", period: { from: "2026-09-20", to: "2026-09-21" }, metrics: ["steps"], pagination: { limit: 1, cursor: null, order: "asc" },
+    }, { sources: sources({ health }), cursorSecret: secret });
+
+    await expect(queryAssistantData("user-2", {
+      dataset: "daily_health", period: { from: "2026-09-20", to: "2026-09-21" }, metrics: ["steps"], pagination: { limit: 1, cursor: first.manifest.nextCursor, order: "asc" },
     }, { sources: sources({ health }), cursorSecret: secret })).rejects.toThrow(/does not match/);
   });
 

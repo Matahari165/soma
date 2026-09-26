@@ -450,6 +450,73 @@ describe("Supabase storage pagination", () => {
   });
 });
 
+describe("Supabase logical-row JSON filters", () => {
+  it("projects selected logical fields instead of transferring the full JSON document", async () => {
+    const previousUrl = process.env.SUPABASE_URL;
+    const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      expect(url.searchParams.get("select")).toBe("table_name,row_key,user_id,metric_date:json_data->metric_date,steps:json_data->steps");
+      return new Response(JSON.stringify([{
+        table_name: "daily_health_metrics", row_key: "day-1", user_id: "user-1", metric_date: "2026-09-20", steps: 42,
+      }]), { status: 200, headers: { "content-type": "application/json" } });
+    });
+
+    process.env.SUPABASE_URL = "https://supabase.test";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const result = await createCloudflareAdminClient().from("daily_health_metrics")
+        .select("metric_date,steps").eq("user_id", "user-1")
+        .gte("metric_date", "2026-09-20").lte("metric_date", "2026-09-21")
+        .order("metric_date").range(0, 9);
+      expect(result.data).toEqual([{ metric_date: "2026-09-20", steps: 42 }]);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+      else process.env.SUPABASE_URL = previousUrl;
+      if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey;
+    }
+  });
+
+  it("pushes nested activity type filters to the storage query", async () => {
+    const previousUrl = process.env.SUPABASE_URL;
+    const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      expect(url.searchParams.get("json_data->payload->exercise->>exerciseType")).toBe("in.(BOXING,KICKBOXING)");
+      expect(url.searchParams.get("json_data->>civil_date")).toBe("gte.2026-08-27");
+      return new Response(JSON.stringify([]), { status: 200, headers: { "content-type": "application/json" } });
+    });
+
+    process.env.SUPABASE_URL = "https://supabase.test";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const result = await createCloudflareAdminClient().from("health_records")
+        .select("source_record_id,civil_date,start_time,end_time,payload")
+        .eq("user_id", "user-1").eq("data_type", "exercise")
+        .gte("civil_date", "2026-08-27").lte("civil_date", "2026-09-26")
+        .in("payload.exercise.exerciseType", ["BOXING", "KICKBOXING"])
+        .range(0, 499);
+
+      expect(result.error).toBeNull();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(new URL(String(fetchMock.mock.calls[0]?.[0])).searchParams.get("limit")).toBe("500");
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+      else process.env.SUPABASE_URL = previousUrl;
+      if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey;
+    }
+  });
+});
+
 describe("Cloudflare journal persistence verification", () => {
   it("updates omissions as a field patch until the complete validation snapshot", () => {
     expect(mergeJournalOmissions(["dinner", "reading"], [{ variable_id: "dinner", value: "22:30" }], false)).toEqual(["reading"]);
