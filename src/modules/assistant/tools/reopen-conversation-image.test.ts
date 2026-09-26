@@ -15,7 +15,7 @@ beforeEach(() => { vi.clearAllMocks(); mocks.find.mockResolvedValue(metadata); m
 
 it("returns image bytes through the SDK multimodal output, not the saved tool result", async () => {
   const tool = createReopenConversationImageTool(context);
-  const result = await tool.execute!({ attachmentId }, { toolCallId: "call", messages: [], context: undefined });
+  const result = await tool.execute!({ attachmentId }, { toolCallId: "call", messages: [], context: {} });
   expect(result).toEqual({ attachmentId, messageId: "test-message", mediaType: "image/jpeg" });
   const output = await tool.toModelOutput!({ input: { attachmentId }, output: result as { attachmentId: string; messageId: string | null; mediaType: "image/jpeg" | "image/png" }, toolCallId: "call" });
   expect(output).toMatchObject({ type: "content", value: [{ type: "text" }, { type: "file", mediaType: "image/jpeg", data: { type: "data" } }] });
@@ -25,13 +25,13 @@ it("returns image bytes through the SDK multimodal output, not the saved tool re
 it("rejects a foreign conversation before loading the object", async () => {
   mocks.find.mockResolvedValue(null);
   const tool = createReopenConversationImageTool(context);
-  await expect(tool.execute!({ attachmentId }, { toolCallId: "call", messages: [], context: undefined })).rejects.toThrow(/unavailable/);
+  await expect(tool.execute!({ attachmentId }, { toolCallId: "call", messages: [], context: {} })).rejects.toThrow(/unavailable/);
   expect(mocks.load).not.toHaveBeenCalled();
 });
 
 it("rejects altered image bytes", async () => {
   mocks.load.mockResolvedValue({ arrayBuffer: async () => Buffer.from("altered") });
   const tool = createReopenConversationImageTool(context);
-  const result = await tool.execute!({ attachmentId }, { toolCallId: "call", messages: [], context: undefined });
+  const result = await tool.execute!({ attachmentId }, { toolCallId: "call", messages: [], context: {} });
   await expect(tool.toModelOutput!({ input: { attachmentId }, output: result as { attachmentId: string; messageId: string | null; mediaType: "image/jpeg" | "image/png" }, toolCallId: "call" })).rejects.toThrow(/integrity/);
 });

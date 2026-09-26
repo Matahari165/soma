@@ -3,7 +3,10 @@ import { summarizeAssistantData, type AssistantDataSummaryJob } from "./data-sum
 import type { AssistantSemanticResult } from "./semantic-query";
 
 const storageMocks = vi.hoisted(() => ({ client: vi.fn() }));
-vi.mock("@/lib/cloudflare/db", () => ({ createCloudflareAdminClient: storageMocks.client }));
+vi.mock("@/lib/cloudflare/db", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/cloudflare/db")>(),
+  createCloudflareAdminClient: storageMocks.client,
+}));
 
 const query = { dataset: "daily_health", period: { from: "2020-01-01", to: "2020-01-06" }, metrics: ["hrv_ms"] };
 function store() {
@@ -28,7 +31,7 @@ function page(index: number): AssistantSemanticResult {
       measuredAt: null, importedAt: null, freshness: index === 1 ? "missing" : "current",
       provenance: { source: "health_source", provider: "test-provider", algorithmVersion: null } }] }],
     manifest: { dataset: "daily_health", requestedPeriod: query.period, coveredPeriod: { from: date, to: date }, timezone: "UTC",
-      totalItems: 6, returnedItems: 1, hasMore: index < 5, nextCursor: index < 5 ? String(index + 1) : null, complete: index === 5, generatedAt: "2020-01-01T00:00:00Z" },
+      totalItems: 6, totalKnown: true, returnedItems: 1, hasMore: index < 5, nextCursor: index < 5 ? String(index + 1) : null, complete: index === 5, generatedAt: "2020-01-01T00:00:00Z" },
   };
 }
 

@@ -61,7 +61,7 @@ export function createSomaAssistantAgent(input: {
     getWorkoutHistory: createGetWorkoutHistoryTool(input),
     getLatestRun: createGetLatestRunTool(input),
     querySomaData: createQuerySomaDataTool(input),
-    getDataCatalog: createGetDataCatalogTool(),
+    getDataCatalog: createGetDataCatalogTool(input),
     queryLabAnalyses: createQueryLabAnalysesTool(input),
     getActivityTelemetry: createGetActivityTelemetryTool(input),
     queryRawHealth: createQueryRawHealthTool(input),

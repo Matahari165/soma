@@ -2,6 +2,7 @@ import "server-only";
 
 import { tool } from "ai";
 import { z } from "zod";
+import { GOOGLE_HEALTH_DATA_TYPES } from "@/integrations/google-health/client";
 
 import { getAssistantDataCatalog } from "../data/health-catalog";
 import { executeAuditedAssistantTool } from "./audited-tool";
@@ -15,7 +16,7 @@ export function createGetDataCatalogTool(context: { userId: string; runId: strin
       toolName: "getDataCatalog",
       toolCallId: options.toolCallId,
       arguments: {},
-      execute: async () => getAssistantDataCatalog(),
+      execute: async () => ({ ...getAssistantDataCatalog(), rawHealthTypes: GOOGLE_HEALTH_DATA_TYPES }),
     }),
   });
 }

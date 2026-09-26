@@ -580,3 +580,37 @@ describe("Personal Lab matrix revision", () => {
     expect(affectsLabMatrixRevision("meal_analyses")).toBe(true);
   });
 });
+
+
+it("advances summary checkpoint versions when the clock has not advanced", async () => {
+  const previousUrl = process.env.SUPABASE_URL;
+  const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const instant = "2020-01-01T00:00:00.000Z";
+  const clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse(instant));
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+    if (init?.method === "PATCH") return new Response(JSON.stringify([{}]), { status: 200 });
+    return new Response(JSON.stringify([{
+      table_name: "assistant_data_jobs", row_key: "test-job", user_id: "user-1",
+      json_data: { id: "job-1", user_id: "user-1", updated_at: instant, processed: 1 },
+    }]), { status: 200 });
+  });
+  process.env.SUPABASE_URL = "https://supabase.test";
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+  vi.stubGlobal("fetch", fetchMock);
+  try {
+    const result = await createCloudflareAdminClient().from("assistant_data_jobs")
+      .update({ processed: 2, updated_at: instant }).eq("user_id", "user-1")
+      .eq("id", "job-1").eq("updated_at", instant).select("id,updated_at");
+    expect(result.error).toBeNull();
+    expect(result.data?.[0].updated_at).toBe("2020-01-01T00:00:00.001Z");
+    const patch = fetchMock.mock.calls.find(([, init]) => init?.method === "PATCH");
+    expect(new URL(String(patch?.[0])).searchParams.get("json_data->>updated_at")).toBe(`eq.${instant}`);
+  } finally {
+    clock.mockRestore();
+    vi.unstubAllGlobals();
+    if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = previousUrl;
+    if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey;
+  }
+});

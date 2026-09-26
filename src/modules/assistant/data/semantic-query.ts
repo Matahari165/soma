@@ -73,7 +73,7 @@ export type AssistantSourcePage<T> = { items: T[]; hasMore: boolean; nextPositio
 type CursorPayload = { version: 1; dataset: AssistantSemanticQuery["dataset"]; queryHash: string; position: string };
 
 const MAX_PERIOD_DAYS = 3_660;
-const healthMetricMetadata = new Map(assistantHealthMetricCatalog.map((metric) => [metric.key, metric]));
+const healthMetricMetadata = new Map<string, (typeof assistantHealthMetricCatalog)[number]>(assistantHealthMetricCatalog.map((metric) => [metric.key, metric]));
 
 const nutritionMetricMetadata: Record<string, { field: keyof MealDailyAggregate; unit: string | null }> = {
   calories_kcal: { field: "caloriesKcal", unit: "kcal" },

@@ -389,7 +389,13 @@ export class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
       return shapeQueryResult(existing, this.selector, this.selectOptions, this.cardinality);
     }
 
-    const changed = existing.map((row) => cleanRow({ ...row, ...mutation.values, updated_at: new Date().toISOString() }));
+    const changed = existing.map((row) => {
+      // Summary checkpoints use this timestamp as a CAS version, including within one millisecond.
+      const updatedAt = this.table === "assistant_data_jobs"
+        ? new Date(Math.max(Date.now(), (Date.parse(String(row.updated_at)) || 0) + 1, Date.parse(String(mutation.values.updated_at)) || 0)).toISOString()
+        : new Date().toISOString();
+      return cleanRow({ ...row, ...mutation.values, updated_at: updatedAt });
+    });
     const persisted: Row[] = [];
     for (let index = 0; index < existing.length; index += 1) {
       const oldKey = stableIdentity(this.table, existing[index]);

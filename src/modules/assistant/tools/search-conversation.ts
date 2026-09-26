@@ -131,7 +131,7 @@ export async function searchAssistantConversation(input: {
   const page = ranked.slice(offset, offset + parsed.limit);
   const results = await Promise.all(page.map(async ({ message, searchable, score }) => {
     const attachments = await attachmentReferences(input.userId, input.conversationId, message, repository);
-    let toolEvidence: Array<{ toolName: string; status: string; result: unknown }> = [];
+    const toolEvidence: Array<{ toolName: string; status: string; result: unknown }> = [];
     if (message.role === "assistant") {
       const run = await repository.findRunByOutputMessage(input.userId, message.id);
       if (run) {

@@ -40,7 +40,8 @@ export function dataSummaryFromSteps(steps: ReadonlyArray<Step> | undefined): Ex
     // A checkpoint covers all preceding pages; count the latest checkpoint once.
     return [{ ...result, input: input.query ?? {}, output: { manifest: {
       ...manifest, timezone: "UTC", returnedItems: manifest.processedItems,
-      totalItems: typeof manifest.totalItems === "number" ? manifest.totalItems : manifest.processedItems,
+      totalItems: typeof manifest.totalItems === "number" ? manifest.totalItems : null,
+      totalKnown: typeof manifest.totalItems === "number",
       nextCursor: manifest.complete ? null : "summary-checkpoint",
     } } }];
   });
