@@ -35,7 +35,7 @@ describe("bounded meal aggregate reads", () => {
       latest_analysis_row: null,
       last_successful_analysis_row: null,
     }];
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify(rows), { status: 200 }));
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(rows), { status: 200 }));
     enableSupabase(fetchMock);
 
     await expect(readMealListAggregate("synthetic-user", "2026-09-01", "2026-09-30")).resolves.toEqual(rows);
