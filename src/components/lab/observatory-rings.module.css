@@ -25,7 +25,7 @@
 .control[data-active="true"] .ringNumber { font-size: 19px; fill-opacity: 1; }
 .focusRing { fill: none; stroke: var(--lab-text-primary); stroke-width: 1; stroke-dasharray: 2 4; opacity: 0; }
 .control:focus-visible .focusRing { opacity: 1; }
-.track { stroke: var(--lab-text-primary); opacity: var(--lab-ring-track-opacity); }
+.track { stroke: var(--lab-ring-track-color); opacity: var(--lab-ring-track-opacity); }
 .progress { stroke: var(--ring-color); stroke-linecap: round; stroke-opacity: var(--lab-ring-progress-opacity); -webkit-backdrop-filter: blur(2px) saturate(1.15); backdrop-filter: blur(2px) saturate(1.15); animation: reveal 780ms cubic-bezier(.32, .05, .32, 1) var(--ring-delay) both; }
 .glassEdge, .glassEdgeInner { stroke: var(--ring-color); stroke-width: 1.25; stroke-linecap: round; stroke-opacity: .42; transition: r 1100ms var(--ring-spring); }
 .control[data-active="true"] .glassEdge { r: calc(var(--ring-radius) + 14.5px); }
@@ -35,8 +35,8 @@
 .overlap { stroke: var(--ring-color); stroke-linecap: round; stroke-opacity: .5; filter: drop-shadow(0 3px 3px var(--lab-ring-overlap-shadow)); }
 .lapEnd { fill: var(--ring-color); opacity: .52; filter: drop-shadow(0 3px 3px var(--lab-ring-end-shadow)); transition: r 1100ms var(--ring-spring); }
 .control[data-active="true"] .lapEnd { r: 16px; }
-.unknown { stroke: var(--lab-text-muted); opacity: .7; }
-.ringNumber { fill: var(--ring-label); fill-opacity: var(--lab-ring-label-opacity); stroke: rgba(var(--lab-canvas-rgb), .44); stroke-width: .8px; paint-order: stroke fill; font: 600 16px var(--font-soma-mono), monospace; font-variant-numeric: tabular-nums; transition: font-size 1100ms var(--ring-spring), fill-opacity 1100ms ease-out; }
+.unknown { stroke: var(--lab-ring-unknown-color); opacity: .7; }
+.ringNumber { fill: var(--ring-label); fill-opacity: var(--lab-ring-label-opacity); stroke: var(--lab-ring-label-stroke); stroke-width: .8px; paint-order: stroke fill; font: 600 16px var(--font-soma-mono), monospace; font-variant-numeric: tabular-nums; transition: font-size 1100ms var(--ring-spring), fill-opacity 1100ms ease-out; }
 
 .detail { display: grid; grid-template-rows: 0fr; width: min(100%, 360px); margin-top: 0; transition: grid-template-rows 1100ms var(--ring-spring), margin-top 1100ms var(--ring-spring); }
 .detailContent { min-height: 0; overflow: hidden; opacity: 0; transform: translateY(20px); transition: opacity 900ms cubic-bezier(.32, .05, .32, 1), transform 1100ms var(--ring-spring); }

@@ -43,18 +43,18 @@ function DiscoLarge() {
   return <Photo
     src="/images/backdrops/discobole-wide.png"
     alt="Statue du Discobole de Myron, en grand"
-    className="arrival-backdrop__image arrival-backdrop__image--disco"
+    className="arrival-backdrop__image arrival-backdrop__image--disco arrival-backdrop__image--dark"
     width={1376}
     height={768}
   />;
 }
 
-function MontNuages({ source, alt }: { source: string; alt: string }) {
+function MontNuages({ source, alt, scheme }: { source: string; alt: string; scheme: "light" | "dark" }) {
   return <>
     <Photo
       src={source}
       alt={alt}
-      className="arrival-backdrop__image arrival-backdrop__image--crepuscule"
+      className={`arrival-backdrop__image arrival-backdrop__image--crepuscule arrival-backdrop__image--${scheme}`}
       width={1672}
       height={941}
     />
@@ -90,7 +90,8 @@ export function ArrivalBackdrop({ variant }: { variant: ArrivalBackdropId }) {
   if (!BACKDROP_OPTIONS.some((option) => option.id === variant)) return null;
   return <div ref={layerRef} className="arrival-backdrop" data-backdrop={variant} aria-hidden="true" style={HERO_LAYER_STYLE}>
     {variant === "disco-large" && <DiscoLarge />}
-    {variant === "mont-nuages-user" && <MontNuages source="/images/backdrops/montagnes-nuages-utilisateur-v3.jpg" alt="Sommets alpins émergeant d'une vaste mer de nuages" />}
+    {variant === "mont-nuages-user" && <MontNuages source="/images/backdrops/montagnes-nuages-utilisateur-v3.jpg" alt="Sommets alpins émergeant d'une vaste mer de nuages" scheme="dark" />}
+    <MontNuages source="/images/backdrops/mountain-sunrise-light.webp" alt="Lumière du soleil levant sur des sommets alpins et une mer de nuages" scheme="light" />
     <div className="arrival-backdrop__tone" />
     <div className="arrival-backdrop__fade" />
   </div>;

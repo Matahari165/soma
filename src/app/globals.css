@@ -4,19 +4,19 @@
 @theme {
   --color-obsidian: var(--lab-canvas);
   --color-surface-subtle: var(--lab-surface-subtle);
-  --color-surface-elevated: var(--lab-surface-selected);
-  --color-surface-card: var(--lab-surface);
-  --color-hairline: var(--lab-rule);
-  --color-hairline-light: var(--lab-rule-strong);
-  --color-hairline-border: var(--lab-rule);
+  --color-surface-elevated: var(--lab-tailwind-surface-elevated);
+  --color-surface-card: var(--lab-tailwind-surface-card);
+  --color-hairline: var(--lab-tailwind-hairline);
+  --color-hairline-light: var(--lab-tailwind-hairline-light);
+  --color-hairline-border: var(--lab-tailwind-hairline-border);
   --color-sage: var(--lab-signal);
-  --color-sage-muted: var(--lab-signal);
+  --color-sage-muted: var(--lab-tailwind-sage-muted);
   --color-sage-dark: var(--lab-signal-soft);
   --color-signal-warn: var(--lab-warning);
   --color-signal-neg: var(--lab-error);
   --color-content-primary: var(--lab-text-primary);
-  --color-content-secondary: var(--lab-text-secondary);
-  --color-content-tertiary: var(--lab-text-muted);
+  --color-content-secondary: var(--lab-tailwind-content-secondary);
+  --color-content-tertiary: var(--lab-tailwind-content-tertiary);
   --font-serif: Newsreader, Georgia, serif;
   --font-sans: "Schibsted Grotesk", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "Azeret Mono", "SF Mono", ui-monospace, monospace;
@@ -246,7 +246,7 @@
   --lab-content-top: 100px;
   --lab-card-padding: 24px;
   --lab-column-gap: 32px;
-  --lab-shadow-subtle: 0 1px 2px rgba(28, 37, 32, .05);
+  --lab-shadow-subtle: 0 1px 2px var(--lab-shadow-subtle-color);
 
   --canvas: var(--lab-canvas);
   --paper: var(--lab-surface);
@@ -265,7 +265,7 @@
   /* Semantic accents remain named until their consumers move to --lab-*.
      They now use the same mineral palette rather than the Atlas palette. */
   --cobalt: var(--lab-info);
-  --cobalt-alt: #6a8499;
+  --cobalt-alt: var(--lab-info-alt);
   --cobalt-soft: var(--lab-info-soft);
   --clay: var(--lab-error);
   --clay-soft: var(--lab-error-soft);
@@ -280,7 +280,7 @@
   --nutrition-carbs-soft: var(--cobalt-soft);
   --nutrition-fiber-soft: var(--lab-nutrition-fiber-soft);
   --nutrition-sugar-soft: var(--lab-nutrition-sugar-soft);
-  --overlay: rgba(20, 23, 18, .62);
+  --overlay: var(--lab-overlay);
   --shadow: var(--lab-shadow-subtle);
   --sidebar-width: var(--lab-sidebar-width);
   --sidebar-expanded-width: 224px;
@@ -313,7 +313,7 @@
   --soma-depth: var(--paper);
   --soma-surface: var(--paper-strong);
   --soma-raised: var(--moss-soft);
-  --soma-glass: rgba(255, 255, 255, .94);
+  --soma-glass: var(--lab-glass);
   --soma-text: var(--ink);
   --soma-text-soft: var(--ink-soft);
   --soma-text-muted: var(--muted);
@@ -322,7 +322,7 @@
   --soma-emerald: var(--moss);
   --soma-emerald-dim: var(--moss-dark);
   --soma-emerald-soft: var(--moss-soft);
-  --soma-emerald-glow: rgba(38, 77, 56, .15);
+  --soma-emerald-glow: var(--lab-brand-glow);
   --soma-iris: var(--cobalt);
   --soma-iris-soft: var(--cobalt-soft);
   --soma-coral: var(--clay);
@@ -612,7 +612,7 @@ textarea:focus-visible,
 .primary-button:hover, .google-button:hover { background: var(--lab-text-primary); border-color: var(--lab-text-primary); }
 .secondary-button { border-color: var(--lab-border-strong); background: transparent; color: var(--lab-text-primary); }
 .secondary-button:hover { border-color: var(--lab-brand); background: var(--lab-surface-selected); }
-.danger-button { border-color: var(--lab-error); background: var(--lab-error); color: #fff; }
+.danger-button { border-color: var(--lab-error); background: var(--lab-error); color: var(--lab-on-error); }
 .icon-button {
   display: inline-grid;
   width: var(--control-height);

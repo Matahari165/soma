@@ -1,0 +1,12 @@
+/* Les deux photos partagent le cadrage et le mouvement du héros. */
+html[data-lab-theme="observatory"]:not([data-color-scheme="dark"]) .arrival-backdrop__image--dark,
+html[data-lab-theme="observatory"][data-color-scheme="dark"] .arrival-backdrop__image--light {
+  display:none;
+}
+
+html[data-lab-theme="observatory"]:not([data-color-scheme="dark"]) .arrival-backdrop__image--light {
+  filter:none;
+}
+
+/* Le voile de la palette claire conserve le contraste des métadonnées et
+   des chiffres des anneaux, sans désaturer la nouvelle photographie. */
