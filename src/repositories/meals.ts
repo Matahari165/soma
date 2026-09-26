@@ -80,6 +80,7 @@ type AnalysisRow = Row & {
   completed_at?: string | null;
   retry_after_at?: string | null;
   failure_started_at?: string | null;
+  photo_purge_completed_at?: string | null;
   pipeline?: unknown;
 };
 type FeelingsRow = Row & {
@@ -508,15 +509,89 @@ export async function listMealPhotoRowsForReconciliation(limit = 100) {
   return [...(pending.data ?? []), ...(available.data ?? []), ...(legacy.data ?? [])].slice(0, safeLimit) as PhotoRow[];
 }
 
-export async function listFailedMealAnalyses(limit = 100) {
-  const result = await createCloudflareAdminClient()
-    .from("meal_analyses")
-    .select("*")
+const failedAnalysisRetryColumns = "id,user_id,status,error_code,attempts,retry_after_at,failure_started_at,completed_at,updated_at,created_at";
+
+/** Load only retry candidates with a due backoff and an in-window failure age. */
+export async function listRetryableFailedMealAnalyses(options: {
+  now: string;
+  retentionCutoff: string;
+  retryableCodes: readonly string[];
+  maxAttempts: number;
+  limit?: number;
+}) {
+  const safeLimit = Math.max(1, Math.floor(options.limit ?? 100));
+  if (options.retryableCodes.length === 0) return [] as AnalysisRow[];
+  const admin = createCloudflareAdminClient();
+  const base = () => admin.from("meal_analyses")
+    .select(failedAnalysisRetryColumns)
     .eq("status", "failed")
-    .order("completed_at", { ascending: true })
-    .limit(Math.max(1, Math.floor(limit)));
-  if (result.error) throw new Error("Failed meal analyses could not be loaded.");
-  return (result.data ?? []) as AnalysisRow[];
+    .in("error_code", [...options.retryableCodes])
+    .or(`attempts.is.null,attempts.lt.${options.maxAttempts}`)
+    .or(`retry_after_at.is.null,retry_after_at.lte.${options.now}`);
+  const [byFailure, byCompletion, byUpdate, byCreation] = await Promise.all([
+    base().gte("failure_started_at", options.retentionCutoff).order("failure_started_at", { ascending: true }).limit(safeLimit),
+    base().is("failure_started_at", null).gte("completed_at", options.retentionCutoff).order("completed_at", { ascending: true }).limit(safeLimit),
+    base().is("failure_started_at", null).is("completed_at", null).gte("updated_at", options.retentionCutoff).order("updated_at", { ascending: true }).limit(safeLimit),
+    base().is("failure_started_at", null).is("completed_at", null).is("updated_at", null).gte("created_at", options.retentionCutoff).order("created_at", { ascending: true }).limit(safeLimit),
+  ]);
+  const results = [byFailure, byCompletion, byUpdate, byCreation];
+  if (results.some((result) => result.error)) throw new Error("Retryable failed meal analyses could not be loaded.");
+  const rows = results.flatMap((result) => result.data ?? []) as AnalysisRow[];
+  const effectiveFailureTime = (row: AnalysisRow) => row.failure_started_at ?? row.completed_at ?? row.updated_at ?? row.created_at;
+  return rows
+    .sort((left, right) => String(effectiveFailureTime(left)).localeCompare(String(effectiveFailureTime(right))))
+    .slice(0, safeLimit);
+}
+
+const failedAnalysisPurgeColumns = "id,user_id,meal_id,status,failure_started_at,completed_at,updated_at,created_at,source_photo_ids,photo_purge_completed_at";
+
+/**
+ * Load only terminal-retention candidates. The separate queries preserve the
+ * same timestamp fallback order as the service without relying on nested OR
+ * filters, which are not supported by the D1 compatibility adapter.
+ */
+export async function listFailedMealAnalysesForPhotoPurge(cutoff: string, limit = 100) {
+  const safeLimit = Math.max(1, Math.floor(limit));
+  const admin = createCloudflareAdminClient();
+  const base = () => admin.from("meal_analyses")
+    .select(failedAnalysisPurgeColumns)
+    .eq("status", "failed")
+    .is("photo_purge_completed_at", null);
+  const [byFailure, byCompletion, byUpdate, byCreation] = await Promise.all([
+    base().lte("failure_started_at", cutoff).order("failure_started_at", { ascending: true }).limit(safeLimit),
+    base().is("failure_started_at", null).lte("completed_at", cutoff).order("completed_at", { ascending: true }).limit(safeLimit),
+    base().is("failure_started_at", null).is("completed_at", null).lte("updated_at", cutoff).order("updated_at", { ascending: true }).limit(safeLimit),
+    base().is("failure_started_at", null).is("completed_at", null).is("updated_at", null).lte("created_at", cutoff).order("created_at", { ascending: true }).limit(safeLimit),
+  ]);
+  const results = [byFailure, byCompletion, byUpdate, byCreation];
+  if (results.some((result) => result.error)) throw new Error("Expired failed meal analyses could not be loaded.");
+  const rows = results.flatMap((result) => result.data ?? []) as AnalysisRow[];
+  const effectiveFailureTime = (row: AnalysisRow) => row.failure_started_at ?? row.completed_at ?? row.updated_at ?? row.created_at;
+  return rows
+    .sort((left, right) => String(effectiveFailureTime(left)).localeCompare(String(effectiveFailureTime(right))))
+    .slice(0, safeLimit);
+}
+
+export async function listMealPhotosForFailedAnalysisPurge(userId: string, mealId: string, photoIds?: readonly string[]) {
+  const query = createCloudflareAdminClient()
+    .from("meal_photos")
+    .select("id,object_path,storage_status")
+    .eq("user_id", userId)
+    .eq("meal_id", mealId);
+  if (photoIds) {
+    if (photoIds.length === 0) return [] as Array<Pick<MealPhoto, "id" | "objectPath" | "storageStatus">>;
+    query.in("id", [...photoIds]);
+  }
+  const result = await query;
+  if (result.error) throw new Error("Failed meal analysis photos could not be loaded.");
+  return (result.data ?? []).map((value) => {
+    const row = value as Pick<PhotoRow, "id" | "object_path" | "storage_status">;
+    return {
+      id: row.id,
+      objectPath: row.object_path,
+      storageStatus: row.storage_status === "purged" || row.storage_status === "purge_pending" ? row.storage_status : "available",
+    };
+  });
 }
 
 export async function insertMealAnalysis(row: AnalysisRow) {
