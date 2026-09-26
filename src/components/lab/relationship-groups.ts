@@ -56,14 +56,17 @@ export function groupMatrixRows(
   })).sort((first, second) => compareInfluenceGroups(first.group, second.group));
 }
 
-export function calculableRelations(relations: MatrixRelation[]) {
+type CalculableRelation = Pick<MatrixRelation, "predictorId" | "outcomeId" | "excluded" | "coefficient">;
+type SignificantRelation = CalculableRelation & Pick<MatrixRelation, "featureEligible" | "qValue" | "practicallyMeaningful" | "stable">;
+
+export function calculableRelations<T extends CalculableRelation>(relations: T[]) {
   return relations.filter((relation) => isPersonalLabMetricAllowed(relation.predictorId)
     && isPersonalLabMetricAllowed(relation.outcomeId)
     && !relation.excluded
     && relation.coefficient !== null);
 }
 
-export function significantRelations(relations: MatrixRelation[]) {
+export function significantRelations<T extends SignificantRelation>(relations: T[]) {
   return calculableRelations(relations).filter((relation) => isPersonalLabPublishedRelation(relation));
 }
 
@@ -71,13 +74,13 @@ export function significantRelations(relations: MatrixRelation[]) {
  * Keeps effects with the same comparison together so the threshold/dose is
  * written once while every outcome keeps its own visual estimate.
  */
-export type RelationComparisonGroup = {
+export type RelationComparisonGroup<T extends Pick<MatrixRelation, "comparisonLabel"> = MatrixRelation> = {
   comparisonLabel: string;
-  relations: MatrixRelation[];
+  relations: T[];
 };
 
-export function groupRelationsByComparison(relations: readonly MatrixRelation[]): RelationComparisonGroup[] {
-  const grouped = new Map<string, MatrixRelation[]>();
+export function groupRelationsByComparison<T extends Pick<MatrixRelation, "comparisonLabel">>(relations: readonly T[]): RelationComparisonGroup<T>[] {
+  const grouped = new Map<string, T[]>();
   for (const relation of relations) {
     const current = grouped.get(relation.comparisonLabel) ?? [];
     current.push(relation);

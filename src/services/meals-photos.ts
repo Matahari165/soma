@@ -11,10 +11,12 @@ import {
   findMealPhoto,
   findPhotosByUploadIdempotencyKey,
   insertPhoto,
-  listFailedMealAnalyses,
+  listFailedMealAnalysesForPhotoPurge,
+  listMealPhotosForFailedAnalysisPurge,
   listMealPhotoRowsForReconciliation,
   listStaleMealPhotoUploadJobs,
   updateMeal,
+  updateMealAnalysis,
   updatePhotoDetails,
   updatePhotoOrigin,
   updatePhotoStorage,
@@ -68,7 +70,7 @@ async function setPhotoStorageState(userId: string, mealId: string, photoId: str
     throw photoPurgeError();
   }
 }
-export async function purgeMealPhoto(userId: string, mealId: string, photo: Meal["photos"][number]) {
+export async function purgeMealPhoto(userId: string, mealId: string, photo: Pick<Meal["photos"][number], "id" | "objectPath">) {
   // D1 is marked first so an R2 failure leaves an explicit retry state. If
   // this write fails, the binary is deliberately kept and the error is
   // surfaced to the caller.
@@ -129,22 +131,41 @@ export async function reconcileAbandonedMealPhotoUploads(limit = 100) {
 
 /** Purge evidence for failures that have exceeded the 24-hour retention window. */
 export async function purgeExpiredFailedAnalysisPhotos(now = Date.now()) {
-  const rows = await listFailedMealAnalyses(100);
+  const cutoff = new Date(now - FAILED_ANALYSIS_PHOTO_TTL_MS).toISOString();
+  const rows = await listFailedMealAnalysesForPhotoPurge(cutoff, 100);
   let purged = 0;
   for (const row of rows) {
     const failedAt = Date.parse(String(row.failure_started_at ?? row.completed_at ?? row.updated_at ?? row.created_at));
     if (!Number.isFinite(failedAt) || now - failedAt < FAILED_ANALYSIS_PHOTO_TTL_MS) continue;
     const userId = String(row.user_id);
-    const meal = await findMeal(userId, String(row.meal_id)).catch(() => null);
-    if (!meal) continue;
-    const sourceIds = new Set(rowPhotoIds(row));
-    for (const photo of meal.photos.filter((candidate) => (candidate.storageStatus ?? "available") !== "purged" && (sourceIds.size === 0 || sourceIds.has(candidate.id)))) {
+    const mealId = String(row.meal_id);
+    const sourceIds = rowPhotoIds(row);
+    const hasSourceSnapshot = Array.isArray(row.source_photo_ids);
+    let photos;
+    try {
+      // An absent legacy snapshot falls back to all photos. A persisted empty
+      // snapshot means this analysis used no photos and must not purge newer evidence.
+      photos = await listMealPhotosForFailedAnalysisPurge(userId, mealId, hasSourceSnapshot ? sourceIds : undefined);
+    } catch (error) {
+      logMeal("error", "photo_purge_failed_ttl_load", error);
+      continue;
+    }
+    let complete = true;
+    for (const photo of photos.filter((candidate) => candidate.storageStatus !== "purged")) {
       try {
-        await timedMealStage("photo_purge_failed_ttl", () => purgeMealPhoto(userId, meal.id, photo));
+        await timedMealStage("photo_purge_failed_ttl", () => purgeMealPhoto(userId, mealId, photo));
         purged += 1;
       } catch (error) {
+        complete = false;
         logMeal("warn", "photo_purge_failed_ttl_deferred", error);
       }
+    }
+    if (!complete) continue;
+    try {
+      await updateMealAnalysis(userId, String(row.id), { photo_purge_completed_at: new Date(now).toISOString() }, "failed");
+    } catch (error) {
+      logMeal("error", "photo_purge_failed_ttl_mark", error);
+      throw error;
     }
   }
   return purged;

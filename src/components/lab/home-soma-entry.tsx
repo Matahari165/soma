@@ -183,7 +183,7 @@ export function HomeSomaEntry({ visible, insightRevision, children }: { visible:
     {insight?.unavailable && <p className={styles.error} role="status">{validUpdated ? "Actualisation indisponible." : "Résumé indisponible pour le moment."}</p>}
   </section>;
   const composer = <div className={styles.conversation}>
-    <form ref={form} className={styles.composer + (expanded || text ? " " + styles.expanded : "")} onSubmit={submit} aria-busy={sending}>
+    <form ref={form} className={styles.composer + (expanded || text ? " " + styles.expanded : "")} onSubmit={submit} aria-busy={sending} onClick={(event) => { if (!sending && event.target instanceof Element && !event.target.closest("button,textarea")) textarea.current?.focus(); }}>
       <label className={styles.srOnly} htmlFor="home-soma-message">Parler à Soma</label>
       <textarea id="home-soma-message" ref={textarea} rows={expanded || text ? 3 : 1} maxLength={HOME_ASSISTANT_MAX_LENGTH} placeholder="Parler à Soma…" value={text} disabled={sending} onChange={(event) => { updateDraft(event.target.value); setError(null); }} onFocus={() => setExpanded(true)} onBlur={() => { if (!text.trim()) setExpanded(false); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
       <span className={styles.actions}>

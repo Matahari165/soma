@@ -166,6 +166,9 @@ type Props = {
   initialTargets?: NutritionTargets;
   initialEffectiveTargets?: NutritionTargets;
   initialEffortTargetContext?: EffortTargetContext;
+  initialTargetsPersisted?: boolean;
+  initialTargetsFresh?: boolean;
+  initialTargetsDate?: string;
   hideAddMealButton?: boolean;
   allowTargetEditing?: boolean;
   showCalorieProgress?: boolean;
@@ -173,8 +176,49 @@ type Props = {
 };
 
 type LoadState = "loading" | "ready" | "error";
+type TargetsForDate = { base: NutritionTargets; effective: NutritionTargets; context: EffortTargetContext };
 
-export function MealJournal({ readOnly = false, date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, allowTargetEditing, showCalorieProgress = true, designVariant = "v1" }: Props) {
+export function reconcileMealJournalData(incoming: MealJournalData, current: MealJournalData | null, previousServer: MealJournalData | null): MealJournalData {
+  if (!current || !previousServer || current.date !== incoming.date || previousServer.date !== incoming.date) return incoming;
+  const meals = { ...incoming.meals };
+  for (const slot of MEAL_SLOTS) {
+    if (JSON.stringify(current.meals[slot]) !== JSON.stringify(previousServer.meals[slot])) {
+      meals[slot] = current.meals[slot];
+    }
+  }
+  return { ...incoming, meals };
+}
+
+export function mergeLocalMealDrafts(loaded: MealJournalData, dateKey: string, cached: MealJournalData["meals"] | undefined, storedNotes: Partial<Record<MealSlot, string>>): MealJournalData {
+  const meals = { ...loaded.meals };
+  for (const slot of MEAL_SLOTS) {
+    const draft = cached?.[slot];
+    const hasDraftContent = draft && (draft.note.trim().length > 0 || draft.photos.length > 0);
+    if (meals[slot]) {
+      if (hasDraftContent && draft.id === meals[slot]?.id) meals[slot] = draft;
+      continue;
+    }
+    if (hasDraftContent) {
+      meals[slot] = draft;
+      continue;
+    }
+    const storedNote = (storedNotes[slot] ?? "").slice(0, MEAL_NOTE_MAX_LENGTH);
+    if (storedNote.trim()) meals[slot] = { ...emptyMeal(dateKey, slot), note: storedNote };
+  }
+  return { ...loaded, meals };
+}
+
+export function localMealDraftsForStash(meals: MealJournalData["meals"]): MealJournalData["meals"] {
+  return Object.fromEntries(MEAL_SLOTS.map((slot) => {
+    const meal = meals[slot];
+    const keep = meal
+      && (meal.status === "draft" || meal.status === "error")
+      && (meal.note.trim().length > 0 || meal.photos.length > 0);
+    return [slot, keep ? meal : null];
+  })) as MealJournalData["meals"];
+}
+
+export function MealJournal({ readOnly = false, date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, initialTargetsPersisted, initialTargetsFresh = false, initialTargetsDate, allowTargetEditing, showCalorieProgress = true, designVariant = "v1" }: Props) {
   const router = useRouter();
   const today = providedToday ?? todayInLocalTime();
   const requestedDate = date ?? initialData?.date ?? today;
@@ -235,8 +279,15 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   const targetBaseRef = useRef(initialTargets ?? DEFAULT_NUTRITION_TARGETS);
   const effectiveTargetsRef = useRef(initialEffectiveTargets ?? initialTargets ?? DEFAULT_NUTRITION_TARGETS);
   const effortTargetContextRef = useRef<EffortTargetContext>(initialEffortTargetContext ?? { effortScore: null, effortCoverage: null, averageEffortScore: null });
-  const targetStateDateRef = useRef(initialTargets ? initialDate : null);
+  const targetStatesByDateRef = useRef(new Map<string, TargetsForDate>());
+  const targetSelectedDateRef = useRef(selectedDate);
+  targetSelectedDateRef.current = selectedDate;
+  const targetStateDateRef = useRef(initialTargetsFresh && initialTargets && initialTargetsDate === selectedDate ? selectedDate : null);
+  const initialMealSnapshotRef = useRef<MealJournalData | null>(initialData ? normalizeData(initialData, initialDate) : null);
+  const initialDataPropRef = useRef(initialData);
   const initialDateRef = useRef(initialDate);
+  const activeMealDateRef = useRef(selectedDate);
+  const transitionLoadStartedRef = useRef<string | null>(null);
   const loadRequestId = useRef(0);
   // Les mutations sont suivies par créneau : une analyse sur un repas ne bloque
   // ni les autres créneaux ni la navigation entre les jours.
@@ -252,31 +303,38 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   const navigationDisabled = processingFiles;
 
   const stashLocalDrafts = useCallback((dateKey: string, meals: MealJournalData["meals"]) => {
-    const drafts = Object.fromEntries(MEAL_SLOTS.map((slot) => {
+    const drafts = localMealDraftsForStash(meals);
+    const cached = draftCache.current.get(dateKey);
+    for (const slot of MEAL_SLOTS) {
       const meal = meals[slot];
-      const keep = meal
-        && (meal.status === "draft" || meal.status === "error")
-        && (meal.note.trim().length > 0 || meal.photos.length > 0);
-      return [slot, keep ? meal : null];
-    })) as MealJournalData["meals"];
+      if (meal && (meal.status === "accepted" || meal.status === "analyzing") && cached?.[slot]) {
+        drafts[slot] = { ...cached[slot], id: meal.id };
+      }
+    }
     if (Object.values(drafts).some((meal) => meal !== null)) draftCache.current.set(dateKey, drafts);
     else draftCache.current.delete(dateKey);
   }, []);
 
+  const updateCachedMealForDate = useCallback((dateKey: string, slot: MealSlot, fallback: MealRecord, update: (meal: MealRecord) => MealRecord) => {
+    const meals = draftCache.current.get(dateKey) ?? (dataRef.current?.date === dateKey ? dataRef.current.meals : emptyData(dateKey).meals);
+    const nextMeal = update(meals[slot] ?? fallback);
+    const drafts = localMealDraftsForStash({ ...meals, [slot]: nextMeal });
+    if ((nextMeal.status === "draft" || nextMeal.status === "error") && (nextMeal.note.trim() || nextMeal.photos.length)) drafts[slot] = nextMeal;
+    if (Object.values(drafts).some((meal) => meal !== null)) draftCache.current.set(dateKey, drafts);
+    else draftCache.current.delete(dateKey);
+  }, []);
+
+  const clearCachedMealForDate = useCallback((dateKey: string, slot: MealSlot, mealIds: readonly string[]) => {
+    const meals = draftCache.current.get(dateKey);
+    if (!meals || !meals[slot] || !mealIds.includes(meals[slot]!.id)) return;
+    const nextMeals = { ...meals, [slot]: null };
+    if (Object.values(nextMeals).some((meal) => meal !== null)) draftCache.current.set(dateKey, nextMeals);
+    else draftCache.current.delete(dateKey);
+  }, []);
+
   const mergeCachedDrafts = useCallback((loaded: MealJournalData, dateKey: string): MealJournalData => {
-    const cached = draftCache.current.get(dateKey);
-    const meals = { ...loaded.meals };
-    for (const slot of MEAL_SLOTS) {
-      if (meals[slot]) continue;
-      const draft = cached?.[slot];
-      if (draft && (draft.note.trim().length > 0 || draft.photos.length > 0)) {
-        meals[slot] = draft;
-        continue;
-      }
-      const storedNote = readStoredDraftNote(dateKey, slot).slice(0, MEAL_NOTE_MAX_LENGTH);
-      if (storedNote.trim()) meals[slot] = { ...emptyMeal(dateKey, slot), note: storedNote };
-    }
-    return { ...loaded, meals };
+    const storedNotes = Object.fromEntries(MEAL_SLOTS.map((slot) => [slot, readStoredDraftNote(dateKey, slot)])) as Partial<Record<MealSlot, string>>;
+    return mergeLocalMealDrafts(loaded, dateKey, draftCache.current.get(dateKey), storedNotes);
   }, []);
 
   const goToDate = useCallback((nextDate: string, options: { push?: boolean } = {}) => {
@@ -328,7 +386,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   useEffect(() => {
     if (analysisDate.current === selectedDate) return;
     analysisDate.current = selectedDate;
-    for (const slot of Object.keys(analysisRunIds.current) as MealSlot[]) inFlightSlots.current.delete(slot);
+    inFlightSlots.current.clear();
     analysisRunIds.current = {};
     setAnalyzingSlots([]);
     setAnalysisProgress({});
@@ -344,44 +402,89 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
 
   const load = useCallback(async () => {
     const requestId = ++loadRequestId.current;
+    const requestDate = selectedDate;
     setLoadState("loading");
     setLoadError(null);
     try {
       const loaded = await (api?.load ? api.load(selectedDate) : defaultLoad(selectedDate));
-      if (requestId !== loadRequestId.current) return;
+      if (requestId !== loadRequestId.current || requestDate !== activeMealDateRef.current) return;
       setData((current) => preserveActiveMeals(mergeCachedDrafts(normalizeData(loaded, selectedDate), selectedDate), current));
       setLoadState("ready");
     } catch (error) {
-      if (requestId !== loadRequestId.current) return;
+      if (requestId !== loadRequestId.current || requestDate !== activeMealDateRef.current) return;
       setLoadState("error");
       setLoadError(error instanceof Error ? error.message : "Meals are currently unavailable.");
+    } finally {
+      if (transitionLoadStartedRef.current === requestDate && requestId === loadRequestId.current) {
+        transitionLoadStartedRef.current = null;
+      }
     }
   }, [api, mergeCachedDrafts, preserveActiveMeals, selectedDate]);
 
   useEffect(() => {
+    const initialDataChanged = initialData !== initialDataPropRef.current;
     if (selectedDateProp === undefined && initialDateRef.current !== initialDate) {
       initialDateRef.current = initialDate;
       loadRequestId.current += 1;
+      activeMealDateRef.current = initialDate;
+      transitionLoadStartedRef.current = null;
       const current = dataRef.current;
       if (current) stashLocalDrafts(current.date, current.meals);
       setInternalSelectedDate(initialDate);
-      setData(initialData ? normalizeData(initialData, initialDate) : null);
+      const nextServerData = initialData ? normalizeData(initialData, initialDate) : null;
+      initialMealSnapshotRef.current = nextServerData;
+      setData(nextServerData ? mergeCachedDrafts(nextServerData, initialDate) : null);
       setLoadState(initialData ? "ready" : "loading");
       setLoadError(null);
       setFileError(null);
       setConfirmError({});
       setStatusMessage(null);
       setPendingDelete(null);
+      initialDataPropRef.current = initialData;
       return;
     }
     initialDateRef.current = initialDate;
-    if (initialData && selectedDate === initialDate) {
-      setData((current) => preserveActiveMeals(normalizeData(initialData, selectedDate), current));
-      setLoadState("ready");
+    if (activeMealDateRef.current !== selectedDate) {
+      const current = dataRef.current;
+      if (current) stashLocalDrafts(current.date, current.meals);
+      loadRequestId.current += 1;
+      activeMealDateRef.current = selectedDate;
+      initialMealSnapshotRef.current = initialMealSnapshotRef.current?.date === selectedDate ? initialMealSnapshotRef.current : null;
+      setData(null);
+      setFileError(null);
+      setConfirmError({});
+      setEntryRequest(null);
+      setStatusMessage(null);
+      setPendingDelete(null);
+      setLoadState("loading");
+      setLoadError(null);
+      transitionLoadStartedRef.current = selectedDate;
+      void load();
+      initialDataPropRef.current = initialData;
       return;
     }
+    if (transitionLoadStartedRef.current === selectedDate && !initialDataChanged) return;
+    if (initialData && selectedDate === initialDate && (initialDataChanged || transitionLoadStartedRef.current !== selectedDate)) {
+      loadRequestId.current += 1;
+      transitionLoadStartedRef.current = null;
+      const nextServerData = normalizeData(initialData, selectedDate);
+      const mergedData = reconcileMealJournalData(
+        nextServerData,
+        dataRef.current?.date === selectedDate ? dataRef.current : null,
+        initialMealSnapshotRef.current?.date === selectedDate ? initialMealSnapshotRef.current : null,
+      );
+      initialMealSnapshotRef.current = nextServerData;
+      setData((current) => preserveActiveMeals(mergeCachedDrafts(mergedData, selectedDate), current));
+      setLoadState("ready");
+      initialDataPropRef.current = initialData;
+      return;
+    }
+    initialDataPropRef.current = initialData;
+    if (!initialData) initialMealSnapshotRef.current = null;
+    const current = dataRef.current;
+    if (current && current.date !== selectedDate) stashLocalDrafts(current.date, current.meals);
     void load();
-  }, [initialData, initialDate, load, preserveActiveMeals, selectedDate, selectedDateProp, stashLocalDrafts]);
+  }, [initialData, initialDate, load, mergeCachedDrafts, preserveActiveMeals, selectedDate, selectedDateProp, stashLocalDrafts]);
 
   // The POST only accepts the job. Polling this small status endpoint lets a
   // resumed tab reconcile the durable result without repeating the XAI call.
@@ -438,19 +541,6 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [activeAnalysisKey, api, selectedDate]);
-
-  const controlledDate = useRef(selectedDateProp);
-  useEffect(() => {
-    if (selectedDateProp === undefined || controlledDate.current === selectedDateProp) return;
-    controlledDate.current = selectedDateProp;
-    const current = dataRef.current;
-    if (current) stashLocalDrafts(current.date, current.meals);
-    setData(null);
-    setFileError(null);
-    setConfirmError({});
-    setLoadState("loading");
-    setLoadError(null);
-  }, [selectedDateProp, stashLocalDrafts]);
 
   useEffect(() => () => { objectUrls.current.forEach((url) => URL.revokeObjectURL(url)); }, []);
 
@@ -519,6 +609,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   }, [pendingDelete]);
 
   const applyLoadedTargets = useCallback((nextBase: NutritionTargets, nextEffective: NutritionTargets, nextContext: EffortTargetContext, targetDate: string) => {
+    if (targetDate !== targetSelectedDateRef.current) return;
     const baseUnchanged = JSON.stringify(targetBaseRef.current) === JSON.stringify(nextBase);
     const merged = mergeDailyNutritionTargets({
       current: effectiveTargetsRef.current,
@@ -530,11 +621,13 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     targetBaseRef.current = nextBase;
     effortTargetContextRef.current = nextContext;
     effectiveTargetsRef.current = merged;
+    targetStatesByDateRef.current.set(targetDate, { base: nextBase, effective: merged, context: nextContext });
     setTargets(nextBase);
     setEffectiveTargets(merged);
   }, []);
 
   const refreshTargets = useCallback(async (signal?: AbortSignal) => {
+    if (selectedDate !== targetSelectedDateRef.current || signal?.aborted) return;
     const localTargets = loadNutritionTargets();
     if (targetStateDateRef.current !== selectedDate) {
       targetStateDateRef.current = selectedDate;
@@ -547,6 +640,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     const url = `/api/nutrition-targets?date=${encodeURIComponent(selectedDate)}`;
     const response = await fetch(url, { cache: "no-store", signal });
     const body = await response.json().catch(() => ({})) as Record<string, unknown>;
+    if (selectedDate !== targetSelectedDateRef.current || signal?.aborted) return;
     if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "Nutrition targets are unavailable.");
     const parsed = parseNutritionTargets(body.targets);
     if (!parsed) return;
@@ -560,6 +654,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     const hasCustomizedLocalTargets = JSON.stringify(localTargets) !== JSON.stringify(DEFAULT_NUTRITION_TARGETS);
     if (body.persisted === false && hasCustomizedLocalTargets) {
       const migrated = await fetch("/api/nutrition-targets", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targets: localTargets }), signal });
+      if (selectedDate !== targetSelectedDateRef.current || signal?.aborted) return;
       if (!migrated.ok) throw new Error("Local targets could not be synchronized.");
       applyLoadedTargets(localTargets, nutritionTargetsForEffort(localTargets, context), context, selectedDate);
       return;
@@ -570,9 +665,40 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
 
   useEffect(() => {
     const controller = new AbortController();
-    void refreshTargets(controller.signal).catch((error) => {
-      if (error instanceof Error && error.name !== "AbortError") setTargetError("Using local targets: Soma synchronization is unavailable.");
-    });
+    const context = initialEffortTargetContext ?? { effortScore: null, effortCoverage: null, averageEffortScore: null };
+    const hasFreshTargetsForSelectedDate = initialTargetsFresh && initialTargets && initialTargetsDate === selectedDate;
+    if (!hasFreshTargetsForSelectedDate) {
+      void refreshTargets(controller.signal).catch((error) => {
+        if (error instanceof Error && error.name !== "AbortError") setTargetError("Using local targets: Soma synchronization is unavailable.");
+      });
+    } else {
+      const cachedTargets = targetStatesByDateRef.current.get(selectedDate);
+      const localTargets = loadNutritionTargets();
+      const hasCustomizedLocalTargets = JSON.stringify(localTargets) !== JSON.stringify(DEFAULT_NUTRITION_TARGETS);
+      const effectiveContext = cachedTargets?.context ?? context;
+      if (cachedTargets) {
+        applyLoadedTargets(cachedTargets.base, cachedTargets.effective, cachedTargets.context, selectedDate);
+      } else if (initialTargetsPersisted === false && hasCustomizedLocalTargets) {
+        applyLoadedTargets(localTargets, nutritionTargetsForEffort(localTargets, effectiveContext), effectiveContext, selectedDate);
+      } else {
+        const nextEffectiveTargets = initialEffectiveTargets ?? nutritionTargetsForEffort(initialTargets, context);
+        applyLoadedTargets(initialTargets, nextEffectiveTargets, context, selectedDate);
+        saveNutritionTargets(initialTargets);
+      }
+      if (initialTargetsPersisted === false && hasCustomizedLocalTargets) {
+        void fetch("/api/nutrition-targets", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ targets: localTargets }),
+          signal: controller.signal,
+        }).then((response) => {
+          if (!response.ok) throw new Error();
+          setTargetError(null);
+        }).catch((error) => {
+          if (error instanceof Error && error.name !== "AbortError") setTargetError("Local targets could not be synchronized.");
+        });
+      }
+    }
     const interval = window.setInterval(() => {
       void refreshTargets().catch(() => undefined);
     }, 60_000);
@@ -580,7 +706,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       controller.abort();
       window.clearInterval(interval);
     };
-  }, [refreshTargets]);
+  }, [applyLoadedTargets, initialEffectiveTargets, initialEffortTargetContext, initialTargets, initialTargetsDate, initialTargetsFresh, initialTargetsPersisted, refreshTargets, selectedDate]);
 
   useEffect(() => {
     setMealDistributionDraft(mealTargetDistributionOf(targets));
@@ -627,6 +753,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       targetBaseRef.current = next;
       const nextEffective = nutritionTargetsForEffort(next, effortTargetContextRef.current);
       effectiveTargetsRef.current = nextEffective;
+      targetStatesByDateRef.current.set(targetSelectedDateRef.current, { base: next, effective: nextEffective, context: effortTargetContextRef.current });
       setEffectiveTargets(nextEffective);
       saveNutritionTargets(next);
       if (targetSaveTimer.current) clearTimeout(targetSaveTimer.current);
@@ -659,6 +786,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       const nextEffective = nutritionTargetsForEffort(nextTargets, effortTargetContextRef.current);
       targetBaseRef.current = nextTargets;
       effectiveTargetsRef.current = nextEffective;
+      targetStatesByDateRef.current.set(targetSelectedDateRef.current, { base: nextTargets, effective: nextEffective, context: effortTargetContextRef.current });
       setTargets(nextTargets);
       setEffectiveTargets(nextEffective);
       setTargetDistributionError(null);
@@ -684,8 +812,18 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     });
   }, [selectedDate]);
 
+  const updateMealOnDate = useCallback((dateKey: string, slot: MealSlot, update: (meal: MealRecord) => MealRecord) => {
+    if (selectedDateRef.current !== dateKey) return;
+    setData((current) => {
+      if (!current || current.date !== dateKey) return current;
+      const meal = current.meals[slot] ?? emptyMeal(dateKey, slot);
+      return { ...current, meals: { ...current.meals, [slot]: update(meal) } };
+    });
+  }, []);
+
   const changeEntryState = async (slot: MealSlot, entryState: MealEntryState) => {
     if (inFlightSlots.current.has(slot)) return;
+    const operationDate = selectedDate;
     const current = dataRef.current?.meals[slot] ?? emptyMeal(selectedDate, slot);
     const previous = current;
     inFlightSlots.current.add(slot);
@@ -700,19 +838,26 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       const saved = await (api?.setEntryState
         ? api.setEntryState({ ...current, entryState }, entryState)
         : defaultSetEntryState({ ...current, entryState }, entryState));
-      const nextMeal = normalizeMeal({ ...current, ...saved, entryState }, selectedDate, slot);
-      setData((loaded) => loaded ? { ...loaded, meals: { ...loaded.meals, [slot]: nextMeal } } : loaded);
-      setStatusMessage(entryState === "skipped"
-        ? `${SLOT_LABELS[slot]} marked as "skipped". This slot will not trigger analysis.`
-        : `${SLOT_LABELS[slot]} restored. You can now log details.`);
+      clearCachedMealForDate(operationDate, slot, [current.id, saved.id]);
+      if (selectedDateRef.current === operationDate) {
+        const nextMeal = normalizeMeal({ ...current, ...saved, entryState }, operationDate, slot);
+        setData((loaded) => loaded?.date === operationDate ? { ...loaded, meals: { ...loaded.meals, [slot]: nextMeal } } : loaded);
+        setStatusMessage(entryState === "skipped"
+          ? `${SLOT_LABELS[slot]} marked as "skipped". This slot will not trigger analysis.`
+          : `${SLOT_LABELS[slot]} restored. You can now log details.`);
+      }
       return true;
     } catch (error) {
-      setData((loaded) => loaded ? { ...loaded, meals: { ...loaded.meals, [slot]: previous } } : loaded);
-      setConfirmError((errors) => ({ ...errors, [slot]: error instanceof Error ? error.message : "The slot status could not be saved." }));
+      if (selectedDateRef.current === operationDate) {
+        setData((loaded) => loaded?.date === operationDate ? { ...loaded, meals: { ...loaded.meals, [slot]: previous } } : loaded);
+        setConfirmError((errors) => ({ ...errors, [slot]: error instanceof Error ? error.message : "The slot status could not be saved." }));
+      }
       return false;
     } finally {
-      inFlightSlots.current.delete(slot);
-      setSavingSlot(null);
+      if (selectedDateRef.current === operationDate) {
+        inFlightSlots.current.delete(slot);
+        setSavingSlot(null);
+      }
     }
   };
 
@@ -743,6 +888,8 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
 
   const addFiles = async (slot: MealSlot, incoming: File[]) => {
     if (!incoming.length || inFlightSlots.current.has(slot)) return;
+    const operationDate = selectedDate;
+    const startingData = dataRef.current?.date === operationDate ? dataRef.current : emptyData(operationDate);
     inFlightSlots.current.add(slot);
     setProcessingFiles(true);
     setFileError(null);
@@ -758,16 +905,21 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       console.info("[meal-analysis] stage", { stage: "normalization", durationMs: Date.now() - normalizationStartedAt });
     } catch (error) {
       console.warn("[meal-analysis] stage failed", { stage: "normalization", durationMs: Date.now() - normalizationStartedAt });
-      setFileError(error instanceof Error ? error.message : "This photo could not be prepared. Please retake it in JPEG or PNG format.");
-      setProcessingFiles(false);
-      inFlightSlots.current.delete(slot);
+      if (selectedDateRef.current === operationDate) setFileError(error instanceof Error ? error.message : "This photo could not be prepared. Please retake it in JPEG or PNG format.");
+      if (selectedDateRef.current === operationDate) {
+        setProcessingFiles(false);
+        inFlightSlots.current.delete(slot);
+      }
       return;
     }
-    const currentMeal = dataRef.current?.meals[slot] ?? emptyMeal(selectedDate, slot);
+    const targetMeals = dataRef.current?.date === operationDate
+      ? dataRef.current.meals
+      : draftCache.current.get(operationDate) ?? startingData.meals;
+    const currentMeal = targetMeals[slot] ?? emptyMeal(operationDate, slot);
     const activePhotoCount = currentMeal.status === "confirmed" ? 0 : currentMeal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available").length;
     const limitMessage = mealPhotoLimitMessage(activePhotoCount, prepared.length);
     const accepted = prepared.slice(0, Math.max(0, MAX_MEAL_PHOTOS - activePhotoCount));
-    if (limitMessage) setFileError(limitMessage);
+    if (limitMessage && selectedDateRef.current === operationDate) setFileError(limitMessage);
     const newPhotos = accepted.map((file) => {
       const id = randomId("photo");
       const url = URL.createObjectURL(file);
@@ -776,10 +928,17 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     });
     if (newPhotos.length) {
       setFilesByPhotoId((files) => ({ ...files, ...Object.fromEntries(newPhotos.map((photo, index) => [photo.id, accepted[index]])) }));
-      updateMeal(slot, (meal) => ({ ...meal, photos: [...meal.photos, ...newPhotos], status: "draft", error: null }));
+      const nextMeal = { ...currentMeal, photos: [...currentMeal.photos, ...newPhotos], status: "draft" as const, error: null };
+      if (selectedDateRef.current === operationDate && dataRef.current?.date === operationDate) {
+        updateMealOnDate(operationDate, slot, () => nextMeal);
+      } else {
+        updateCachedMealForDate(operationDate, slot, currentMeal, () => nextMeal);
+      }
     }
-    setProcessingFiles(false);
-    inFlightSlots.current.delete(slot);
+    if (selectedDateRef.current === operationDate) {
+      setProcessingFiles(false);
+      inFlightSlots.current.delete(slot);
+    }
   };
 
   const removePhotoFromState = (slot: MealSlot, photoId: string) => {
@@ -837,28 +996,38 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       pendingDeleteTrigger.current?.focus();
       return;
     }
+    const operationDate = meal.date;
     inFlightSlots.current.add(pending.slot);
     setSavingSlot(pending.slot);
     let mealDeleted = false;
     try {
       if (pending.kind === "meal") {
         await (api?.removeMeal ? api.removeMeal(meal.id) : defaultRemoveMeal(meal.id));
-        setData((current) => current ? { ...current, meals: { ...current.meals, [pending.slot]: null } } : current);
-        setStatusMessage(`${SLOT_LABELS[pending.slot]} deleted.`);
+        clearCachedMealForDate(operationDate, pending.slot, [meal.id]);
+        if (selectedDateRef.current === operationDate) {
+          setData((current) => current?.date === operationDate ? { ...current, meals: { ...current.meals, [pending.slot]: null } } : current);
+          setStatusMessage(`${SLOT_LABELS[pending.slot]} deleted.`);
+        }
         mealDeleted = true;
       } else {
         await (api?.removePhoto ? api.removePhoto(meal.id, pending.photoId) : defaultRemovePhoto(meal.id, pending.photoId));
-        removePhotoFromState(pending.slot, pending.photoId);
+        if (selectedDateRef.current === operationDate) removePhotoFromState(pending.slot, pending.photoId);
+        else updateCachedMealForDate(operationDate, pending.slot, meal, (current) => ({
+          ...current,
+          photos: current.photos.filter((photo) => photo.id !== pending.photoId),
+        }));
       }
     } catch (error) {
       const fallback = pending.kind === "meal" ? "This meal could not be deleted." : "This photo could not be deleted.";
-      setFileError(error instanceof Error ? error.message : fallback);
+      if (selectedDateRef.current === operationDate) setFileError(error instanceof Error ? error.message : fallback);
     } finally {
-      inFlightSlots.current.delete(pending.slot);
-      setSavingSlot(null);
-      if (mealDeleted && typeof window !== "undefined") {
+      if (selectedDateRef.current === operationDate) {
+        inFlightSlots.current.delete(pending.slot);
+        setSavingSlot(null);
+      }
+      if (selectedDateRef.current === operationDate && mealDeleted && typeof window !== "undefined") {
         window.requestAnimationFrame(() => document.getElementById(`meal-${pending.slot}-title`)?.focus({ preventScroll: true }));
-      } else {
+      } else if (selectedDateRef.current === operationDate) {
         pendingDeleteTrigger.current?.focus();
       }
     }
@@ -870,6 +1039,8 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
 
   const setPhotoOrigin = async (slot: MealSlot, photoId: string, origin: MealOrigin) => {
     const meal = data?.meals[slot];
+    if (!meal) return;
+    const operationDate = meal.date;
     updateMeal(slot, (current) => ({
       ...current,
       photos: current.photos.map((photo) => photo.id === photoId ? { ...photo, origin } : photo),
@@ -881,7 +1052,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       if (api?.updatePhotoOrigin) await api.updatePhotoOrigin(meal.id, photoId, origin);
       else await defaultSetPhotoOrigin(meal.id, photoId, origin);
     } catch (error) {
-      setFileError(error instanceof Error ? error.message : "The photo origin could not be saved.");
+      if (selectedDateRef.current === operationDate) setFileError(error instanceof Error ? error.message : "The photo origin could not be saved.");
     }
   };
 
@@ -891,15 +1062,19 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
 
   const saveMeal = async (meal: MealRecord, status: MealStatus = "confirmed", options: { queued?: boolean; announce?: boolean; shouldApply?: () => boolean } = {}): Promise<boolean> => {
     if (!options.queued && inFlightSlots.current.has(meal.slot)) return false;
+    const operationDate = meal.date;
     inFlightSlots.current.add(meal.slot);
     setSavingSlot(meal.slot);
     setConfirmError((previous) => ({ ...previous, [meal.slot]: null }));
     try {
       const saved = await (api?.save ? api.save({ ...meal, status }) : defaultSave({ ...meal, status }));
       if (options.shouldApply && !options.shouldApply()) return true;
-      const nextMeal = normalizeMeal({ ...meal, ...saved, note: typeof saved.note === "string" ? saved.note : meal.note, status }, selectedDate, meal.slot);
-      setData((current) => current ? { ...current, meals: { ...current.meals, [meal.slot]: nextMeal } } : current);
-      if (!options.queued && options.announce !== false && status === "confirmed") {
+      const nextMeal = normalizeMeal({ ...meal, ...saved, note: typeof saved.note === "string" ? saved.note : meal.note, status }, operationDate, meal.slot);
+      clearCachedMealForDate(operationDate, meal.slot, [meal.id, saved.id]);
+      if (selectedDateRef.current === operationDate) {
+        setData((current) => current?.date === operationDate ? { ...current, meals: { ...current.meals, [meal.slot]: nextMeal } } : current);
+      }
+      if (selectedDateRef.current === operationDate && !options.queued && options.announce !== false && status === "confirmed") {
         setStatusMessage("Meal confirmed. Photo and note can still be updated.");
         if (typeof window !== "undefined") {
           window.requestAnimationFrame(() => {
@@ -909,12 +1084,13 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       }
       return true;
     } catch (error) {
-      if (options.shouldApply && !options.shouldApply()) return false;
-      setConfirmError((previous) => ({ ...previous, [meal.slot]: error instanceof Error ? error.message : "The meal could not be saved." }));
-      updateMeal(meal.slot, (current) => ({ ...current, status: current.analysis ? "review" : "draft", error: error instanceof Error ? error.message : "The meal could not be saved." }));
+      if ((!options.shouldApply || options.shouldApply()) && selectedDateRef.current === operationDate) {
+        setConfirmError((previous) => ({ ...previous, [meal.slot]: error instanceof Error ? error.message : "The meal could not be saved." }));
+        updateMealOnDate(operationDate, meal.slot, (current) => ({ ...current, status: current.analysis ? "review" : "draft", error: error instanceof Error ? error.message : "The meal could not be saved." }));
+      }
       return false;
     } finally {
-      if (!options.shouldApply || options.shouldApply()) {
+      if ((!options.shouldApply || options.shouldApply()) && selectedDateRef.current === operationDate) {
         inFlightSlots.current.delete(meal.slot);
         setSavingSlot(null);
       }
@@ -924,6 +1100,8 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   const analyzeMeal = async (slot: MealSlot, correction?: MealCorrection) => {
     const meal = dataRef.current?.meals[slot];
     if (!meal || inFlightSlots.current.has(slot)) return;
+    const operationDate = meal.date;
+    if (dataRef.current?.date === operationDate) stashLocalDrafts(operationDate, dataRef.current.meals);
     const activePhotos = meal.status === "confirmed" ? [] : meal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available");
     const hasPhotosForAnalyze = activePhotos.length > 0;
     const hasTextForAnalyze = Boolean(meal.note.trim());
@@ -941,16 +1119,23 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     }
     const runId = randomId("run");
     analysisRunIds.current[slot] = runId;
-    const isCurrentRun = () => analysisRunIds.current[slot] === runId && selectedDateRef.current === selectedDate;
+    const isCurrentRun = () => analysisRunIds.current[slot] === runId && selectedDateRef.current === operationDate;
     inFlightSlots.current.add(slot);
     setAnalyzingSlots((previous) => previous.includes(slot) ? previous : [...previous, slot]);
     cancelledAnalysisIds.current.delete(meal.id);
     updateMeal(slot, (current) => ({ ...current, status: "accepted", error: null }));
     setAnalysisProgress((prev) => ({ ...prev, [slot]: { stage: "connecting", phase: "Connexion…", foods: [] } }));
     try {
+      let persistedMealId = meal.id;
       const reconcileUploadedPhotos = (pairs: Array<{ localPhotoId: string; photo: MealPhoto }>) => {
-        if (!isCurrentRun()) return;
+        if (cancelledAnalysisIds.current.has(meal.id) || (selectedDateRef.current === operationDate && !isCurrentRun())) return;
         const uploadedByLocalId = new Map(pairs.map((pair) => [pair.localPhotoId, pair.photo]));
+        if (selectedDateRef.current !== operationDate) {
+          updateCachedMealForDate(operationDate, slot, meal, (current) => ({
+            ...current,
+            photos: current.photos.map((photo) => uploadedByLocalId.get(photo.id) ?? photo),
+          }));
+        }
         pairs.forEach(({ localPhotoId }) => {
           const localPhoto = meal.photos.find((photo) => photo.id === localPhotoId);
           if (localPhoto && objectUrls.current.has(localPhoto.url)) {
@@ -963,7 +1148,8 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
           pairs.forEach(({ localPhotoId }) => delete next[localPhotoId]);
           return next;
         });
-        updateMeal(slot, (current) => ({
+        if (selectedDateRef.current !== operationDate) return;
+        updateMealOnDate(operationDate, slot, (current) => ({
           ...current,
           photos: current.photos.map((photo) => uploadedByLocalId.get(photo.id) ?? photo),
         }));
@@ -973,7 +1159,23 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
         return file ? { photoId: photo.id, file } : null;
       }).filter((entry): entry is { photoId: string; file: File } => Boolean(entry));
       const files = photoFiles.map((entry) => entry.file);
-      const analyzed = await (api?.analyze ? api.analyze({ date: selectedDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }) : defaultAnalyze({ date: selectedDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }, { onMealCreated: (mealId) => { if (isCurrentRun()) updateMeal(slot, (current) => ({ ...current, id: mealId })); }, onPhotosUploaded: reconcileUploadedPhotos, onProgress: (progress) => { if (isCurrentRun()) setAnalysisProgress((prev) => ({ ...prev, [slot]: progress })); } }));
+      const analyzed = await (api?.analyze ? api.analyze({ date: operationDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }) : defaultAnalyze({ date: operationDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }, {
+        onMealCreated: (mealId) => {
+          if (cancelledAnalysisIds.current.has(meal.id) || (selectedDateRef.current === operationDate && !isCurrentRun())) return;
+          persistedMealId = mealId;
+          if (selectedDateRef.current === operationDate) updateMealOnDate(operationDate, slot, (current) => ({ ...current, id: mealId }));
+          else updateCachedMealForDate(operationDate, slot, meal, (current) => ({ ...current, id: mealId }));
+        },
+        onPhotosUploaded: reconcileUploadedPhotos,
+        onProgress: (progress) => { if (isCurrentRun()) setAnalysisProgress((prev) => ({ ...prev, [slot]: progress })); },
+      }));
+      if (cancelledAnalysisIds.current.has(meal.id)) {
+        // Annulation demandée pendant l’envoi : le résultat tardif est ignoré
+        // et le brouillon local est conservé tel quel.
+        return;
+      }
+      if (selectedDateRef.current === operationDate && !isCurrentRun()) return;
+      clearCachedMealForDate(operationDate, slot, [meal.id, persistedMealId]);
       if (!isCurrentRun()) return;
       const nextStatus = analyzed.status === "error" ? "error" : analyzed.status === "accepted" || analyzed.status === "analyzing"
         ? analyzed.status
@@ -981,7 +1183,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
           ? (analyzed.status === "confirmed" ? "confirmed" : "review")
           : "draft";
       const current = dataRef.current?.meals[slot] ?? meal;
-      const nextMeal = normalizeMeal({ ...analyzed, note: typeof analyzed.note === "string" && analyzed.note ? analyzed.note : current.note, photos: analyzed.photos?.length ? analyzed.photos : current.photos, status: nextStatus, error: nextStatus === "error" ? analyzed.error : null }, selectedDate, slot);
+      const nextMeal = normalizeMeal({ ...analyzed, note: typeof analyzed.note === "string" && analyzed.note ? analyzed.note : current.note, photos: analyzed.photos?.length ? analyzed.photos : current.photos, status: nextStatus, error: nextStatus === "error" ? analyzed.error : null }, operationDate, slot);
       if (variant === "lab" && nextStatus === "review" && nextMeal.analysis) {
         setAnalysisProgress((previous) => ({ ...previous, [slot]: { stage: "finalizing", phase: "Enregistrement des résultats…", foods: [] } }));
         // Keep the same screen until the existing automatic confirmation completes.
