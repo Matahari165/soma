@@ -44,6 +44,15 @@ type Message = {
 
 type PendingPhoto = { id: string; file: File; previewUrl: string };
 type StarterPrompt = { id: string; text: string };
+type PendingSubmission = {
+  requestId: string;
+  conversationId: string | null;
+  text: string;
+  editMessageId: string | null;
+  photoIds: string[];
+  attachmentIds: string[] | null;
+  persistedUserMessageId?: string;
+};
 
 const fallbackPrompts: StarterPrompt[] = [
   { id: "overview", text: "Fais le point sur mes données récentes et dis-moi ce qu’on peut en conclure." },
@@ -217,6 +226,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   const followConversationRef = useRef(true);
   const starterRequestRef = useRef(0);
   const activeIdRef = useRef(activeId);
+  const pendingSubmissionRef = useRef<PendingSubmission | null>(null);
   const sendMessageRef = useRef<(event?: FormEvent, overrideText?: string) => Promise<void>>(async () => {});
   activeIdRef.current = activeId;
 
@@ -556,8 +566,27 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     const submittedPhotos = editingMessageId ? [] : photos;
     const editedMessageId = editingMessageId;
     const editedMessage = editedMessageId ? messages.find((message) => message.id === editedMessageId) : null;
+    const photoIds = submittedPhotos.map((photo) => photo.id);
+    const previousSubmission = pendingSubmissionRef.current;
+    const sameSubmission = previousSubmission
+      && previousSubmission.conversationId === activeId
+      && previousSubmission.text === cleanText
+      && previousSubmission.editMessageId === editedMessageId
+      && previousSubmission.photoIds.length === photoIds.length
+      && previousSubmission.photoIds.every((id, index) => id === photoIds[index]);
+    const submission = sameSubmission ? previousSubmission : {
+      requestId: crypto.randomUUID(),
+      conversationId: activeId,
+      text: cleanText,
+      editMessageId: editedMessageId,
+      photoIds,
+      attachmentIds: null,
+    } satisfies PendingSubmission;
+    pendingSubmissionRef.current = submission;
     const previousMessages = messages;
     const optimisticId = `optimistic-${crypto.randomUUID()}`;
+    const persistedUserAlreadyVisible = Boolean(submission.persistedUserMessageId
+      && messages.some((message) => message.id === submission.persistedUserMessageId));
     const optimisticMessage: Message = {
       id: optimisticId,
       conversationId: activeId ?? undefined,
@@ -570,9 +599,11 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
       status: "pending",
     };
 
-    setMessages((current) => editedMessage
-      ? [...current.filter((message) => message.sequence < editedMessage.sequence), optimisticMessage]
-      : [...current, optimisticMessage]);
+    if (!persistedUserAlreadyVisible) {
+      setMessages((current) => editedMessage
+        ? [...current.filter((message) => message.sequence < editedMessage.sequence), optimisticMessage]
+        : [...current, optimisticMessage]);
+    }
     setText(editedMessageId ? preEditDraftRef.current : "");
     if (!editedMessageId) setPhotos([]);
     setEditingMessageId(null);
@@ -581,14 +612,19 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     setSending(true);
     setError(null);
     setNotConfigured(false);
+    let submittedConversationId = submission.conversationId;
     try {
-      const conversationId = await ensureConversation();
-      const attachmentIds = await uploadPhotos(conversationId, submittedPhotos);
+      const conversationId = submission.conversationId ?? await ensureConversation();
+      submission.conversationId = conversationId;
+      submittedConversationId = conversationId;
+      const attachmentIds = submission.attachmentIds ?? await uploadPhotos(conversationId, submittedPhotos);
+      submission.attachmentIds = attachmentIds;
       const payload = await readJson(await fetch("/api/assistant/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId, requestId: crypto.randomUUID(), text: cleanText, message: cleanText, ...(attachmentIds.length ? { attachmentIds } : {}), ...(editedMessageId ? { editMessageId: editedMessageId } : {}) }),
+        body: JSON.stringify({ conversationId, requestId: submission.requestId, text: cleanText, message: cleanText, ...(attachmentIds.length ? { attachmentIds } : {}), ...(editedMessageId ? { editMessageId: editedMessageId } : {}) }),
       }));
+      pendingSubmissionRef.current = null;
       const localUserMessage: Message = {
         id: crypto.randomUUID(),
         conversationId,
@@ -616,7 +652,8 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
           // The edited response is already persisted. Keep the complete local fork instead of inviting a duplicate retry.
         }
       } else {
-        setMessages((current) => [...current.filter((message) => message.id !== optimisticId), persistedUser, assistantMessage].filter(Boolean) as Message[]);
+        setMessages((current) => [...current.filter((message) => message.id !== optimisticId
+          && message.id !== persistedUser?.id && message.id !== assistantMessage?.id), persistedUser, assistantMessage].filter(Boolean) as Message[]);
       }
       if (assistantMessage?.id) setProgressiveMessageId(assistantMessage.id);
       submittedPhotos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
@@ -631,6 +668,28 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
       const code = sendError && typeof sendError === "object" && "code" in sendError ? sendError.code : null;
       setNotConfigured(code === "assistant_not_configured");
       setError(sendError instanceof Error ? sendError.message : "Le message n’a pas pu être envoyé.");
+      if (submittedConversationId && !editedMessageId) {
+        try {
+          const saved = await readJson(await fetch(`/api/assistant/conversations?conversationId=${encodeURIComponent(submittedConversationId)}`, { cache: "no-store" }));
+          if (Array.isArray(saved?.messages)) {
+            const refreshed = saved.messages as Message[];
+            setMessages(refreshed);
+            const previousIds = new Set(previousMessages.map((message) => message.id));
+            const persistedUser = [...refreshed].reverse().find((message) => message.role === "user"
+              && !previousIds.has(message.id)
+              && messageText(message) === cleanText
+              && (() => {
+                const savedAttachments = message.parts.filter((part): part is AttachmentPart => part.type === "attachment").map((part) => part.attachmentId);
+                const requestedAttachments = submission.attachmentIds ?? [];
+                return savedAttachments.length === requestedAttachments.length
+                  && savedAttachments.every((id, index) => id === requestedAttachments[index]);
+              })());
+            if (persistedUser) submission.persistedUserMessageId = persistedUser.id;
+          }
+        } catch {
+          // Keep the last visible conversation if the reconciliation request is unavailable.
+        }
+      }
     } finally {
       setSending(false);
     }
