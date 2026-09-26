@@ -30,4 +30,17 @@ describe("getStrongestEffects", () => {
     expect(result).toMatchObject({ period: 90, relationCount: 1, relations: [{ predictor: "Sommeil", outcome: "Récupération", effect: 4 }] });
     expect(JSON.stringify(result)).not.toContain("not exposed");
   });
+
+  it("uses 90 days when the caller leaves the period unspecified", async () => {
+    vi.mocked(getPersonalLabSnapshot).mockResolvedValue({
+      coverage: { healthDays: 0, calendarDays: 0, checkinDays: 0, journalDays: 0, pairedDeepWorkDays: 0, rangeDays: 0 },
+      matrix: { rows: [] },
+    } as never);
+    vi.mocked(selectSummaryRelations).mockReturnValue([]);
+    const tool = createGetStrongestEffectsTool({ userId: "user-2", runId: "run-2" });
+
+    await tool.execute!({} as never, { toolCallId: "call-2", messages: [], abortSignal: undefined } as never);
+
+    expect(getPersonalLabSnapshot).toHaveBeenCalledWith({ id: "user-2", email: null, displayName: "" }, { periods: [90] });
+  });
 });

@@ -19,7 +19,7 @@ describe("assistant persistence contracts", () => {
     const manifest = {
       dataset: "daily_health", requestedPeriod: { from: "2026-09-20", to: "2026-09-21" },
       coveredPeriod: null, timezone: "Europe/Zurich", totalItems: 2, returnedItems: 1,
-      hasMore: true, nextCursor: "signed-cursor", complete: false, generatedAt: "2026-09-21T10:00:00.000Z",
+      totalKnown: true, hasMore: true, nextCursor: "signed-cursor", complete: false, generatedAt: "2026-09-21T10:00:00.000Z",
     };
     expect(assistantQueryManifestSchema.parse(manifest)).toMatchObject({ hasMore: true, complete: false });
     expect(() => assistantQueryManifestSchema.parse({ ...manifest, nextCursor: null })).toThrow();

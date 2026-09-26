@@ -133,7 +133,8 @@ export class CloudflareQueryBuilder implements PromiseLike<ManyResult> {
     let rows = (result.results ?? []).map((item) => JSON.parse(item.json_data) as Row);
     rows = rows.filter((row) => this.filters.every((filter) => matches(row, filter)));
     rows = rows.filter((row) => this.orFilters.every((expressions) => matchesOr(row, expressions)));
-    sortRows(rows, this.sorts);
+    // Keep database order once offsets were applied: JS collation can differ.
+    if (!plan.paginationPushed) sortRows(rows, this.sorts);
     if (!plan.paginationPushed) rows = paginateRows(rows, this.fromIndex, this.toIndex, this.maxRows);
 
     if (this.table === "workout_programs" && this.selector?.includes("workout_program_exercises(")) {
@@ -182,7 +183,12 @@ export class CloudflareQueryBuilder implements PromiseLike<ManyResult> {
       return shapeQueryResult(existing, this.selector, this.selectOptions, this.cardinality);
     }
     const values = this.mutation.values;
-    const changed = existing.map((row) => cleanRow({ ...row, ...values, updated_at: new Date().toISOString() }));
+    const changed = existing.map((row) => {
+      const updatedAt = this.table === "assistant_data_jobs"
+        ? new Date(Math.max(Date.now(), (Date.parse(String(row.updated_at)) || 0) + 1, Date.parse(String(values.updated_at)) || 0)).toISOString()
+        : new Date().toISOString();
+      return cleanRow({ ...row, ...values, updated_at: updatedAt });
+    });
     const persisted = await updateRowsInPlace(this.db, this.table, existing, changed, this.filters);
     return shapeQueryResult(persisted, this.selector, this.selectOptions, this.cardinality);
   }

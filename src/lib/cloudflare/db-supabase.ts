@@ -137,14 +137,19 @@ async function bumpSupabaseLabMatrixRevisions(request: SupabaseRequest, userIds:
   }
 }
 
-function logicalRow(item: SupabaseStoredRow) {
-  const row = cleanRow(item.json_data ?? {});
+function logicalRow(item: SupabaseStoredRow, projectedFields?: string[] | null) {
+  const projected = projectedFields?.length
+    ? Object.fromEntries(projectedFields.map((field) => [field, item[field] ?? null]))
+    : {};
+  const row = cleanRow(item.json_data ?? projected);
   if (row.user_id === undefined && item.user_id !== null) row.user_id = item.user_id;
   return row;
 }
 
 function supabaseJsonField(field: string) {
-  return /^[A-Za-z0-9_]+$/.test(field) ? `json_data->>${field}` : null;
+  if (!/^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)*$/.test(field)) return null;
+  const path = field.split(".");
+  return `json_data${path.slice(0, -1).map((segment) => `->${segment}`).join("")}->>${path.at(-1)}`;
 }
 
 function canPushSupabaseFilter(filter: SupabaseFilter) {
@@ -160,6 +165,17 @@ function canPushSupabaseSort(sort: Sort) {
   return Boolean(supabaseJsonField(sort.field));
 }
 
+function projectedLogicalFields(selector: string | undefined, filters: SupabaseFilter[], sorts: Sort[], orFilters: SupabaseOrTerm[][]) {
+  if (!selector || selector.trim() === "*") return null;
+  const selected = selector.split(",").map((field) => field.trim());
+  if (!selected.length || selected.some((field) => !/^[A-Za-z0-9_]+$/.test(field))) return null;
+  const fields = new Set(selected);
+  for (const filter of filters) if (filter.field !== "user_id") fields.add(filter.field.split(".")[0] as string);
+  for (const sort of sorts) fields.add(sort.field.split(".")[0] as string);
+  for (const terms of orFilters) for (const term of terms) if (term.field !== "user_id") fields.add(term.field.split(".")[0] as string);
+  return [...fields].filter((field) => field !== "user_id");
+}
+
 async function readSupabaseStorageRows(
   request: SupabaseRequest,
   table: string,
@@ -171,9 +187,14 @@ async function readSupabaseStorageRows(
   maxRows: number | undefined,
   exactCount: boolean,
   requestTimeoutMs: number | undefined,
+  selector: string | undefined,
 ) {
+  const projectedFields = projectedLogicalFields(selector, filters, sorts, orFilters);
+  const storageSelect = projectedFields
+    ? ["table_name", "row_key", "user_id", ...projectedFields.map((field) => `${field}:json_data->${field}`)].join(",")
+    : "table_name,row_key,user_id,json_data,created_at,updated_at";
   const serverFilters: Array<[string, string]> = [
-    ["select", "table_name,row_key,user_id,json_data,created_at,updated_at"],
+    ["select", storageSelect],
     ["table_name", `eq.${table}`],
   ];
   let allFiltersPushed = true;
@@ -227,7 +248,7 @@ async function readSupabaseStorageRows(
     storedRows.push(...page);
     if (hasBoundedPage || page.length < SUPABASE_STORAGE_PAGE_SIZE) break;
   }
-  return { rows: storedRows.map(logicalRow), paginationPushed: hasBoundedPage };
+  return { rows: storedRows.map((row) => logicalRow(row, projectedFields)), paginationPushed: hasBoundedPage };
 }
 
 export class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
@@ -294,11 +315,13 @@ export class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
       this.maxRows,
       this.selectOptions?.count === "exact",
       this.requestTimeoutMs,
+      this.mutation ? "*" : this.selector,
     );
     let rows = storageResult.rows;
     rows = rows.filter((row) => this.filters.every((filter) => matches(row, filter)));
     rows = rows.filter((row) => this.orFilters.every((expressions) => matchesOr(row, expressions)));
-    sortRows(rows, this.sorts);
+    // Keep database order once offsets were applied: JS collation can differ.
+    if (!storageResult.paginationPushed) sortRows(rows, this.sorts);
     return { rows, paginationPushed: storageResult.paginationPushed };
   }
 
@@ -367,7 +390,13 @@ export class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
       return shapeQueryResult(existing, this.selector, this.selectOptions, this.cardinality);
     }
 
-    const changed = existing.map((row) => cleanRow({ ...row, ...mutation.values, updated_at: new Date().toISOString() }));
+    const changed = existing.map((row) => {
+      // Summary checkpoints use this timestamp as a CAS version, including within one millisecond.
+      const updatedAt = this.table === "assistant_data_jobs"
+        ? new Date(Math.max(Date.now(), (Date.parse(String(row.updated_at)) || 0) + 1, Date.parse(String(mutation.values.updated_at)) || 0)).toISOString()
+        : new Date().toISOString();
+      return cleanRow({ ...row, ...mutation.values, updated_at: updatedAt });
+    });
     const persisted: Row[] = [];
     for (let index = 0; index < existing.length; index += 1) {
       const oldKey = stableIdentity(this.table, existing[index]);

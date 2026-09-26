@@ -1,3 +1,4 @@
+import { abortable } from "@/lib/abortable";
 import {
   listGoogleHealthDataPoints,
   type DataPointListResponse,
@@ -15,9 +16,16 @@ type SessionPageReader = (input: {
   start: Date;
   end: Date;
   pageToken?: string;
+  signal?: AbortSignal;
 }) => Promise<DataPointListResponse>;
 
-async function listBoundedSessionData(input: {
+export type SessionFetchProgress = {
+  signal?: AbortSignal;
+  pageToken?: string;
+  onPage?: (points: Record<string, unknown>[], nextPageToken: string | null) => Promise<void>;
+};
+
+async function listBoundedSessionData(input: SessionFetchProgress & {
   accessToken: string;
   dataType: SessionDataType;
   start: Date;
@@ -30,23 +38,27 @@ async function listBoundedSessionData(input: {
     throw new Error("Google Health session data range is invalid or too large.");
   }
   const dataPoints: Record<string, unknown>[] = [];
-  let pageToken: string | undefined;
+  let pageToken: string | undefined = input.pageToken;
   let pageCount = 0;
   const requestedPageTokens = new Set<string>();
   while (pageCount < input.maxPages) {
+    input.signal?.throwIfAborted();
     if (pageToken) {
       if (requestedPageTokens.has(pageToken)) {
         throw new Error("Google Health session pagination repeated a page token.");
       }
       requestedPageTokens.add(pageToken);
     }
-    const response = await readPage({
+    const response = await abortable(readPage({
       accessToken: input.accessToken,
       dataType: input.dataType,
       start: input.start,
       end: input.end,
       ...(pageToken ? { pageToken } : {}),
-    });
+      ...(input.signal ? { signal: input.signal } : {}),
+    }), input.signal);
+    input.signal?.throwIfAborted();
+    if (input.onPage) await abortable(input.onPage(response.dataPoints ?? [], response.nextPageToken ?? null), input.signal);
     dataPoints.push(...(response.dataPoints ?? []));
     pageCount += 1;
     pageToken = response.nextPageToken;
@@ -60,7 +72,7 @@ async function listBoundedSessionData(input: {
 
 /** Fetches a bounded number of raw samples for one activity window. */
 export function fetchGoogleHealthSessionHeartRate(
-  input: { accessToken: string; start: Date; end: Date },
+  input: SessionFetchProgress & { accessToken: string; start: Date; end: Date },
   readPage: SessionPageReader = listGoogleHealthDataPoints,
 ) {
   return listBoundedSessionData({ ...input, dataType: "heart-rate", maxPages: GOOGLE_HEALTH_SESSION_HEART_RATE_MAX_PAGES }, readPage);
@@ -68,10 +80,10 @@ export function fetchGoogleHealthSessionHeartRate(
 
 /** Gets nearby civil-date zone records; callers select the exercise's local day. */
 export function fetchGoogleHealthSessionDailyZones(
-  input: { accessToken: string; start: Date; end: Date },
+  input: SessionFetchProgress & { accessToken: string; start: Date; end: Date },
   readPage: SessionPageReader = listGoogleHealthDataPoints,
 ) {
   const start = new Date(input.start.getTime() - 24 * 60 * 60 * 1_000);
   const end = new Date(input.end.getTime() + 24 * 60 * 60 * 1_000);
-  return listBoundedSessionData({ accessToken: input.accessToken, dataType: "daily-heart-rate-zones", start, end, maxPages: GOOGLE_HEALTH_SESSION_ZONE_MAX_PAGES }, readPage);
+  return listBoundedSessionData({ ...input, accessToken: input.accessToken, dataType: "daily-heart-rate-zones", start, end, maxPages: GOOGLE_HEALTH_SESSION_ZONE_MAX_PAGES }, readPage);
 }

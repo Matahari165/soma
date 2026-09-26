@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowDown, ArrowUp, Check, Image as ImageIcon, Menu, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
-import { FormEvent, KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, FormEvent, KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import styles from "./assistant-workspace.module.css";
 import { AssistantDictation } from "./assistant-dictation";
@@ -27,6 +27,7 @@ type DataSummaryPart = {
   coveredPeriod?: { from: string; to: string } | null;
   itemCount: number;
   domains: Array<"nutrition" | "sleep" | "recovery" | "effort">;
+  toolStats?: Array<{ toolName: "queryLabAnalyses" | "getStrongestEffects"; itemCount: number; complete: boolean; periods: Array<"15" | "30" | "90" | "all"> }>;
 };
 type ActionPart = { type: "action"; actionId: string; actionType: string; state: string };
 type MessagePart = TextPart | AttachmentPart | DataSummaryPart | ActionPart;
@@ -97,8 +98,9 @@ function AnalysisSummary({ part }: { part: DataSummaryPart }) {
       <summary><strong>Analyse :</strong> {part.label}</summary>
       <dl>
         {period && <><dt>{part.coveredPeriod === undefined ? "Période" : "Recherche"}</dt><dd>{period}</dd></>}
-        {part.coveredPeriod !== undefined && <><dt>Trouvé</dt><dd>{coveredPeriod ?? "Aucune donnée sur cette période"}</dd></>}
-        <dt>Données</dt><dd>{part.itemCount} élément{part.itemCount > 1 ? "s" : ""}</dd>
+        {part.period && part.coveredPeriod !== undefined && <><dt>Trouvé</dt><dd>{coveredPeriod ?? "Aucune donnée sur cette période"}</dd></>}
+        {(part.period || !part.toolStats?.length) && <><dt>Données</dt><dd>{part.itemCount} élément{part.itemCount > 1 ? "s" : ""}</dd></>}
+        {part.toolStats?.map((stat, index) => <Fragment key={index}><dt>{stat.toolName === "queryLabAnalyses" ? "Personal Lab" : "Strongest Effects"}</dt><dd>{stat.itemCount} relation{stat.itemCount > 1 ? "s" : ""} consultée{stat.itemCount > 1 ? "s" : ""}{stat.periods.length ? ` · ${stat.periods.map((period) => period === "all" ? "tout l’historique" : `${period} jours`).join(", ")}` : ""}{!stat.complete ? " · analyse partielle" : ""}</dd></Fragment>)}
         {domains && <><dt>Domaines</dt><dd>{domains}</dd></>}
       </dl>
     </details>
@@ -194,6 +196,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     setVoicePresentation(presentation);
   }, []);
   const [error, setError] = useState<string | null>(null);
+  const [memoryWarning, setMemoryWarning] = useState<string | null>(null);
   const [notConfigured, setNotConfigured] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -428,6 +431,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     if (id === activeId && messages.length) return;
     activeIdRef.current = id;
     setActiveId(id);
+    setMemoryWarning(null);
     setConversationLoadErrorId(null);
     setEditingMessageId(null);
     setRevealedEditMessageId(null);
@@ -459,6 +463,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     setStarterState("loading");
     activeIdRef.current = null;
     setActiveId(null);
+    setMemoryWarning(null);
     setLoadingConversation(false);
     setConversationLoadErrorId(null);
     setMessages([]);
@@ -534,6 +539,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     const id = payload?.conversation?.id;
     if (typeof id !== "string") throw new Error("La conversation n’a pas pu être créée.");
     setActiveId(id);
+    setMemoryWarning(null);
     return id;
   }
 
@@ -600,6 +606,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
         ],
         status: "completed",
       };
+      setMemoryWarning(payload?.memoryStatus?.state === "retry_pending" ? "Une partie de l’historique ancien est temporairement indisponible. Soma réessaiera au prochain message." : null);
       const persistedUser = payload?.userMessage ?? localUserMessage;
       const assistantMessage = payload?.assistantMessage ?? payload?.message;
       if (editedMessageId && typeof payload?.conversationId === "string") {
@@ -780,6 +787,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
         {showLatest && !empty && <button type="button" className={styles.jumpToLatest} onClick={jumpToLatest}><ArrowDown size={16} aria-hidden="true" /> {voicePresentation ? "Dernier échange" : "Dernier message"}</button>}
 
         <div className={styles.composerRegion}>
+          {memoryWarning && <p className={`${styles.error} ${styles.memoryWarning}`} role="status">{memoryWarning}</p>}
           {error && <div className={`${styles.error} ${notConfigured ? styles.configurationError : ""}`} role="alert">
             <strong>{notConfigured ? "Assistant non configuré" : activeId && conversationLoadErrorId === activeId ? "Conversation indisponible" : "Envoi impossible"}</strong>
             <span>{error}</span>

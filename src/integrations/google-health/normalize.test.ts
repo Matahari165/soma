@@ -27,7 +27,14 @@ describe("Google Health normalization contract", () => {
     });
 
     expect(result.civil_date).toBeNull();
-    expect(result.start_time).toBe("2026-08-11T22:15:00Z");
-    expect(result.end_time).toBe("2026-08-12T06:45:00Z");
+    expect(result.start_time).toBe("2026-08-11T22:15:00.000Z");
+    expect(result.end_time).toBe("2026-08-12T06:45:00.000Z");
   });
 });
+
+ it.each(["2020-01-01T00:00:00Z", "2020-01-01T00:00:00.000000Z", "2019-12-31T19:00:00-05:00", "2020-01-01T14:00:00+14:00"])("canonicalizes source timestamps while retaining the source payload: %s", (physicalTime) => {
+   const point = { heartRate: { sampleTime: { physicalTime }, beatsPerMinute: 60 } };
+   const result = normalizeGoogleHealthPoint("test-user", "heart-rate", point);
+   expect(result.measured_at).toBe("2020-01-01T00:00:00.000Z");
+   expect(result.payload).toEqual(point);
+ });
