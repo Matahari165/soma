@@ -322,7 +322,7 @@ export async function sessionUserForHash(tokenHash: string, now: string, timeout
     ["limit", "1"],
   ]), {}, timeoutMs);
   const row = rows[0];
-  if (!row || !row.user || !Number.isFinite(Date.parse(row.expires_at)) || Date.parse(row.expires_at) <= Date.parse(now)) return null;
+  if (!row || !row.user || !Number.isFinite(Date.parse(row.expires_at)) || Date.parse(row.expires_at) <= Math.max(Date.parse(now), Date.now())) return null;
   return row.user;
 }
 

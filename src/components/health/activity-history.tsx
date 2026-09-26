@@ -254,7 +254,7 @@ export function ActivityHistory({ exercises, referenceDate }: { exercises: Exerc
     };
   }, [periodOpen]);
 
-  return <section className={`${styles.section} health-observatory-panel`} aria-label="Workout history" data-scroll-reveal="timeline">
+  return <section className={`${styles.section} ${styles.activityHistorySection} health-observatory-panel`} data-period-open={periodOpen ? "true" : "false"} aria-label="Workout history" data-scroll-reveal="timeline">
     <div className={styles.activityFilterGroups}>
       <div className={styles.activityFilters} role="group" aria-label="Filter workouts by activity">
       {filters.map((item) => <button key={item.id} type="button" aria-pressed={filter === item.id} onClick={() => { setFilter(item.id); setFiltersWereUsed(true); }}>{item.label}</button>)}

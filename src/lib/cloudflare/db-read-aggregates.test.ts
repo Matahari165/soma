@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { healthDataCoverageAggregate, healthSyncDiagnostics, latestHealthRecordsByType, sessionUserForHash } from "./db";
 
-afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 function setupFetch(response: unknown) {
   vi.stubEnv("SUPABASE_URL", "https://test");
   vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "synthetic-key");
@@ -11,6 +11,7 @@ function setupFetch(response: unknown) {
 }
 describe("Live session join", () => {
   it("authenticates through one live joined query with expiry filtering", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-01-01T00:00:00Z"));
     const user = { id: "synthetic", email: null, display_name: "Fixture" };
     const fetchMock = setupFetch([{ expires_at: "2026-01-02T00:00:00Z", user }]);
     expect(await sessionUserForHash("fixture-hash", "2026-01-01T00:00:00Z", 4000)).toEqual(user);
@@ -18,6 +19,11 @@ describe("Live session join", () => {
     const url = new URL(String(fetchMock.mock.calls[0]?.[0]));
     expect(url.searchParams.get("select")).toContain("soma_users!inner");
     expect(url.searchParams.get("expires_at")).toBe("gt.2026-01-01T00:00:00Z");
+  });
+  it("rejects a session that expires while the joined request is in flight", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-01-02T00:00:00Z"));
+    setupFetch([{ expires_at: "2026-01-01T00:00:01Z", user: { id: "synthetic" } }]);
+    expect(await sessionUserForHash("fixture-hash", "2026-01-01T00:00:00Z", 4000)).toBeNull();
   });
   it.each([{ response: [] }, { response: [{ expires_at: "invalid", user: { id: "synthetic" } }] }, { response: [{ expires_at: "2025-01-01T00:00:00Z", user: { id: "synthetic" } }] }])("rejects missing, malformed and expired sessions", async ({ response }) => {
     setupFetch(response);

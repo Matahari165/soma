@@ -546,3 +546,13 @@
   .content [data-scroll-reveal] { opacity: 1 !important; transform: none !important; clip-path: none !important; transition: none !important; animation: none !important; }
   .root *, .root *::before, .root *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* An open period menu extends past the history section. Reveal clipping and
+   sibling animation stacking contexts must not hide its options. */
+.content .activityHistorySection[data-period-open="true"] {
+  position: relative;
+  z-index: 9;
+  opacity: 1;
+  transform: none;
+  clip-path: none;
+}
