@@ -44,9 +44,28 @@ function DinnerTimeInput({ inputId, value, disabled, onChange }: { inputId: stri
     return value.replace(/\D/g, "").slice(0, maximumLength);
   }
 
+  function selectTime(nextHour: string, nextMinute: string) {
+    setHour(nextHour);
+    setMinute(nextMinute);
+    setInvalid(false);
+    if (!nextHour || !nextMinute) {
+      if (!nextHour && !nextMinute) onChange(null);
+      return;
+    }
+    const normalized = normalizeDinnerTimeInput(`${nextHour}:${nextMinute}`);
+    if (normalized) onChange(normalized);
+  }
+
+  const minuteOptions = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, "0"));
+  // Keep a previously recorded exact minute until the user chooses a new time.
+  if (minute && !minuteOptions.includes(minute)) minuteOptions.push(minute);
+  minuteOptions.sort();
+
   return <div className={`journal-clock${invalid ? " journal-clock--invalid" : ""}`} id={inputId} role="group" aria-label="Dinner end time" aria-describedby={invalid ? errorId : undefined} onBlur={(event) => {
+    if (event.target instanceof HTMLSelectElement) return;
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) commit();
-  }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); commit(); } }}>
+  }} onKeyDown={(event) => { if (event.target instanceof HTMLSelectElement) return; if (event.key === "Enter") { event.preventDefault(); commit(); } }}>
+    <div className="journal-clock__desktop">
     <input disabled={disabled} aria-label="Dinner end time" aria-invalid={invalid} aria-describedby={invalid ? errorId : undefined} inputMode="numeric" autoComplete="off" placeholder="HH" type="text" value={hour} onChange={(event) => {
       const next = digits(event.target.value, 2);
       setHour(next);
@@ -55,6 +74,18 @@ function DinnerTimeInput({ inputId, value, disabled, onChange }: { inputId: stri
     }} />
     <span aria-hidden="true">:</span>
     <input ref={minuteRef} disabled={disabled} aria-label="Dinner end minutes" aria-invalid={invalid} aria-describedby={invalid ? errorId : undefined} inputMode="numeric" autoComplete="off" placeholder="MM" type="text" value={minute} onChange={(event) => { setMinute(digits(event.target.value, 2)); setInvalid(false); }} />
+    </div>
+    <div className="journal-clock__mobile">
+      <select disabled={disabled} aria-label="Dinner end hour" value={hour} onChange={(event) => selectTime(event.target.value, minute)}>
+        <option value="">HH</option>
+        {Array.from({ length: 12 }, (_, index) => String(index + 1)).map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+      <span aria-hidden="true">:</span>
+      <select disabled={disabled} aria-label="Dinner end minute" value={minute} onChange={(event) => selectTime(hour, event.target.value)}>
+        <option value="">MM</option>
+        {minuteOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+    </div>
     {invalid && <p id={errorId} className="journal-clock__error" role="alert">Invalid time · use HH:MM between 00:00 and 23:59.</p>}
   </div>;
 }

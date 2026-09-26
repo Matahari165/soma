@@ -4181,7 +4181,19 @@
 /* iOS Safari zooms the page when a focused editable field renders below 16px. */
 @media (max-width: 700px) {
   .root :is(textarea, input[type="text"], input[type="number"], input[type="date"]) {
-    font-size: 16px !important;
+    font-size: max(16px, 1rem) !important;
+  }
+  :global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealPrompt .textInput,
+  :global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealPrompt .textInput:focus-within {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .root .textInput textarea {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 }
 
