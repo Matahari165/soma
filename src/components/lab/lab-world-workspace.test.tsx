@@ -116,7 +116,7 @@ describe("LabWorldWorkspace day navigation and home goal display", () => {
     expect(html).toContain('aria-label="Jours disponibles"');
   });
 
-  it("renders the personalized arrival message and marked activity note", () => {
+  it("renders the personalized greeting and assistant entry without the legacy activity signal", () => {
     const activity = { kind: "run" as const, distanceKm: 7.2, durationMinutes: 44 };
     const html = renderToStaticMarkup(
       <LabWorldWorkspace
@@ -133,6 +133,8 @@ describe("LabWorldWorkspace day navigation and home goal display", () => {
     );
 
     expect(html).toMatch(/Alex/);
-    expect(html).toContain("Run recorded · 7.2 km · 44 min");
+    expect(html).not.toContain("Run recorded · 7.2 km · 44 min");
+    expect(html).not.toContain("arrival-signal");
+    expect(html.indexOf('id="home-soma-message"')).toBeLessThan(html.indexOf('data-home-rings=""'));
   });
 });

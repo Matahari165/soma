@@ -1,0 +1,201 @@
+/* Soma: one switchable palette for every route, control and visualization.
+   The Observatory selectors still describe the existing composition.
+   Keep color decisions here; dimensions, typography and motion live in
+   the original stylesheets. */
+:root {
+  color-scheme: light;
+  --lab-canvas: #ffffff;
+  --lab-sidebar: var(--lab-canvas);
+  --lab-surface: #fafafa;
+  --lab-surface-subtle: #f5f5f5;
+  --lab-surface-selected: #e8e8e8;
+  --lab-control-track: #f3f3f3;
+  --lab-rule: #dedede;
+  --lab-rule-strong: #bdbdbd;
+  --lab-border: var(--lab-rule);
+  --lab-border-strong: var(--lab-rule-strong);
+  --lab-text-primary: #171717;
+  --lab-text-secondary: #626262;
+  --lab-text-muted: #666666;
+  --lab-brand: #242424;
+  --lab-signal: #3e6650;
+  --lab-signal-soft: #eef4ef;
+  --lab-error: #a54c41;
+  --lab-error-soft: #fbefed;
+  --lab-warning: #745b23;
+  --lab-warning-soft: #f5f0e4;
+  --lab-info: #426387;
+  --lab-info-soft: #edf2f8;
+  --lab-ink-rgb: 23, 23, 23;
+  --lab-canvas-rgb: 255, 255, 255;
+  --lab-on-photo: #ffffff;
+  --lab-on-error: #ffffff;
+  --lab-info-alt: #6a8499;
+  --lab-overlay: rgba(20, 23, 18, .62);
+  --lab-glass: rgba(255, 255, 255, .94);
+  --lab-brand-glow: rgba(38, 77, 56, .15);
+  --lab-shadow-subtle-color: rgba(28, 37, 32, .05);
+  --lab-tailwind-surface-elevated: var(--lab-surface-selected);
+  --lab-tailwind-surface-card: var(--lab-surface);
+  --lab-tailwind-hairline: var(--lab-rule);
+  --lab-tailwind-hairline-light: var(--lab-rule-strong);
+  --lab-tailwind-hairline-border: var(--lab-rule);
+  --lab-tailwind-sage-muted: var(--lab-signal);
+  --lab-tailwind-content-secondary: var(--lab-text-secondary);
+  --lab-tailwind-content-tertiary: var(--lab-text-muted);
+  --lab-shadow-popup-color: rgba(0, 0, 0, .12);
+  --lab-shadow-floating-color: rgba(0, 0, 0, .10);
+  --lab-shadow-control-color: rgba(0, 0, 0, .08);
+  /* A readable white veil keeps the original photographs in place. */
+  --lab-backdrop-wash: .70;
+  --lab-backdrop-wash-middle: .78;
+  --lab-backdrop-wash-strong: .90;
+
+  /* Domain colors: compatibility consumers retain their original tones. */
+  --lab-stage-deep: #354966;
+  --lab-stage-rem: #647b96;
+  --lab-stage-light: #9cabb8;
+  --lab-stage-awake: #b17b47;
+  --lab-zone-light: #8397a5;
+  --lab-zone-moderate: #6f866a;
+  --lab-zone-vigorous: #b28648;
+  --lab-zone-peak: #a8563f;
+  --lab-nutrition-fiber-soft: #e3e9df;
+  --lab-nutrition-sugar-soft: #e9e1eb;
+  /* Observatory series and legends share the same domain color. */
+  --lab-observatory-stage-deep: #617997;
+  --lab-observatory-stage-rem: #8fa5bf;
+  --lab-observatory-stage-light: #b7c1c8;
+  --lab-observatory-stage-awake: #b99162;
+  --lab-observatory-zone-light: var(--lab-zone-light);
+  --lab-observatory-zone-moderate: #8aa382;
+  --lab-observatory-zone-vigorous: var(--lab-observatory-stage-awake);
+  --lab-observatory-zone-peak: #bf7667;
+
+  /* Preserve translucent strokes while separating progress from its track.
+     Opaque dark numerals remain readable through overflow layers. */
+  --lab-ring-track-color: var(--lab-text-primary);
+  --lab-ring-unknown-color: var(--lab-text-muted);
+  --lab-ring-label-stroke: rgba(var(--lab-canvas-rgb), .44);
+  --lab-ring-track-opacity: .08;
+  --lab-ring-progress-opacity: .50;
+  --lab-ring-label-opacity: 1;
+  --lab-ring-dimmed-opacity: .95;
+  --lab-ring-overlap-shadow: rgba(0, 0, 0, .03);
+  --lab-ring-end-shadow: rgba(0, 0, 0, .03);
+
+  /* Keep each ring's established hue; labels need more ink than the
+     translucent progress strokes on a white canvas. */
+  --lab-ring-sleep: #3b82a6;
+  --lab-ring-sleep-label: #01060a;
+  --lab-ring-recovery: #4f8b6b;
+  --lab-ring-recovery-label: #040e08;
+  --lab-ring-effort: #a47b42;
+  --lab-ring-effort-label: #110b02;
+  --lab-ring-calories: #916aa8;
+  --lab-ring-calories-label: #0f0814;
+
+  /* Monochrome categories retain their ordering; even the palest bar stays
+     visible at the existing .82 opacity on the subtle surface. */
+  --lab-category-fruit: #252525;
+  --lab-category-vegetable: #303030;
+  --lab-category-legume: #3b3b3b;
+  --lab-category-whole_grain: #464646;
+  --lab-category-refined_grain: #515151;
+  --lab-category-potato: #5c5c5c;
+  --lab-category-animal_protein: #676767;
+  --lab-category-plant_protein: #2a2a2a;
+  --lab-category-egg: #353535;
+  --lab-category-dairy: #404040;
+  --lab-category-nuts_seeds: #4b4b4b;
+  --lab-category-added_fat: #565656;
+  --lab-category-sauce: #616161;
+  --lab-category-sweet: #6c6c6c;
+  --lab-category-beverage: #727272;
+  --lab-category-other: #777777;
+}
+
+
+/* The original Observatory dark palette, selected independently of its layout.
+   Light remains the default when no saved color scheme has been chosen. */
+html[data-color-scheme="dark"] {
+  color-scheme: dark;
+  --lab-canvas: #050505;
+  --lab-surface: #080808;
+  --lab-surface-subtle: #0c0c0c;
+  --lab-surface-selected: #222222;
+  --lab-control-track: #0b0b0b;
+  --lab-rule: #292929;
+  --lab-rule-strong: #3a3a3a;
+  --lab-text-primary: #f1f1f1;
+  --lab-text-secondary: #aaaaaa;
+  --lab-text-muted: #858585;
+  --lab-brand: #eeeeee;
+  --lab-signal: #d5e5da;
+  --lab-signal-soft: #1e2d24;
+  --lab-error: #e2b2aa;
+  --lab-error-soft: #382a28;
+  --lab-on-error: #171717;
+  --lab-warning: #d5c397;
+  --lab-warning-soft: #342f25;
+  --lab-info: #adc5df;
+  --lab-info-soft: #273340;
+  --lab-ink-rgb: 241, 241, 241;
+  --lab-canvas-rgb: 5, 5, 5;
+  --lab-overlay: rgba(0, 0, 0, .62);
+  --lab-glass: rgba(8, 8, 8, .94);
+  --lab-brand-glow: rgba(238, 238, 238, .15);
+  --lab-shadow-subtle-color: rgba(0, 0, 0, .05);
+  --lab-shadow-popup-color: rgba(0, 0, 0, .30);
+  --lab-shadow-floating-color: rgba(0, 0, 0, .22);
+  --lab-shadow-control-color: rgba(0, 0, 0, .18);
+  --lab-backdrop-wash: .18;
+  --lab-backdrop-wash-middle: .30;
+  --lab-backdrop-wash-strong: .82;
+
+  /* Keep the established utility accents and chart scales in dark mode. */
+  --lab-tailwind-surface-elevated: #121212;
+  --lab-tailwind-surface-card: #0a0a0a;
+  --lab-tailwind-hairline: #1a1a1a;
+  --lab-tailwind-hairline-light: #262626;
+  --lab-tailwind-hairline-border: #1f1f1f;
+  --lab-tailwind-sage-muted: #8ba293;
+  --lab-tailwind-content-secondary: #888888;
+  --lab-tailwind-content-tertiary: #858585;
+
+  --lab-ring-track-color: #20282c;
+  --lab-ring-unknown-color: #50585a;
+  --lab-ring-label-stroke: rgba(9, 17, 20, .44);
+  --lab-ring-track-opacity: .18;
+  --lab-ring-progress-opacity: .28;
+  --lab-ring-label-opacity: .84;
+  /* Keep inactive numerals readable rather than the original .48 dimming. */
+  --lab-ring-dimmed-opacity: .95;
+  --lab-ring-overlap-shadow: rgba(0, 0, 0, .55);
+  --lab-ring-end-shadow: rgba(0, 0, 0, .60);
+  --lab-ring-sleep: #a9d8f2;
+  --lab-ring-sleep-label: #86bada;
+  --lab-ring-recovery: #a7e0c4;
+  --lab-ring-recovery-label: #83c4a4;
+  --lab-ring-effort: #f1c995;
+  --lab-ring-effort-label: #d0a46f;
+  --lab-ring-calories: #dfb9ef;
+  --lab-ring-calories-label: #b88cd1;
+
+  --lab-category-fruit: #f1f1f1;
+  --lab-category-vegetable: #dddddd;
+  --lab-category-legume: #c9c9c9;
+  --lab-category-whole_grain: #b5b5b5;
+  --lab-category-refined_grain: #a1a1a1;
+  --lab-category-potato: #8d8d8d;
+  --lab-category-animal_protein: #797979;
+  --lab-category-plant_protein: #e7e7e7;
+  --lab-category-egg: #d3d3d3;
+  --lab-category-dairy: #bfbfbf;
+  --lab-category-nuts_seeds: #ababab;
+  --lab-category-added_fat: #979797;
+  --lab-category-sauce: #838383;
+  --lab-category-sweet: #6f6f6f;
+  --lab-category-beverage: #5b5b5b;
+  --lab-category-other: #474747;
+}

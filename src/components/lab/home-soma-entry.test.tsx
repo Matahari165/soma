@@ -158,3 +158,22 @@ it("releases a stalled summary request while keeping the composer available", as
   expect(container.querySelector<HTMLTextAreaElement>("textarea")?.disabled).toBe(false);
   expect(fetch).toHaveBeenCalledTimes(1);
 });
+
+
+it("activates typing from the capsule surface without hijacking its action buttons", async () => {
+  const { container, textarea } = await mount();
+  const form = container.querySelector<HTMLFormElement>("form")!;
+  await act(async () => form.click());
+  expect(document.activeElement).toBe(textarea);
+  expect(textarea.rows).toBe(3);
+  await type(textarea, "Brouillon conservé");
+  const focus = vi.spyOn(textarea, "focus");
+  await act(async () => form.querySelector<HTMLSpanElement>("span")!.click());
+  expect(focus).toHaveBeenCalledOnce();
+  expect(textarea.value).toBe("Brouillon conservé");
+  focus.mockClear();
+  await act(async () => form.querySelector("button svg")!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  expect(focus).not.toHaveBeenCalled();
+  expect(push).toHaveBeenCalledWith("/assistant");
+  focus.mockRestore();
+});

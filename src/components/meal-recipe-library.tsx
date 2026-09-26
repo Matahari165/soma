@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, BookOpen, LoaderCircle, Pencil, Plus, Save, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { MealRecipeInput, MealRecipeView } from "@/domain/meal-recipes";
 
@@ -111,6 +111,12 @@ async function readResponse<T>(response: Response) {
 }
 
 export function MealRecipeLibrary({ initialRecipes, initialError, embedded = false, className }: MealRecipeLibraryProps) {
+  const sectionRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    // The parent reveal observer can see streamed HTML before this component
+    // hydrates. Register only after hydration so it cannot change SSR attrs.
+    if (sectionRef.current) sectionRef.current.dataset.revealReady = "true";
+  }, []);
   const Heading = embedded ? "h2" : "h1";
   const [recipes, setRecipes] = useState(initialRecipes);
   const [draft, setDraft] = useState(emptyDraft);
@@ -231,7 +237,7 @@ export function MealRecipeLibrary({ initialRecipes, initialError, embedded = fal
   }
 
   return (
-    <section className={[styles.page, embedded ? styles.embedded : "", className].filter(Boolean).join(" ")} aria-labelledby="recipe-library-title" aria-busy={retrying} data-scroll-reveal="recipes">
+    <section ref={sectionRef} data-reveal-ready="false" className={[styles.page, embedded ? styles.embedded : "", className].filter(Boolean).join(" ")} aria-labelledby="recipe-library-title" aria-busy={retrying} data-scroll-reveal="recipes">
       <header className={styles.header}>
         <div className={styles.heading}>
           {!embedded && <span className="eyebrow">Repères personnels</span>}

@@ -353,7 +353,7 @@
 .summaryRail {
   height: 4px;
   margin-top: 24px;
-  background: #686868;
+  background: var(--lab-surface-selected);
 }
 
 .summaryRail span {

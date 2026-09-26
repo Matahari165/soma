@@ -1,11 +1,11 @@
 html[data-lab-theme="index"] {
-  --index-bg: #090b0d;
-  --index-surface: #111619;
-  --index-surface-strong: #192023;
-  --index-ink: #eef2f1;
-  --index-muted: #a7b1b4;
-  --index-rule: #344045;
-  --index-accent: #d4dfe0;
+  --index-bg: var(--lab-canvas);
+  --index-surface: var(--lab-surface);
+  --index-surface-strong: var(--lab-surface-subtle);
+  --index-ink: var(--lab-text-primary);
+  --index-muted: var(--lab-text-secondary);
+  --index-rule: var(--lab-rule);
+  --index-accent: var(--lab-text-primary);
 }
 
 html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] {

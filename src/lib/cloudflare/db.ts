@@ -51,6 +51,132 @@ export function cloudflareArchives() {
   return bucket;
 }
 
+export type MealListAggregateRow = {
+  meal_row: Row;
+  photo_rows: Row[];
+  feelings_row: Row | null;
+  latest_analysis_row: Row | null;
+  last_successful_analysis_row: Row | null;
+};
+
+type D1MealListAggregateRow = {
+  meal_row: string;
+  photo_rows: string;
+  feelings_row: string | null;
+  latest_analysis_row: string | null;
+  last_successful_analysis_row: string | null;
+};
+
+function isIsoCalendarDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const timestamp = Date.parse(`${value}T00:00:00.000Z`);
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === value;
+}
+
+function isMissingMealListAggregate(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  const code = (error as Error & { code?: string }).code;
+  if ((code === "PGRST202" || code === "42883") && /soma_meal_list_aggregate/i.test(error.message)) return true;
+  return /Could not find the function public\.soma_meal_list_aggregate\b/i.test(error.message)
+    || /function public\.soma_meal_list_aggregate\s*\([^)]*\) does not exist/i.test(error.message);
+}
+
+function parseD1Json(value: string | null) {
+  return value === null ? null : JSON.parse(value) as Row;
+}
+
+/** Reads one bounded meal history window and all its child data in one database round trip. */
+export async function readMealListAggregate(userId: string, from: string | undefined, to: string | undefined): Promise<MealListAggregateRow[] | null> {
+  if (!userId.trim() || !from || !to || !isIsoCalendarDate(from) || !isIsoCalendarDate(to) || from > to) return null;
+
+  if (hasSupabaseRuntime()) {
+    try {
+      return await supabaseRequest<MealListAggregateRow[]>("rpc/soma_meal_list_aggregate", {
+        method: "POST",
+        body: JSON.stringify({ p_user_id: userId, p_from: from, p_to: to }),
+      });
+    } catch (error) {
+      // A rolling deploy can reach the server before this additive RPC migration.
+      // Only a missing-function response falls back to the legacy reader.
+      if (isMissingMealListAggregate(error)) return null;
+      throw error;
+    }
+  }
+
+  const result = await cloudflareDb().prepare(`
+    WITH selected_meals AS (
+      SELECT
+        meal.user_id,
+        meal.json_data AS meal_row,
+        (
+          SELECT child.json_data
+          FROM soma_rows child
+          WHERE child.table_name = 'meal_analyses'
+            AND child.user_id = meal.user_id
+            AND json_extract(child.json_data, '$.meal_id') = json_extract(meal.json_data, '$.id')
+          ORDER BY json_extract(child.json_data, '$.created_at') DESC, json_extract(child.json_data, '$.id') ASC
+          LIMIT 1
+        ) AS latest_analysis_row,
+        (
+          SELECT child.json_data
+          FROM soma_rows child
+          WHERE child.table_name = 'meal_analyses'
+            AND child.user_id = meal.user_id
+            AND json_extract(child.json_data, '$.meal_id') = json_extract(meal.json_data, '$.id')
+            AND json_extract(child.json_data, '$.status') = 'completed'
+            AND json_type(child.json_data, '$.result') IN ('object', 'array')
+          ORDER BY json_extract(child.json_data, '$.created_at') DESC, json_extract(child.json_data, '$.id') ASC
+          LIMIT 1
+        ) AS last_successful_analysis_row
+      FROM soma_rows meal
+      WHERE meal.table_name = 'meals'
+        AND meal.user_id = ?
+        AND json_extract(meal.json_data, '$.meal_date') >= ?
+        AND json_extract(meal.json_data, '$.meal_date') <= ?
+    )
+    SELECT
+      meal.meal_row,
+      COALESCE((
+        SELECT json_group_array(json(photo.json_data))
+        FROM (
+          SELECT child.json_data
+          FROM soma_rows child
+          WHERE child.table_name = 'meal_photos'
+            AND child.user_id = meal.user_id
+            AND json_extract(child.json_data, '$.meal_id') = json_extract(meal.meal_row, '$.id')
+          ORDER BY json_extract(child.json_data, '$.created_at') ASC, json_extract(child.json_data, '$.id') ASC
+        ) photo
+      ), '[]') AS photo_rows,
+      (
+        SELECT child.json_data
+        FROM soma_rows child
+        WHERE child.table_name = 'meal_feelings'
+          AND child.user_id = meal.user_id
+          AND json_extract(child.json_data, '$.meal_id') = json_extract(meal.meal_row, '$.id')
+        ORDER BY json_extract(child.json_data, '$.created_at') DESC, json_extract(child.json_data, '$.id') DESC
+        LIMIT 1
+      ) AS feelings_row,
+      meal.latest_analysis_row,
+      CASE
+        WHEN json_extract(meal.latest_analysis_row, '$.id') IS NOT json_extract(meal.last_successful_analysis_row, '$.id')
+          THEN meal.last_successful_analysis_row
+        ELSE NULL
+      END AS last_successful_analysis_row
+    FROM selected_meals meal
+    ORDER BY json_extract(meal.meal_row, '$.meal_date') DESC,
+      json_extract(meal.meal_row, '$.created_at') DESC, json_extract(meal.meal_row, '$.id') ASC
+  `).bind(userId, from, to).all<D1MealListAggregateRow>();
+  if (!result.success) throw new Error(result.error ?? "Meals could not be loaded from D1.");
+
+  return (result.results ?? []).map((row) => ({
+    meal_row: parseD1Json(row.meal_row) ?? {},
+    photo_rows: JSON.parse(row.photo_rows) as Row[],
+    feelings_row: parseD1Json(row.feelings_row),
+    latest_analysis_row: parseD1Json(row.latest_analysis_row),
+    last_successful_analysis_row: parseD1Json(row.last_successful_analysis_row),
+  }));
+}
+
 async function executeCloudflareRpc(name: string, parameters: Row) {
   const { executeCloudflareRpc: execute } = await import("@/lib/cloudflare/rpc");
   return execute(name, parameters);
@@ -313,9 +439,45 @@ export async function releaseCloudflareLockWithToken(lockKey: string, userId: st
   if (!result.success) throw new Error(result.error ?? "The operation lock could not be released.");
 }
 
+/** One live database read: deleted sessions/users and expired sessions cannot authenticate. */
+export async function sessionUserForHash(tokenHash: string, now: string, timeoutMs: number) {
+  const rows = await supabaseRequest<Array<{ expires_at: string; user: { id: string; email: string | null; display_name: string } }>>(supabasePath("soma_sessions", [
+    ["select", "expires_at,user:soma_users!inner(id,email,display_name)"],
+    ["token_hash", `eq.${tokenHash}`],
+    ["expires_at", `gt.${now}`],
+    ["limit", "1"],
+  ]), {}, timeoutMs);
+  const row = rows[0];
+  if (!row || !row.user || !Number.isFinite(Date.parse(row.expires_at)) || Date.parse(row.expires_at) <= Math.max(Date.parse(now), Date.now())) return null;
+  return row.user;
+}
+
+function missingReadAggregate(error: unknown) {
+  return error instanceof Error && /Could not find the function|function .* does not exist/i.test(error.message);
+}
+
+export async function healthDataCoverageAggregate(userId: string, dataTypes: readonly string[]) {
+  if (!hasSupabaseRuntime()) return null;
+  try {
+    const rows = await supabaseRequest<Array<import("@/domain/health/data-coverage").HealthDataCoverage>>("rpc/soma_health_data_coverage", {
+      method: "POST", body: JSON.stringify({ p_user_id: userId, p_data_types: dataTypes }),
+    });
+    return rows[0] ?? null;
+  } catch (error) {
+    // Rolling deployments remain usable until the migration is installed.
+    if (missingReadAggregate(error)) return null;
+    throw error;
+  }
+}
+
 export async function latestHealthRecordsByType(userId: string, dataTypes: readonly string[]) {
   if (!dataTypes.length) return [] as Array<{ data_type: string; civil_date: string | null; measured_at: string | null }>;
   if (hasSupabaseRuntime()) {
+    try {
+      return await supabaseRequest<Array<{ data_type: string; civil_date: string | null; measured_at: string | null }>>("rpc/soma_latest_health_records", { method: "POST", body: JSON.stringify({ p_user_id: userId, p_data_types: dataTypes }) });
+    } catch (error) {
+      if (!missingReadAggregate(error)) throw error;
+    }
     const result = await createCloudflareAdminClient().from("health_records").select("data_type,civil_date,measured_at").eq("user_id", userId).in("data_type", [...dataTypes]);
     if (result.error) throw new Error(result.error.message);
     const latest = new Map<string, { data_type: string; civil_date: string | null; measured_at: string | null }>();
@@ -356,6 +518,11 @@ export async function latestHealthRecordsByType(userId: string, dataTypes: reado
 
 export async function healthSyncDiagnostics(userId: string, dataTypes: readonly string[]) {
   if (hasSupabaseRuntime()) {
+    try {
+      return await supabaseRequest<{ importedRecords: Record<string, number>; analytics: { datedRecords: number; metricDays: number; scoreRows: number } }>("rpc/soma_health_sync_diagnostics", { method: "POST", body: JSON.stringify({ p_user_id: userId, p_data_types: dataTypes }) });
+    } catch (error) {
+      if (!missingReadAggregate(error)) throw error;
+    }
     const [healthResult, analyticsResult] = await Promise.all([
       createCloudflareAdminClient().from("health_records").select("data_type,civil_date").eq("user_id", userId).in("data_type", [...dataTypes]),
       createCloudflareAdminClient().from("daily_health_metrics").select("id").eq("user_id", userId),

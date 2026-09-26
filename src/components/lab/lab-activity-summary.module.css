@@ -1,0 +1,16 @@
+.slot {
+  min-height: 164px;
+}
+
+.state {
+  display: block;
+  margin: 24px 0 0;
+  color: var(--world-muted, var(--lab-text-secondary));
+  font: 12px/1.35 var(--font-soma-mono), ui-monospace, monospace;
+}
+
+@media (max-width: 700px) {
+  .state {
+    margin-top: 20px;
+  }
+}

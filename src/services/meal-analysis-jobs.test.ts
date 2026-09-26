@@ -12,7 +12,10 @@ const state = vi.hoisted(() => ({
   listQueuedMealAnalyses: vi.fn(),
   updateMealAnalysis: vi.fn(),
   updateMeal: vi.fn(),
-  listFailedMealAnalyses: vi.fn(),
+  listRetryableFailedMealAnalyses: vi.fn(),
+  listFailedMealAnalysesForPhotoPurge: vi.fn(),
+  listMealPhotosForFailedAnalysisPurge: vi.fn(),
+  updatePhotoStorage: vi.fn(),
   listMealPhotoRowsForReconciliation: vi.fn(),
   findRelevantMealRecipeReferences: vi.fn(),
   analyzeMealInputWithFallback: vi.fn(),
@@ -22,6 +25,7 @@ const state = vi.hoisted(() => ({
   releaseCloudflareLock: vi.fn(),
   releaseCloudflareLockWithToken: vi.fn(),
   getR2MealPhotoObject: vi.fn(),
+  deleteR2MealPhotoObject: vi.fn(),
 }));
 
 vi.mock("@/repositories/meals", async (importOriginal) => ({
@@ -35,7 +39,10 @@ vi.mock("@/repositories/meals", async (importOriginal) => ({
   listQueuedMealAnalyses: state.listQueuedMealAnalyses,
   updateMealAnalysis: state.updateMealAnalysis,
   updateMeal: state.updateMeal,
-  listFailedMealAnalyses: state.listFailedMealAnalyses,
+  listRetryableFailedMealAnalyses: state.listRetryableFailedMealAnalyses,
+  listFailedMealAnalysesForPhotoPurge: state.listFailedMealAnalysesForPhotoPurge,
+  listMealPhotosForFailedAnalysisPurge: state.listMealPhotosForFailedAnalysisPurge,
+  updatePhotoStorage: state.updatePhotoStorage,
   listMealPhotoRowsForReconciliation: state.listMealPhotoRowsForReconciliation,
 }));
 vi.mock("@/lib/cloudflare/db", () => ({
@@ -45,14 +52,14 @@ vi.mock("@/lib/cloudflare/db", () => ({
   releaseCloudflareLock: state.releaseCloudflareLock,
   releaseCloudflareLockWithToken: state.releaseCloudflareLockWithToken,
 }));
-vi.mock("@/lib/r2", () => ({ deleteR2MealPhotoObject: vi.fn(), getR2MealPhotoObject: state.getR2MealPhotoObject, mealPhotoObjectPath: vi.fn(), putR2MealPhotoObject: vi.fn() }));
+vi.mock("@/lib/r2", () => ({ deleteR2MealPhotoObject: state.deleteR2MealPhotoObject, getR2MealPhotoObject: state.getR2MealPhotoObject, mealPhotoObjectPath: vi.fn(), putR2MealPhotoObject: vi.fn() }));
 vi.mock("@/services/meal-recipes", () => ({ findRelevantMealRecipeReferences: state.findRelevantMealRecipeReferences }));
 vi.mock("@/integrations/meal-analysis/provider-chain", () => ({
   analyzeMealInputWithFallback: state.analyzeMealInputWithFallback,
   getConfiguredMealAnalysisProvider: vi.fn(() => ({ name: "xai", model: "grok-4.6" })),
 }));
 
-import { enqueueMealAnalysis, loadMealPhotoForAnalysis, processNextMealAnalysis } from "./meals";
+import { enqueueMealAnalysis, loadMealPhotoForAnalysis, processNextMealAnalysis, purgeExpiredFailedAnalysisPhotos, requeueRetryableMealAnalyses } from "./meals";
 
 const mealId = "12345678-1234-1234-1234-123456789012";
 const meal = {
@@ -120,7 +127,11 @@ describe("durable meal analysis jobs", () => {
     state.releaseCloudflareLockWithToken.mockResolvedValue(undefined);
     state.updateMealAnalysis.mockImplementation(async (_userId: string, _id: string, values: Record<string, unknown>) => rowToAnalysis(values));
     state.updateMeal.mockResolvedValue(null);
-    state.listFailedMealAnalyses.mockResolvedValue([]);
+    state.listRetryableFailedMealAnalyses.mockResolvedValue([]);
+    state.listFailedMealAnalysesForPhotoPurge.mockResolvedValue([]);
+    state.listMealPhotosForFailedAnalysisPurge.mockResolvedValue([]);
+    state.updatePhotoStorage.mockResolvedValue({ storage_status: "purged" });
+    state.deleteR2MealPhotoObject.mockResolvedValue(undefined);
     state.listMealPhotoRowsForReconciliation.mockResolvedValue([]);
   });
 
@@ -162,12 +173,102 @@ describe("durable meal analysis jobs", () => {
     }]);
     state.analyzeMealInputWithFallback.mockResolvedValue({ provider: "xai", model: "grok-4.6", result: canonicalResult });
 
-    const result = await processNextMealAnalysis();
+    const result = await processNextMealAnalysis(undefined, { retriesAlreadyScanned: true });
 
     expect(result).toMatchObject({ processed: true, analysis: { status: "completed" } });
     expect(state.updateMealAnalysis).toHaveBeenNthCalledWith(1, "user-1", queuedAnalysis.id, expect.objectContaining({ status: "running", attempts: 2, lease_token: "lease-token" }), "queued");
     expect(state.updateMealAnalysis).toHaveBeenLastCalledWith("user-1", queuedAnalysis.id, expect.objectContaining({ status: "completed", result: canonicalResult, lease_token: null }), "running", "lease-token");
     expect(state.analyzeMealInputWithFallback).toHaveBeenCalledWith(expect.objectContaining({ mealType: "lunch", mealDate: "2026-09-14", note: "Riz et légumes", images: [] }), { requestId: "analysis-request-3" });
+    expect(state.listRetryableFailedMealAnalyses).not.toHaveBeenCalled();
+  });
+
+  it("purges expired analysis photos from minimal rows and marks the failure terminal", async () => {
+    const expired = {
+      id: "analysis-expired",
+      user_id: "user-1",
+      meal_id: mealId,
+      status: "failed",
+      failure_started_at: new Date(Date.now() - 25 * 60 * 60_000).toISOString(),
+      source_photo_ids: ["photo-expired"],
+    };
+    state.listFailedMealAnalysesForPhotoPurge.mockResolvedValueOnce([expired]).mockResolvedValueOnce([]);
+    state.listMealPhotosForFailedAnalysisPurge.mockResolvedValue([{ id: "photo-expired", objectPath: "user/meal/photo.jpg", storageStatus: "available" }]);
+
+    const first = await purgeExpiredFailedAnalysisPhotos();
+    const second = await purgeExpiredFailedAnalysisPhotos();
+
+    expect(first).toBe(1);
+    expect(second).toBe(0);
+    expect(state.findMeal).not.toHaveBeenCalled();
+    expect(state.listMealPhotosForFailedAnalysisPurge).toHaveBeenCalledWith("user-1", mealId, ["photo-expired"]);
+    expect(state.updatePhotoStorage).toHaveBeenNthCalledWith(1, "user-1", mealId, "photo-expired", { storageStatus: "purge_pending", purgedAt: null });
+    expect(state.updatePhotoStorage).toHaveBeenNthCalledWith(2, "user-1", mealId, "photo-expired", { storageStatus: "purged", purgedAt: expect.any(String) });
+    expect(state.updateMealAnalysis).toHaveBeenCalledWith("user-1", "analysis-expired", { photo_purge_completed_at: expect.any(String) }, "failed");
+  });
+
+  it("requeues only due, recent retry candidates returned by the narrow repository query", async () => {
+    const now = Date.now();
+    const failedAt = new Date(now - 3 * 60 * 60_000).toISOString();
+    const row = {
+      id: "analysis-retryable",
+      user_id: "user-1",
+      status: "failed",
+      error_code: "provider_timeout",
+      attempts: 1,
+      failure_started_at: failedAt,
+      retry_after_at: new Date(now - 1_000).toISOString(),
+      completed_at: failedAt,
+    };
+    state.listRetryableFailedMealAnalyses.mockResolvedValue([row]);
+
+    const count = await requeueRetryableMealAnalyses(now);
+
+    expect(count).toBe(1);
+    expect(state.listRetryableFailedMealAnalyses).toHaveBeenCalledWith(expect.objectContaining({
+      now: new Date(now).toISOString(),
+      retentionCutoff: new Date(now - 24 * 60 * 60_000).toISOString(),
+      maxAttempts: 3,
+      retryableCodes: expect.arrayContaining(["provider_timeout"]),
+      limit: 100,
+    }));
+    expect(state.updateMealAnalysis).toHaveBeenCalledWith("user-1", "analysis-retryable", expect.objectContaining({ status: "queued", retry_after_at: null }), "failed");
+  });
+
+  it("does not purge photos added after an analysis with an empty photo snapshot", async () => {
+    state.listFailedMealAnalysesForPhotoPurge.mockResolvedValue([{
+      id: "analysis-note-only",
+      user_id: "user-1",
+      meal_id: mealId,
+      status: "failed",
+      failure_started_at: new Date(Date.now() - 25 * 60 * 60_000).toISOString(),
+      source_photo_ids: [],
+    }]);
+    state.listMealPhotosForFailedAnalysisPurge.mockResolvedValue([]);
+
+    await expect(purgeExpiredFailedAnalysisPhotos()).resolves.toBe(0);
+
+    expect(state.listMealPhotosForFailedAnalysisPurge).toHaveBeenCalledWith("user-1", mealId, []);
+    expect(state.deleteR2MealPhotoObject).not.toHaveBeenCalled();
+    expect(state.updateMealAnalysis).toHaveBeenCalledWith("user-1", "analysis-note-only", { photo_purge_completed_at: expect.any(String) }, "failed");
+  });
+
+  it("leaves the terminal marker unset when R2 cleanup fails so the next cron can retry", async () => {
+    const expired = {
+      id: "analysis-expired",
+      user_id: "user-1",
+      meal_id: mealId,
+      status: "failed",
+      failure_started_at: new Date(Date.now() - 25 * 60 * 60_000).toISOString(),
+      source_photo_ids: ["photo-expired"],
+    };
+    state.listFailedMealAnalysesForPhotoPurge.mockResolvedValue([expired]);
+    state.listMealPhotosForFailedAnalysisPurge.mockResolvedValue([{ id: "photo-expired", objectPath: "user/meal/photo.jpg", storageStatus: "available" }]);
+    state.deleteR2MealPhotoObject.mockRejectedValue(new Error("temporary R2 error"));
+
+    await expect(purgeExpiredFailedAnalysisPhotos()).resolves.toBe(0);
+
+    expect(state.updatePhotoStorage).toHaveBeenCalledWith("user-1", mealId, "photo-expired", { storageStatus: "purge_pending", purgedAt: null });
+    expect(state.updateMealAnalysis).not.toHaveBeenCalledWith("user-1", "analysis-expired", expect.objectContaining({ photo_purge_completed_at: expect.any(String) }), "failed");
   });
 
   it("retries a response-schema failure with Luna and a validation hint", async () => {
@@ -195,14 +296,6 @@ describe("durable meal analysis jobs", () => {
     expect(firstAttempt).toMatchObject({ processed: true, analysis: { status: "failed" } });
     expect(state.analyzeMealInputWithFallback).toHaveBeenCalledTimes(1);
 
-    state.listFailedMealAnalyses.mockResolvedValueOnce([{
-      ...candidate,
-      status: "failed",
-      attempts: 1,
-      error_code: "response_schema_error",
-      retry_after_at: new Date(Date.now() - 1_000).toISOString(),
-      completed_at: new Date().toISOString(),
-    }]);
     state.listQueuedMealAnalyses.mockResolvedValueOnce([{
       ...candidate,
       attempts: 1,

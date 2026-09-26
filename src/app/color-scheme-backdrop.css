@@ -1,0 +1,16 @@
+/* Les deux photos partagent le cadrage et le mouvement du héros. */
+html[data-lab-theme="observatory"]:not([data-color-scheme="dark"]) .arrival-backdrop__image--dark,
+html[data-lab-theme="observatory"][data-color-scheme="dark"] .arrival-backdrop__image--light {
+  display:none;
+}
+
+html[data-lab-theme="observatory"]:not([data-color-scheme="dark"]) .arrival-backdrop__image--light {
+  filter:none;
+}
+
+/* Un voile plus léger laisse voir la photo ; les petites métadonnées gardent
+   une encre assez foncée sur les sommets, même au bord gauche du dégradé. */
+html[data-lab-theme="observatory"]:not([data-color-scheme="dark"]) .lab-intro {
+  --lab-text-secondary: #414141;
+  --lab-text-muted: #414141;
+}

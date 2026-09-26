@@ -49,6 +49,7 @@ export const labMatrixRevisionTables = [
   "journal_entries",
   "journal_days",
   "lab_metric_preferences",
+  "nutrition_targets",
 ] as const;
 
 const labMatrixRevisionTableSet = new Set<string>(labMatrixRevisionTables);

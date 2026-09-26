@@ -9,14 +9,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  background: rgba(11, 15, 19, 0.94);
+  background: rgba(var(--lab-canvas-rgb), 0.94);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid #29383f;
+  border-bottom: 1px solid var(--lab-rule);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   font-family: var(--font-soma-mono, monospace);
   font-size: 11px;
-  color: #edf4f5;
+  color: var(--lab-text-primary);
 }
 
 .brandGroup {
@@ -29,7 +29,7 @@
 .brandLabel {
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: #48b376;
+  color: var(--lab-text-muted);
   text-transform: uppercase;
 }
 
@@ -37,9 +37,9 @@
   display: inline-flex;
   align-items: center;
   padding: 2px 6px;
-  background: rgba(46, 122, 79, 0.2);
-  color: #76b88e;
-  border: 1px solid rgba(46, 122, 79, 0.35);
+  background: rgba(var(--lab-ink-rgb), 0.2);
+  color: var(--lab-text-secondary);
+  border: 1px solid rgba(var(--lab-ink-rgb), 0.35);
   border-radius: 2px;
   font-size: 9px;
   letter-spacing: 0.04em;
@@ -50,10 +50,10 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  background: #11171c;
+  background: var(--lab-surface-subtle);
   padding: 2px 3px;
   border-radius: 4px;
-  border: 1px solid #29383f;
+  border: 1px solid var(--lab-rule);
 }
 
 .variantButton {
@@ -65,7 +65,7 @@
   border: 0;
   border-radius: 3px;
   background: transparent;
-  color: #a6b5b9;
+  color: var(--lab-text-secondary);
   font-family: var(--font-soma-mono, monospace);
   font-size: 11px;
   font-weight: 500;
@@ -75,25 +75,25 @@
 }
 
 .variantButton:hover {
-  background: #182229;
-  color: #edf4f5;
+  background: var(--lab-surface-selected);
+  color: var(--lab-text-primary);
 }
 
 .variantButton[data-active="true"] {
-  background: #2e7a4f;
-  color: #ffffff;
+  background: var(--lab-surface-selected);
+  color: var(--lab-text-primary);
   font-weight: 600;
   box-shadow: 0 1px 4px rgba(46, 122, 79, 0.4);
 }
 
 .variantOffButton {
-  color: #8c9ea2;
+  color: var(--lab-text-secondary);
   opacity: 0.85;
 }
 
 .variantOffButton[data-active="true"] {
-  background: #3a4b52;
-  color: #ffffff;
+  background: var(--lab-surface-selected);
+  color: var(--lab-text-primary);
   opacity: 1;
 }
 
@@ -109,10 +109,10 @@
   gap: 6px;
   min-height: 28px;
   padding: 0 10px;
-  border: 1px solid #29383f;
+  border: 1px solid var(--lab-rule);
   border-radius: 3px;
-  background: #11171c;
-  color: #a6b5b9;
+  background: var(--lab-surface-subtle);
+  color: var(--lab-text-secondary);
   font-family: var(--font-soma-mono, monospace);
   font-size: 10px;
   font-weight: 500;
@@ -121,14 +121,14 @@
 }
 
 .viewToggle:hover {
-  background: #182229;
-  color: #edf4f5;
+  background: var(--lab-surface-selected);
+  color: var(--lab-text-primary);
 }
 
 .viewToggle[data-active="true"] {
-  border-color: #48b376;
-  background: rgba(46, 122, 79, 0.2);
-  color: #48b376;
+  border-color: var(--lab-rule-strong);
+  background: rgba(var(--lab-ink-rgb), 0.2);
+  color: var(--lab-text-muted);
   font-weight: 600;
 }
 

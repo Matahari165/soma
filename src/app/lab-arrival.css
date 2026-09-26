@@ -81,13 +81,13 @@ html[data-lab-theme] .app-shell:has(.lab-discrete[data-arrival="true"]) .main-co
 }
 @keyframes arrival-enter { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
 /* Focus: a quiet central instrument with three compact access points. */
-.lab-arrival[data-arrival-theme="focus"] { background:#101715; }
+.lab-arrival[data-arrival-theme="focus"] { background:var(--lab-surface-subtle); }
 [data-arrival-theme="focus"] .arrival-composition { display:grid; grid-template-columns:1fr 1fr; align-content:center; max-width:1080px; margin:auto; min-height:650px; gap:42px; }
 [data-arrival-theme="focus"] .arrival-heading { grid-column:1; align-self:center; z-index:1; }
 [data-arrival-theme="focus"] .arrival-heading h1 { font-family:Georgia,serif; font-size:clamp(48px,5vw,72px); line-height:1.12; font-weight:400; letter-spacing:-.04em; margin-top:22px; }
-[data-arrival-theme="focus"] .arrival-art { grid-column:2; grid-row:1; width:100%; height:330px; color:#adccbe; }
+[data-arrival-theme="focus"] .arrival-art { grid-column:2; grid-row:1; width:100%; height:330px; color:var(--lab-text-secondary); }
 [data-arrival-theme="focus"] .arrival-actions { grid-column:1 / -1; display:grid; grid-template-columns:1fr 1fr 1fr; gap:28px; }
-[data-arrival-theme="focus"] .arrival-action { display:grid; grid-template-columns:1fr auto; gap:14px; padding:18px 0; border-top:1px solid #52645b; transition:background 200ms; }
+[data-arrival-theme="focus"] .arrival-action { display:grid; grid-template-columns:1fr auto; gap:14px; padding:18px 0; border-top:1px solid var(--lab-rule-strong); transition:background 200ms; }
 [data-arrival-theme="focus"] .arrival-action strong { font-size:24px; grid-column:1; }
 [data-arrival-theme="focus"] .arrival-action-number { grid-column:1 / -1; }
 [data-arrival-theme="focus"] .arrival-action-caption { grid-column:1; }

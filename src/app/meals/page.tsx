@@ -27,6 +27,7 @@ import { listMeals, loadConfirmedMealRecords } from "@/services/meals";
 import { loadDailyNutritionTargetsForUser } from "@/services/nutrition-targets";
 import { loadActiveGoal } from "@/services/active-goals";
 
+import recipeStyles from "@/components/meal-recipe-library.module.css";
 import styles from "./meals-page.module.css";
 
 export const metadata: Metadata = { title: { absolute: "Soma" } };
@@ -81,7 +82,22 @@ function formatShortDate(value: string) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(`${value}T12:00:00`));
 }
 
+async function MealsRecipeSection({ result }: { result: Promise<{ recipes: MealRecipe[]; error: string | undefined }> }) {
+  const { recipes, error } = await result;
+  return <MealRecipeLibrary initialRecipes={recipes.map(mealRecipeToView)} initialError={error} embedded className="meals-page-recipes" />;
+}
+
 async function MealsPageContent({ searchParams, user }: MealsPageProps & { user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>> }) {
+  // Recipes are independent of the date, journal, and score. Start the read
+  // now, but await it only inside its own streaming boundary.
+  const recipesPromise = listMealRecipes(user.id)
+    .then((recipes) => ({ recipes, error: undefined as string | undefined }))
+    .catch((error) => ({ recipes: [] as MealRecipe[], error: error instanceof MealRecipeServiceError ? error.message : "Personal recipes are temporarily unavailable." }));
+  // The goal is independent of the selected date and profile timezone.
+  const goalPromise = loadSafely(async () => {
+    if (isLocalPreviewMode()) return previewProfile.primaryGoal;
+    return (await loadActiveGoal(user.id)).type;
+  });
   const params = await searchParams;
   let timeZone = "Europe/Paris";
   if (!isLocalPreviewMode()) {
@@ -92,26 +108,15 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
   const requestedDate = typeof params.date === "string" && isIsoDate(params.date) && params.date <= today ? params.date : today;
   const historyFrom = addDays(requestedDate, -29);
 
-  const [mealResult, recipeResult, nutritionResult, targetsResult, goalResult] = await Promise.all([
+  const [mealResult, nutritionResult, targetsResult, goalResult] = await Promise.all([
     isLocalPreviewMode()
       ? loadSafely(() => listPreviewMeals(user.id, { from: historyFrom, to: requestedDate }))
       : loadSafely(() => listMeals(user.id, { from: historyFrom, to: requestedDate })),
-    listMealRecipes(user.id)
-      .then((value) => ({ recipes: value, error: undefined }))
-      .catch((error) => ({
-        recipes: [] as MealRecipe[],
-        error: error instanceof MealRecipeServiceError
-          ? error.message
-          : "Personal recipes are temporarily unavailable.",
-      })),
     isLocalPreviewMode()
       ? loadSafely(() => loadPreviewConfirmedMealRecords(user.id).filter((record) => record.mealDate >= historyFrom && record.mealDate <= requestedDate))
       : loadSafely(() => loadConfirmedMealRecords(user.id, { from: historyFrom, to: requestedDate })),
     loadSafely(() => loadDailyNutritionTargetsForUser(user.id, requestedDate)),
-    loadSafely(async () => {
-      if (isLocalPreviewMode()) return previewProfile.primaryGoal;
-      return (await loadActiveGoal(user.id)).type;
-    }),
+    goalPromise,
   ]);
 
   const records = mealResult.ok ? mealsForDate(mealResult.value, requestedDate).map((meal) => apiMealToRecord(mealToApi(meal))) : [];
@@ -146,7 +151,27 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
         {initialData ? (
           <section className={`${styles.journal} meals-page-journal`} aria-labelledby="meals-journal-title" data-scroll-reveal="journal">
             <h2 id="meals-journal-title" className={styles.visuallyHidden}>Meal journal</h2>
-            <MealJournal date={requestedDate} today={today} initialData={initialData} variant="lab" className="meal-journal-lab" historyDays={7} publishMealTotals readOnly showCalorieProgress={false} />
+            <MealJournal
+              date={requestedDate}
+              today={today}
+              initialData={initialData}
+              initialTargets={targetsResult.ok ? targetsResult.value.targets : undefined}
+              initialEffectiveTargets={targetsResult.ok ? targetsResult.value.effectiveTargets : undefined}
+              initialEffortTargetContext={targetsResult.ok ? {
+                effortScore: targetsResult.value.effortScore,
+                effortCoverage: targetsResult.value.effortCoverage,
+                averageEffortScore: targetsResult.value.averageEffortScore,
+              } : undefined}
+              initialTargetsPersisted={targetsResult.ok ? targetsResult.value.persisted : undefined}
+              initialTargetsFresh={targetsResult.ok}
+              initialTargetsDate={targetsResult.ok ? requestedDate : undefined}
+              variant="lab"
+              className="meal-journal-lab"
+              historyDays={7}
+              publishMealTotals
+              readOnly
+              showCalorieProgress={false}
+            />
           </section>
         ) : <MealsInitialLoadError kind="meals" />}
         {nutritionResult.ok
@@ -158,7 +183,9 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
             className="meals-page-trends"
           />
           : <MealsInitialLoadError kind="nutrition" />}
-        <MealRecipeLibrary initialRecipes={recipeResult.recipes.map(mealRecipeToView)} initialError={recipeResult.error} embedded className="meals-page-recipes" />
+        <Suspense fallback={<section className={`${recipeStyles.page} ${recipeStyles.embedded} meals-page-recipes`} aria-busy="true" aria-label="Loading personal recipes"><header className={recipeStyles.header}><div className={recipeStyles.heading}><h2>Recettes habituelles</h2><p className={recipeStyles.embeddedExplainer}>Repères indicatifs : la photo et la note du jour priment.</p></div></header><div className={recipeStyles.empty} role="status">Chargement des recettes…</div></section>}>
+        <MealsRecipeSection result={recipesPromise} />
+      </Suspense>
         <footer className={styles.provenance} aria-label="Nutrition data provenance" data-scroll-reveal="provenance">
           <h2 className={styles.visuallyHidden}>Provenance</h2>
           <p>Confirmed meals logged in Soma · Score and totals calculated by Soma from confirmed meals only</p>

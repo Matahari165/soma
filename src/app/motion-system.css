@@ -6,30 +6,35 @@
   --soma-motion-feedback: 165ms;
   --soma-motion-state: 240ms;
   --soma-motion-exit: 180ms;
-  --soma-motion-enter: 680ms;
-  --soma-motion-distance: 10px;
+  --soma-motion-enter: 420ms;
+  --soma-motion-distance: 4px;
 
   /* Radars enter as one calm, shared sequence on every health surface. */
   --soma-radar-fill-name: soma-radar-fill;
   --soma-radar-trace-name: soma-radar-trace;
   --soma-radar-point-name: soma-radar-point;
-  --soma-radar-fill-duration: 900ms;
-  --soma-radar-trace-duration: 760ms;
-  --soma-radar-point-duration: 300ms;
-  --soma-radar-fill-delay: 120ms;
-  --soma-radar-trace-delay: 150ms;
-  --soma-radar-point-delay: 700ms;
-  --soma-radar-stagger: 90ms;
+  --soma-radar-fill-duration: 760ms;
+  --soma-radar-trace-duration: 520ms;
+  --soma-radar-point-duration: 170ms;
+  --soma-radar-fill-delay: 80ms;
+  --soma-radar-trace-delay: 100ms;
+  --soma-radar-point-delay: 440ms;
+  --soma-radar-stagger: 65ms;
 }
 
-/* CSS entrance runs without changing server-rendered attributes during hydration. */
+/* Every route enters with one calm fade, including its title.
+   Content is visible by default; only the finite CSS animation fades it. */
 @keyframes soma-page-enter {
-  from { opacity: 0; transform: translate3d(0, var(--soma-motion-distance), 0); }
-  to { opacity: 1; transform: translate3d(0, 0, 0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* Routine navigation fades once; child data keeps its own authored entrance. */
-.soma-motion-route, .soma-motion-state {
+#main-page-content {
+  animation: soma-page-enter var(--soma-motion-enter) var(--soma-ease-state) both;
+}
+
+/* State feedback is separate from the single route entrance. */
+.soma-motion-state {
   animation: soma-state-enter var(--soma-motion-state) var(--soma-ease-state);
 }
 
@@ -78,23 +83,14 @@
   }
 }
 
-/* One restrained authored entrance for the landing scene. */
-.lab-continuous .arrival-masthead,
-.lab-continuous .arrival-heading,
-.lab-continuous .arrival-journal-progress,
-.lab-continuous .arrival-artwork {
-  animation-timing-function: var(--soma-ease-enter) !important;
-  animation-fill-mode: both !important;
-}
-
-.lab-continuous .arrival-masthead { animation-duration: 620ms !important; }
-.lab-continuous .arrival-heading { animation-duration: 760ms !important; animation-delay: 60ms; }
-.lab-continuous .arrival-journal-progress { animation: soma-scene-enter 720ms var(--soma-ease-enter) 120ms both; }
-.lab-continuous .arrival-artwork { animation-duration: 860ms !important; animation-delay: 170ms; }
-
-@keyframes soma-scene-enter {
-  from { opacity: 0; transform: translate3d(0, 8px, 0); }
-  to { opacity: 1; transform: translate3d(0, 0, 0); }
+/* The route owns the entrance; remove nested title masks and scene staggers
+   so text cannot jump, unfold or fade twice during hydration. */
+.lab-continuous :is(.arrival-masthead, .arrival-heading, .arrival-journal-progress, .arrival-artwork),
+.lab-continuous .arrival-title-line > span {
+  animation: none !important;
+  opacity: 1;
+  transform: none;
+  clip-path: none;
 }
 
 /* A radar is a measured shape: let it grow from the centre, draw its trace,
@@ -169,14 +165,15 @@ details > summary {
 
 @media (max-width: 700px) {
   :root {
-    --soma-motion-enter: 620ms;
-    --soma-motion-distance: 8px;
+    --soma-motion-enter: 420ms;
+    --soma-motion-distance: 4px;
   }
 
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .soma-motion-route, .soma-motion-state, .soma-motion-overlay { animation: none !important; transition: none !important; }
+  #main-page-content { animation: none !important; opacity: 1; }
+  .soma-motion-state, .soma-motion-overlay { animation: none !important; transition: none !important; }
   .soma-motion-disclosure { transition: none; }
   details::details-content { transition: none !important; }
   .lab-global-nav__more-panel { transition: none !important; }

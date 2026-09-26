@@ -1,0 +1,28 @@
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--lab-text-secondary);
+  cursor: pointer;
+}
+.toggle:hover { color: var(--lab-text-primary); background: var(--lab-surface-selected); }
+.toggle:focus-visible { outline: 2px solid var(--lab-text-primary); outline-offset: 3px; }
+.toggle svg { width: 18px; height: 18px; }
+.toggle .moon { display: block; }
+.toggle .sun { display: none; }
+:global(html[data-color-scheme="dark"]) .toggle .moon { display: none; }
+:global(html[data-color-scheme="dark"]) .toggle .sun { display: block; }
+.mobileSettingsSlot { display: flex; align-items: center; min-width: 0; }
+.desktopSlot { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.desktopSlot > :global(.lab-global-nav__settings) { margin-left: 0; padding-left: 0; border-left: 0; }
+@media (max-width: 700px) {
+  .desktopSlot { display: none; }
+  .mobile { width: 44px; height: 48px; justify-self: start; }
+}

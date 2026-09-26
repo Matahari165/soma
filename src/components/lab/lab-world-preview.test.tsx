@@ -2,6 +2,7 @@ import { type ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 
 import type { PersonalLabJournal, PersonalLabOverview } from "@/services/personal-lab";
+import type { PersonalLabActivitySummariesResult } from "@/domain/lab/activity-summary";
 import { LabWorldJournalPreview, LabWorldPreview } from "./lab-world-preview";
 import { LabWorldWorkspace } from "./lab-world-workspace";
 import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
@@ -54,15 +55,17 @@ describe("LabWorldPreview progressive rendering", () => {
         resolve(value);
       };
     });
+    const activitySummariesPromise = new Promise<PersonalLabActivitySummariesResult>(() => undefined);
 
-    const shell = await LabWorldPreview({ stream: { overview: Promise.resolve(overview()), journal: journalPromise } });
+    const shell = await LabWorldPreview({ stream: { overview: Promise.resolve(overview()), journal: journalPromise }, activitySummariesPromise });
 
     expect(shell).toMatchObject({ type: LabWorldWorkspace });
     expect(journalSettled).toBe(false);
-    const workspaceProps = (shell as ReactElement<{ journalPromise: Promise<PersonalLabJournal>; overview: PersonalLabOverview }>).props;
+    const workspaceProps = (shell as ReactElement<{ journalPromise: Promise<PersonalLabJournal>; overview: PersonalLabOverview; activitySummariesPromise: Promise<PersonalLabActivitySummariesResult> }>).props;
     const streamedJournalPromise = workspaceProps.journalPromise;
     expect(streamedJournalPromise).toBe(journalPromise);
     expect(workspaceProps.overview).toEqual(overview());
+    expect(workspaceProps.activitySummariesPromise).toBe(activitySummariesPromise);
     expect(resolveJournal).toBeTypeOf("function");
   });
 

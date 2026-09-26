@@ -211,14 +211,36 @@ export function exerciseIsInPeriod(date: string, referenceDate: string, days: Ac
   return value >= start && value <= end;
 }
 
-export function ActivityHistory({ exercises, referenceDate, timezone = "UTC" }: { exercises: ExerciseSummary[]; referenceDate: string; timezone?: string }) {
+export function ActivityHistory({ exercises, referenceDate, timezone = "UTC", historyRevision }: { exercises: ExerciseSummary[]; referenceDate: string; timezone?: string; historyRevision?: string | null }) {
   const [filter, setFilter] = useState<ActivityFilter>("all");
   const [period, setPeriod] = useState<ActivityPeriod>(30);
   const [periodOpen, setPeriodOpen] = useState(false);
   const [filtersWereUsed, setFiltersWereUsed] = useState(false);
+  const historyKey = useMemo(() => JSON.stringify([referenceDate, historyRevision, exercises]), [referenceDate, historyRevision, exercises]);
+  const [history, setHistory] = useState<{ key: string; exercises: ExerciseSummary[] } | null>(null);
+  const [failedHistoryKey, setFailedHistoryKey] = useState<string | null>(null);
+  const historyError = failedHistoryKey === historyKey;
+  const [historyRetry, setHistoryRetry] = useState(0);
+  const loadedHistory = history?.key === historyKey ? history.exercises : null;
+  const historyLoading = filtersWereUsed && loadedHistory === null && !historyError;
+  useEffect(() => {
+    if (!filtersWereUsed || loadedHistory !== null) return;
+    const controller = new AbortController();
+    const from = new Date(`${referenceDate}T12:00:00Z`);
+    from.setUTCDate(from.getUTCDate() - 179);
+    const params = new URLSearchParams({ from: from.toISOString().slice(0, 10), to: referenceDate });
+    void fetch(`/api/health/activity-history?${params}`, { signal: controller.signal, cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Exercise history unavailable");
+        return response.json() as Promise<{ exercises: ExerciseSummary[] }>;
+      }).then((value) => {
+        if (!controller.signal.aborted) { setHistory({ key: historyKey, exercises: value.exercises }); setFailedHistoryKey(null); }
+      }).catch(() => { if (!controller.signal.aborted) setFailedHistoryKey(historyKey); });
+    return () => controller.abort();
+  }, [filtersWereUsed, referenceDate, loadedHistory, historyRetry, historyKey]);
   const periodPickerRef = useRef<HTMLDivElement>(null);
   const periodTriggerRef = useRef<HTMLButtonElement>(null);
-  const typeFiltered = exercises.filter((exercise) => exerciseMatchesFilter(exercise.type, filter));
+  const typeFiltered = (filtersWereUsed ? loadedHistory ?? [] : exercises).filter((exercise) => exerciseMatchesFilter(exercise.type, filter));
   const visible = typeFiltered.filter((exercise) => exerciseIsInPeriod(exercise.date, referenceDate, period));
   const displayed = displayedActivities(visible, filtersWereUsed);
   const averages = useMemo(() => activityAverages(displayed), [displayed]);
@@ -277,7 +299,7 @@ export function ActivityHistory({ exercises, referenceDate, timezone = "UTC" }: 
       visibleExercises={visible}
       onSelect={(selected) => { setFilter(selected); setFiltersWereUsed(selected !== "all"); }}
     />
-    {displayed.length ? <>
+    {historyLoading ? <p className={styles.activityHistoryEmpty} role="status">Loading workout history…</p> : historyError ? <div className={styles.activityHistoryEmpty} role="alert"><p>Workout history could not be loaded.</p><button type="button" className="secondary-button" onClick={() => { setFailedHistoryKey(null); setHistoryRetry((value) => value + 1); }}>Retry</button></div> : displayed.length ? <>
       <div className={`${styles.activityHistoryRow} ${styles.activityAverageRow}`} role="group" aria-label="Average for displayed workouts">
         <div className={styles.activityHistoryIdentity}><strong>Average</strong><span>{filtersWereUsed ? `${periodLabel} · current filters` : displayed.length}</span></div>
         <dl className={styles.activityHistoryMetrics}>

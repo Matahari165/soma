@@ -5,6 +5,9 @@ import { usePathname } from "next/navigation";
 import { type MouseEvent, useEffect, useId, useRef, useState } from "react";
 import { Activity, Ellipsis, FlaskConical, HeartPulse, House, MessageCircle, Moon, Settings, Utensils } from "lucide-react";
 
+import { ThemeToggle } from "./theme-toggle";
+import themeStyles from "./theme-toggle.module.css";
+
 const destinations = [
   { href: "/", label: "Personal Lab", mobileLabel: "Lab", icon: House },
   { href: "/assistant", label: "Soma", icon: MessageCircle },
@@ -58,7 +61,10 @@ function MobileMoreNavigation({ pathname }: { pathname: string }) {
       <Ellipsis aria-hidden="true" /><span>Plus</span>
     </button>
     <div id={panelId} className="lab-global-nav__more-panel" role="group" aria-label="Autres pages" hidden={!present} data-motion-open={open} inert={!open} aria-hidden={!open}>
-      {destinations.slice(4).map(({ href, label, icon: Icon }) => <Link key={href} href={href} prefetch={false} aria-current={isCurrentPage(pathname, href) ? "page" : undefined} onClick={() => setOpen(false)}><Icon aria-hidden="true" /><span>{label}</span></Link>)}
+      {destinations.slice(4).map(({ href, label, icon: Icon }) => {
+        const link = <Link key={href} href={href} prefetch={false} aria-current={isCurrentPage(pathname, href) ? "page" : undefined} onClick={() => setOpen(false)}><Icon aria-hidden="true" /><span>{label}</span></Link>;
+        return href === "/settings" ? <div key={href} className={themeStyles.mobileSettingsSlot}><ThemeToggle mobile />{link}</div> : link;
+      })}
     </div>
   </div>;
 }
@@ -91,7 +97,8 @@ export function LabGlobalNavigation() {
   // starting them in parallel just because their links are visible; navigation
   // still performs the normal full-quality route transition on demand.
   return <nav ref={navigationRef} className="lab-global-nav" aria-label="Main navigation">
-    {destinations.map(({ href, label, mobileLabel, icon: Icon }, index) => <Link key={href} href={href} prefetch={false} className={[index >= 4 && "lab-global-nav__secondary", href === "/settings" && "lab-global-nav__settings"].filter(Boolean).join(" ") || undefined} aria-label={label} aria-current={isCurrentPage(pathname, href) ? "page" : undefined} onClick={href === "/" ? (event: MouseEvent<HTMLAnchorElement>) => { if (pathname !== "/") return; event.preventDefault(); window.history.replaceState(null, "", "/"); window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }); } : undefined}><Icon aria-hidden="true" /><span className={mobileLabel ? "lab-global-nav__desktop-label" : undefined}>{label}</span>{mobileLabel && <span className="lab-global-nav__mobile-label">{mobileLabel}</span>}</Link>)}
+    {destinations.filter(({ href }) => href !== "/settings").map(({ href, label, mobileLabel, icon: Icon }, index) => <Link key={href} href={href} prefetch={false} className={index >= 4 ? "lab-global-nav__secondary" : undefined} aria-label={label} aria-current={isCurrentPage(pathname, href) ? "page" : undefined} onClick={href === "/" ? (event: MouseEvent<HTMLAnchorElement>) => { if (pathname !== "/") return; event.preventDefault(); window.history.replaceState(null, "", "/"); window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }); } : undefined}><Icon aria-hidden="true" /><span className={mobileLabel ? "lab-global-nav__desktop-label" : undefined}>{label}</span>{mobileLabel && <span className="lab-global-nav__mobile-label">{mobileLabel}</span>}</Link>)}
+    <div className={themeStyles.desktopSlot}><ThemeToggle /><Link href="/settings" prefetch={false} className="lab-global-nav__settings" aria-current={isCurrentPage(pathname, "/settings") ? "page" : undefined}><Settings aria-hidden="true" /><span>Settings</span></Link></div>
     <MobileMoreNavigation key={pathname} pathname={pathname} />
   </nav>;
 }

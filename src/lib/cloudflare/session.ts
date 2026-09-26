@@ -2,7 +2,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 
-import { cloudflareDb, createCloudflareAdminClient, hasSupabaseRuntime } from "@/lib/cloudflare/db";
+import { cloudflareDb, createCloudflareAdminClient, hasSupabaseRuntime, sessionUserForHash } from "@/lib/cloudflare/db";
 
 export const SESSION_COOKIE = "soma_session";
 const SESSION_DAYS = 30;
@@ -96,40 +96,12 @@ async function getSessionUserForToken(token: string | null): Promise<SessionUser
   if (!token) return null;
   if (hasSupabaseRuntime()) {
     try {
-      const admin = createCloudflareAdminClient();
-      const tokenHash = await sha256(token);
-      const sessionResult = await admin
-        .from("soma_sessions")
-        .select("user_id,expires_at")
-        .eq("token_hash", tokenHash)
-        .withTimeout(SESSION_READ_TIMEOUT_MS)
-        .maybeSingle();
-
-      if (sessionResult.error) {
-        console.error("[session] soma_sessions lookup failed");
-        return null;
-      }
-      if (!sessionResult.data || new Date(sessionResult.data.expires_at).getTime() <= Date.now()) {
-        return null;
-      }
-
-      const userResult = await admin
-        .from("soma_users")
-        .select("id,email,display_name")
-        .eq("id", sessionResult.data.user_id)
-        .withTimeout(SESSION_READ_TIMEOUT_MS)
-        .maybeSingle();
-
-      if (userResult.error) {
-        console.error("[session] soma_users lookup failed");
-        return null;
-      }
-      if (!userResult.data) return null;
-
+      const user = await sessionUserForHash(await sha256(token), new Date().toISOString(), SESSION_READ_TIMEOUT_MS);
+      if (!user) return null;
       return {
-        id: userResult.data.id,
-        email: typeof userResult.data.email === "string" ? userResult.data.email : null,
-        displayName: typeof userResult.data.display_name === "string" ? userResult.data.display_name : "Soma user",
+        id: user.id,
+        email: typeof user.email === "string" ? user.email : null,
+        displayName: typeof user.display_name === "string" ? user.display_name : "Soma user",
       };
     } catch {
       console.error("[session] getSessionUser failed");

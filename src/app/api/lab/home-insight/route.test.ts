@@ -51,7 +51,7 @@ function mockGenerationFlow() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.useFakeTimers();
+  vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-09-25T08:00:00Z"));
   getCurrentUser.mockResolvedValue({ id: "test-user" });
   isLocalPreviewMode.mockReturnValue(false);
@@ -118,6 +118,7 @@ it("uses current facts after a source change without another generation, even af
 });
 
 it("uses prior observations only and names their sample count in the fallback", async () => {
+  vi.setSystemTime(new Date("2026-09-25T10:00:00Z"));
   isLocalPreviewMode.mockReturnValue(true);
   createPersonalLabStream.mockReturnValue({ overview: Promise.resolve({ todayDate: "2026-09-25", timeZone: "Europe/Paris", today: {
     sleepMinutes: 460, recoveryScore: 65, effortScore: 12, effortCoverage: 0.5,
@@ -131,6 +132,7 @@ it("uses prior observations only and names their sample count in the fallback", 
     ],
   } }) });
   const payload = await (await POST(request())).json();
+  expect(payload.moment).toBe("day");
   expect(payload.text).toContain("20 min de plus que votre moyenne récente (3 nuits)");
   expect(payload.text).toContain("5 points au-dessus de votre moyenne récente (3 jours)");
   expect(payload.text.split("\n")).toHaveLength(2);

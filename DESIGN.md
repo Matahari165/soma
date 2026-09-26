@@ -3,10 +3,16 @@ name: Soma — Observatoire
 status: canonical
 scope: visual-language
 referenceRoute: "/"
-lastReviewed: "2026-09-24"
+lastReviewed: "2026-09-26"
 ---
 
 # Soma — système visuel de l’Observatoire
+
+## Version claire
+
+La version Light demandée le 26 septembre 2026 conserve strictement la composition, la typographie, la géométrie, les graphiques et le mouvement de l’Observatoire sombre. Seule la palette change : blanc continu, encre sombre, gris légers et accents fonctionnels adaptés au contraste. `src/app/theme.css` centralise la palette claire ; `data-lab-theme="observatory"` conserve les sélecteurs de composition existants. Les valeurs sombres documentées ci-dessous décrivent la référence initiale, pas des exceptions à réintroduire dans la version claire.
+
+Le bouton lune/soleil placé à gauche de Settings bascule entre les palettes claire et sombre sans changer la composition. Le mode clair est le choix initial ; la préférence locale est restaurée avant le rendu. `data-color-scheme` sélectionne la palette, indépendamment de `data-lab-theme`. La photographie de lever de soleil fournie par l’utilisateur est réservée au mode clair ; le mode sombre conserve son décor existant. Sur mobile, le bouton figure dans le menu Plus à gauche de Settings.
 
 ## 1. Autorité
 
@@ -18,7 +24,7 @@ Ordre d’autorité en cas de désaccord :
 
 1. la page `/` authentifiée actuellement validée ;
 2. les règles obligatoires de ce document ;
-3. les tokens `--lab-*` de `src/app/globals.css` ;
+3. les tokens de couleur `--lab-*` de `src/app/theme.css` et les tokens de géométrie de `src/app/globals.css` ;
 4. les anciennes pages et documentations.
 
 `design/PHYSIOLOGICAL_ATLAS.md` est historique. Son thème clair, ses couleurs chaudes et ses rayons de 10 px ne doivent pas être réintroduits.
@@ -202,6 +208,7 @@ Conserver erreurs, chargements, absences, provenance, incertitude, confirmations
 
 - interaction simple : 150–180 ms ;
 - transition de composition : jusqu’à 240 ms ;
+- ouverture des pages : fondu commun de 420 ms, titres compris, sans déplacement ni découpage des mots ; un seul conteneur porte ce fondu ;
 - révélation exceptionnelle de scène : 650–950 ms maximum ;
 - easing : `cubic-bezier(.2, .8, .2, 1)` ou `cubic-bezier(.16, 1, .3, 1)` ;
 - faible amplitude pour les contrôles ;
