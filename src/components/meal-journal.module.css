@@ -2774,19 +2774,6 @@
   }
 }
 
-/* Annotation 2 — the first meal begins on the same rail as the first journal
-   period. The action row remains above the journal content without reserving a
-   competing offset in the meal column. */
-@media (min-width: 701px) {
-  :global(.personal-lab-meal-column) > .labRoot > .mealList {
-    margin-top: 35px;
-  }
-
-  :global(body.local-preview) :global(.personal-lab-meal-column) > .labRoot > .mealList {
-    margin-top: 42.5px;
-  }
-}
-
 /* Annotation 3 — every meal heading shares one measurable header contract,
    whether its capture surface is empty or its analysis is already filled. */
 :global(html[data-lab-theme]) .labRoot .mealCard .mealHeader {
