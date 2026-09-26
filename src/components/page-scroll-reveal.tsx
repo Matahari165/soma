@@ -26,7 +26,7 @@ export function PageScrollReveal() {
     }, { threshold: 0.08, rootMargin: "0px 0px -10% 0px" });
 
     const register = (target: HTMLElement) => {
-      if (registered.has(target)) return;
+      if (registered.has(target) || target.dataset.revealReady === "false") return;
       registered.add(target);
       targets.add(target);
 
@@ -51,10 +51,11 @@ export function PageScrollReveal() {
 
     const mutationObserver = typeof MutationObserver === "undefined" ? null : new MutationObserver((records) => {
       for (const record of records) {
-        record.addedNodes.forEach(registerTree);
+        if (record.type === "attributes") registerTree(record.target);
+        else record.addedNodes.forEach(registerTree);
       }
     });
-    roots.forEach((root) => mutationObserver?.observe(root, { childList: true, subtree: true }));
+    roots.forEach((root) => mutationObserver?.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-reveal-ready"] }));
 
     const onPreferenceChange = (event: MediaQueryListEvent) => {
       reduceMotion = event.matches;

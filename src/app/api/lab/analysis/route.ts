@@ -5,6 +5,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { elapsedServerMs, serverNow, withServerTiming } from "@/lib/performance";
 import { getPersonalLabSnapshotWithTimings } from "@/services/personal-lab";
 
+// Leave time for after-response cache/history writes within the invocation.
+export const maxDuration = 50;
+
 function parsePeriod(value: string | null): AnalysisPeriod {
   return value === "15" ? 15 : value === "30" ? 30 : value === "all" ? "all" : 90;
 }
@@ -27,6 +30,7 @@ export async function GET(request: Request) {
       { name: "build", durationMs: timings.buildMs },
       { name: "total", durationMs: elapsedServerMs(startedAt) },
     ]);
+    response.headers.append("Server-Timing", `cache_state;desc="${timings.cacheStatus}"`);
     response.headers.append("Server-Timing", 'history;desc="deferred"');
     return response;
   } catch {

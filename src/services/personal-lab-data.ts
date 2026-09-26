@@ -68,8 +68,8 @@ export function loadPersonalLabData(userId: string, options: { periods?: Analysi
   const profile = admin.from("profiles").select("timezone").eq("user_id", userId).maybeSingle().then((result) => result);
   const targetsPromise = loadNutritionTargetsForUser(userId);
   const targets = targetsPromise.catch(() => DEFAULT_NUTRITION_TARGETS);
-  const health = healthQuery.then((result) => result);
-  const scores = scoresQuery.then((result) => result);
+  const health = Promise.resolve(healthQuery);
+  const scores = Promise.resolve(scoresQuery);
   const calendars = calendarQuery.then((result) => result);
   const checkins = checkinQuery.then((result) => result);
   const connections = admin.from("provider_connections").select("provider,status,last_synced_at").eq("user_id", userId).in("provider", ["google_health", "google_calendar"]).then((result) => result);
@@ -86,7 +86,7 @@ export function loadPersonalLabData(userId: string, options: { periods?: Analysi
     ...(readWindow ? { from: readWindow.start } : {}),
     timeZone: profileResult.data?.timezone ?? "Europe/Paris",
     mealRecords,
-    automaticHealth: health.then((healthRows) => healthRows, () => []),
+    automaticHealth: health.then((healthRows) => (healthRows.error ? [] : healthRows.data ?? []) as HealthDay[], () => []),
     dailyTargetKcal: targetsPromise.then((value) => value.caloriesKcal.likely).catch(() => null),
     ensureDefaults: false,
   }));
@@ -177,11 +177,11 @@ export async function loadPersonalLabMatrixData(userId: string, period: Analysis
     scoresQuery = scoresQuery.gte("score_date", readWindow.start).limit(readWindow.days * 3);
   }
 
-  const health: Promise<HealthDay[]> = healthQuery.then((result) => {
+  const health: Promise<HealthDay[]> = Promise.resolve(healthQuery).then((result) => {
     if (result.error) throw new Error("Your Personal Lab is temporarily unavailable.");
     return (result.data ?? []) as HealthDay[];
   });
-  const scores: Promise<ScoreDay[]> = scoresQuery.then((result) => {
+  const scores: Promise<ScoreDay[]> = Promise.resolve(scoresQuery).then((result) => {
     if (result.error) throw new Error("Your Personal Lab is temporarily unavailable.");
     return (result.data ?? []) as ScoreDay[];
   });

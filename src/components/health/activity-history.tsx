@@ -207,15 +207,17 @@ export function exerciseIsInPeriod(date: string, referenceDate: string, days: Ac
   return value >= start && value <= end;
 }
 
-export function ActivityHistory({ exercises, referenceDate }: { exercises: ExerciseSummary[]; referenceDate: string }) {
+export function ActivityHistory({ exercises, referenceDate, historyRevision }: { exercises: ExerciseSummary[]; referenceDate: string; historyRevision?: string | null }) {
   const [filter, setFilter] = useState<ActivityFilter>("all");
   const [period, setPeriod] = useState<ActivityPeriod>(30);
   const [periodOpen, setPeriodOpen] = useState(false);
   const [filtersWereUsed, setFiltersWereUsed] = useState(false);
-  const [history, setHistory] = useState<{ referenceDate: string; exercises: ExerciseSummary[] } | null>(null);
-  const [historyError, setHistoryError] = useState(false);
+  const historyKey = useMemo(() => JSON.stringify([referenceDate, historyRevision, exercises]), [referenceDate, historyRevision, exercises]);
+  const [history, setHistory] = useState<{ key: string; exercises: ExerciseSummary[] } | null>(null);
+  const [failedHistoryKey, setFailedHistoryKey] = useState<string | null>(null);
+  const historyError = failedHistoryKey === historyKey;
   const [historyRetry, setHistoryRetry] = useState(0);
-  const loadedHistory = history?.referenceDate === referenceDate ? history.exercises : null;
+  const loadedHistory = history?.key === historyKey ? history.exercises : null;
   const historyLoading = filtersWereUsed && loadedHistory === null && !historyError;
   useEffect(() => {
     if (!filtersWereUsed || loadedHistory !== null) return;
@@ -228,10 +230,10 @@ export function ActivityHistory({ exercises, referenceDate }: { exercises: Exerc
         if (!response.ok) throw new Error("Exercise history unavailable");
         return response.json() as Promise<{ exercises: ExerciseSummary[] }>;
       }).then((value) => {
-        if (!controller.signal.aborted) { setHistory({ referenceDate, exercises: value.exercises }); setHistoryError(false); }
-      }).catch(() => { if (!controller.signal.aborted) setHistoryError(true); });
+        if (!controller.signal.aborted) { setHistory({ key: historyKey, exercises: value.exercises }); setFailedHistoryKey(null); }
+      }).catch(() => { if (!controller.signal.aborted) setFailedHistoryKey(historyKey); });
     return () => controller.abort();
-  }, [filtersWereUsed, referenceDate, loadedHistory, historyRetry]);
+  }, [filtersWereUsed, referenceDate, loadedHistory, historyRetry, historyKey]);
   const periodPickerRef = useRef<HTMLDivElement>(null);
   const visible = (filtersWereUsed ? loadedHistory ?? [] : exercises).filter((exercise) => exerciseMatchesFilter(exercise.type, filter) && exerciseIsInPeriod(exercise.date, referenceDate, period));
   const displayed = displayedActivities(visible, filtersWereUsed);
@@ -268,7 +270,7 @@ export function ActivityHistory({ exercises, referenceDate }: { exercises: Exerc
         </div>
       </div>
     </div>
-    {historyLoading ? <p className={styles.activityHistoryEmpty} role="status">Loading workout history…</p> : historyError ? <div className={styles.activityHistoryEmpty} role="alert"><p>Workout history could not be loaded.</p><button type="button" className="secondary-button" onClick={() => { setHistoryError(false); setHistoryRetry((value) => value + 1); }}>Retry</button></div> : displayed.length ? <>
+    {historyLoading ? <p className={styles.activityHistoryEmpty} role="status">Loading workout history…</p> : historyError ? <div className={styles.activityHistoryEmpty} role="alert"><p>Workout history could not be loaded.</p><button type="button" className="secondary-button" onClick={() => { setFailedHistoryKey(null); setHistoryRetry((value) => value + 1); }}>Retry</button></div> : displayed.length ? <>
       <div className={`${styles.activityHistoryRow} ${styles.activityAverageRow}`} role="group" aria-label="Average for displayed workouts">
         <div className={styles.activityHistoryIdentity}><strong>Average</strong><span>{filtersWereUsed ? `${periodLabel} · current filters` : displayed.length}</span></div>
         <dl className={styles.activityHistoryMetrics}>

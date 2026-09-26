@@ -109,7 +109,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
       overview: targetsPromise.then((targets) => buildOverview({ ...input, targets, greetingName: user.displayName })),
       journal: Promise.resolve(buildJournalView(input.timeZone, input.journal, input.meals, input.health)),
       analysis: analysisResult?.then((result) => result.snapshot) ?? null,
-      analysisTimings: analysisResult?.then((result) => result.timings) ?? null,
+      analysisTimings: analysisResult?.then((result) => result.timings, () => ({ cacheMs: 0, dataMs: 0, buildMs: 0, cacheStatus: "unavailable" as const })) ?? null,
     };
   }
 
@@ -166,7 +166,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
     overview,
     journal,
     analysis: analysisResult?.then((result) => result.snapshot) ?? null,
-    analysisTimings: analysisResult?.then((result) => result.timings) ?? null,
+    analysisTimings: analysisResult?.then((result) => result.timings, () => ({ cacheMs: 0, dataMs: 0, buildMs: 0, cacheStatus: "unavailable" as const })) ?? null,
   };
 }
 
