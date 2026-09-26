@@ -12,7 +12,7 @@ describe("Today signals", () => {
     expect(html.match(/<a /g)).toHaveLength(4);
     expect(html).toContain('href="/sleep"');
     expect(html).toContain('href="/recovery"');
-    expect(html).toContain('href="/activity"');
+    expect(html).toContain('href="/strain"');
     expect(html).toContain('href="/meals"');
     expect(html).not.toContain('href="/effort"');
     expect(html).toContain("30d avg · 8h 00");
@@ -21,7 +21,7 @@ describe("Today signals", () => {
     expect(html).toContain("lab-signal__value--below");
     expect(html).toContain('aria-label="Sleep: 8h 30"');
     expect(html).toContain('aria-label="Recovery: 72"');
-    expect(html).toContain('aria-label="Activity: 63"');
+    expect(html).toContain('aria-label="Strain: 63"');
     expect(html).toContain('aria-label="Calories: 72%"');
     expect(html).toContain('lab-signal__value lab-signal__value--below');
     expect(html).not.toContain("Target · 3,000 kcal");

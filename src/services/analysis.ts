@@ -1,10 +1,12 @@
+import { calculateActiveHours } from "@/domain/health/active-hours";
+import { strengthMinutesForDate } from "@/domain/health/strength-minutes";
 import { aggregateHealthRecords, type NormalizedHealthRecord } from "@/domain/health/aggregate";
 import { recordsInsideWearableWindow } from "@/domain/health/wearable-window";
 import { generateEveningBrief, generateMorningBrief } from "@/domain/briefs/generate";
 import { spearmanCorrelation, type CorrelationPoint } from "@/domain/correlations/spearman";
 import { generateHealthInsights } from "@/domain/insights/engine";
 import { acuteChronicLoadRatio, activityRegularity, isActiveDay } from "@/domain/metrics/wellness";
-import { calculateEffortScoreFromAvailable } from "@/domain/scores/effort";
+import { calculateDailyStrain, calculateEffortScoreFromAvailable } from "@/domain/scores/effort";
 import { calculateRecoveryScore } from "@/domain/scores/recovery";
 import { sleepRegularityScore } from "@/domain/scores/regularity";
 import { estimateSleepNeed, recommendBedtimeFromHistory } from "@/domain/scores/sleep-need";
@@ -14,6 +16,7 @@ import { loadNutritionTargetsStateForUser } from "./nutrition-targets";
 
 export const ANALYSIS_DATA_TYPES = [
   "sleep",
+  "activity-level",
   "daily-heart-rate-variability",
   "daily-resting-heart-rate",
   "daily-respiratory-rate",
@@ -215,7 +218,7 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
   const timezone = profile?.timezone ?? "Europe/Paris";
   const sourceCoverageDates = healthRecordCoverageDates(records ?? []);
   const wearableWindow = recordsInsideWearableWindow((records ?? []) as NormalizedHealthRecord[], timezone);
-  const days = aggregateHealthRecords(wearableWindow.records, timezone)
+  const days = aggregateHealthRecords(wearableWindow.records.filter((record) => !(record.data_type === "steps" && (record.payload as { soma?: { provenance?: string } } | null)?.soma?.provenance === "google_health_active_hours_intraday")), timezone)
     .filter((day) => day.metric_date >= analysisStart);
   console.info("[health-analysis] source records loaded");
   if (!days.length) {
@@ -265,8 +268,12 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
       restingHeartRateBaseline: recoveryHistory.map((item) => item.resting_heart_rate).filter((value): value is number => value !== null).slice(-30),
       sleepScore: sleep?.score ?? null,
     });
-    const effort = calculateEffortScoreFromAvailable({ zoneMinutes: day.zone_minutes, activeEnergyKcal: day.active_energy_kcal, exerciseMinutes: day.exercise_minutes, steps: day.steps }, effortScoreOptions);
-    effortByDate.set(day.metric_date, effort.score);
+    const legacyEffort = calculateEffortScoreFromAvailable({ zoneMinutes: day.zone_minutes, activeEnergyKcal: day.active_energy_kcal, exerciseMinutes: day.exercise_minutes, steps: day.steps }, effortScoreOptions);
+    const activeHours = calculateActiveHours({ date: day.metric_date, timeZone: timezone, now: new Date(), records: wearableWindow.records });
+    const strengthMinutes = strengthMinutesForDate(wearableWindow.records, day.metric_date, timezone, day.exercise_minutes);
+    const strainMeasurements = { steps: day.steps, zoneMinutes: day.zone_minutes, strengthMinutes, activeHoursProgress: activeHours.progress };
+    const effort = { ...calculateDailyStrain(strainMeasurements), loadScore: legacyEffort.loadScore };
+    effortByDate.set(day.metric_date, effort.loadScore);
     const weekday = new Date(`${day.metric_date}T12:00:00Z`).getUTCDay();
     const weekStart = index - ((weekday + 6) % 7);
     const weeklyEfforts = days.slice(Math.max(0, weekStart), index + 1)
@@ -315,7 +322,7 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
     scoreRows.push(
       { user_id: userId, score_date: day.metric_date, kind: "sleep", score: sleep?.score ?? null, status: sleep ? (sleep.score >= 80 ? "restorative" : sleep.score >= 60 ? "steady" : "building") : "limited", drivers: sleep ? { duration: sleep.durationComponent, efficiency: sleep.efficiencyComponent, regularity: sleep.regularityComponent, bedtimeRecommendationMinutes: bedtimeRecommendation.bedtimeMinutes } : {}, algorithm_version: sleep?.algorithmVersion ?? "sleep-v0.2" },
       { user_id: userId, score_date: day.metric_date, kind: "recovery", score: recovery.score, status: recovery.status, drivers: recovery.drivers, algorithm_version: recovery.algorithmVersion },
-      { user_id: userId, score_date: day.metric_date, kind: "effort", score: effort.score, status: effort.status, drivers: { coverage: effort.coverage }, algorithm_version: effort.algorithmVersion },
+      { user_id: userId, score_date: day.metric_date, kind: "effort", score: effort.score, status: effort.status, drivers: { coverage: effort.coverage, activityLoadScore: effort.loadScore, strainVersion: effort.algorithmVersion, strainMeasurements, strengthMinutes, activeHours }, algorithm_version: effort.algorithmVersion },
     );
   }
 

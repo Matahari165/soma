@@ -10,7 +10,7 @@ export type ActivityFilter = "all" | "run" | "boxing" | "hiking" | "walking" | "
 
 export const ACTIVITY_FILTERS: { id: Exclude<ActivityFilter, `other:${string}`>; label: string; types: readonly string[] }[] = [
   { id: "all", label: "All", types: [] },
-  { id: "run", label: "Running", types: ["RUNNING", "JOGGING", "TRAIL_RUNNING", "TRAIL_RUN", "INCLINE_RUN", "TREADMILL"] },
+  { id: "run", label: "Running", types: ["RUN", "RUNNING", "JOGGING", "TRAIL_RUNNING", "TRAIL_RUN", "INCLINE_RUN", "TREADMILL"] },
   { id: "boxing", label: "Boxing", types: ["BOXING", "BOXE", "KICKBOXING", "MUAY_THAI"] },
   { id: "hiking", label: "Hiking", types: ["HIKING"] },
   { id: "walking", label: "Walking", types: ["WALKING"] },
@@ -116,6 +116,28 @@ function weekStart(value: string) {
   if (!date) return null;
   date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
   return date.toISOString().slice(0, 10);
+}
+
+export function runningWeekSummary(exercises: readonly ExerciseSummary[], referenceDate: string, timezone: string) {
+  const startDate = weekStart(referenceDate);
+  const seen = new Set<string>();
+  const sessions = exercises.filter((exercise) => {
+    if (!startDate || !activityMatchesFilter(exercise.type, "run") || seen.has(exercise.id)) return false;
+    const timestamp = exercise.startTime ? new Date(exercise.startTime) : null;
+    const date = timestamp && Number.isFinite(timestamp.getTime())
+      ? new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(timestamp)
+      : exercise.date;
+    if (date < startDate || date > referenceDate) return false;
+    seen.add(exercise.id);
+    return true;
+  });
+  const durations = sessions.map((exercise) => exercise.durationMinutes).filter((value): value is number => finite(value) && value >= 0);
+  return {
+    startDate,
+    sessions: sessions.length,
+    minutes: sessions.length === 0 ? 0 : durations.length ? durations.reduce((sum, value) => sum + value, 0) : null,
+    missingDurations: sessions.length - durations.length,
+  };
 }
 
 function nextMonthStart(value: string) {
