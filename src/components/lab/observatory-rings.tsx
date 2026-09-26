@@ -48,6 +48,19 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
   useEffect(() => {
     if (selectedId) headingRef.current?.focus({ preventScroll: true });
   }, [selectedId]);
+  useEffect(() => {
+    if (!selectedId) return;
+    const dismissOutside = (event: PointerEvent) => {
+      if (event.button !== 0 || !(event.target instanceof Node)) return;
+      const figure = figureRef.current;
+      if (figure?.querySelector("svg")?.contains(event.target) || figure?.querySelector("aside")?.contains(event.target)) return;
+      setSelectedId(null);
+      setFocusedId(null);
+      setHoveredId(null);
+    };
+    document.addEventListener("pointerdown", dismissOutside, true);
+    return () => document.removeEventListener("pointerdown", dismissOutside, true);
+  }, [selectedId]);
   const closeDetail = () => {
     figureRef.current?.querySelector<SVGGElement>(`[data-ring="${selectedId}"]`)?.focus();
     setSelectedId(null);

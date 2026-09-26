@@ -46,3 +46,25 @@ it("navigates between ring controls with the arrow keys", async () => {
   await act(async () => ring("sleep").dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })));
   expect(document.activeElement).toBe(ring("recovery"));
 });
+
+it("closes on an outside primary pointer without closing inside or taking focus", async () => {
+  await mount();
+  await act(async () => ring("effort").dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  const pointerDown = (target: Element, button = 0) => target.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button }));
+  await act(async () => pointerDown(ring("sleep")));
+  await act(async () => pointerDown(container.querySelector("aside dd")!));
+  expect(ring("effort").getAttribute("aria-expanded")).toBe("true");
+  await act(async () => pointerDown(document.body, 2));
+  expect(ring("effort").getAttribute("aria-expanded")).toBe("true");
+  const outsideButton = document.createElement("button");
+  document.body.append(outsideButton);
+  try {
+    await act(async () => { outsideButton.focus(); pointerDown(outsideButton); });
+    expect(container.querySelector("aside")?.getAttribute("aria-hidden")).toBe("true");
+    expect(document.activeElement).toBe(outsideButton);
+    expect(ring("effort").getAttribute("data-active")).toBe("false");
+    await act(async () => ring("effort").dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await act(async () => pointerDown(container.querySelector("figure")!));
+    expect(container.querySelector("aside")?.getAttribute("aria-hidden")).toBe("true");
+  } finally { outsideButton.remove(); }
+});
