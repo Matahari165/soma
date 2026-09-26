@@ -74,9 +74,6 @@
   font-family: var(--font-soma-ui), system-ui, sans-serif;
 }
 .page :global(.strongest-effects__plot) { isolation: isolate; }
-.page :global(.strongest-effects[data-motion-ready="true"] .strongest-effects__row.is-visible) {
-  transition-duration: 800ms, 900ms;
-}
 .page :global(.strongest-effects__plot::before) {
   z-index: 0;
   height: 1px;

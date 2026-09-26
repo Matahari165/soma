@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowDown, ArrowUp, Check, Image as ImageIcon, Menu, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
+import { useMotionUpdate } from "@/components/motion/use-motion-update";
 import { Fragment, FormEvent, KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import styles from "./assistant-workspace.module.css";
@@ -224,6 +225,8 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   const longPressRef = useRef<{ timer: number; pointerId: number; x: number; y: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
+  // Conversation changes animate once; streamed message fragments never trigger it.
+  useMotionUpdate(transcriptRef, `${activeId ?? "new"}:${loadingConversation}:${Boolean(voicePresentation)}`);
   const historyTriggerRef = useRef<HTMLButtonElement>(null);
   const historyPanelRef = useRef<HTMLElement>(null);
   const followConversationRef = useRef(true);
@@ -760,7 +763,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
               </button>
               <div className={styles.rowActions} data-conversation-actions>
                 <button className={styles.moreConversation} type="button" onClick={() => setOpenMenuId((current) => current === conversation.id ? null : conversation.id)} aria-label={`Options pour ${conversation.title || "la conversation"}`} aria-expanded={openMenuId === conversation.id}><MoreHorizontal size={17} aria-hidden="true" /></button>
-                {openMenuId === conversation.id && <div className={styles.conversationMenu}>
+                {openMenuId === conversation.id && <div className={`${styles.conversationMenu} soma-motion-state`}>
                   <button type="button" onClick={() => void deleteConversation(conversation)} disabled={deletingId === conversation.id}><Trash2 size={15} aria-hidden="true" /> Supprimer</button>
                 </div>}
               </div>
@@ -846,14 +849,14 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
         {showLatest && !empty && <button type="button" className={styles.jumpToLatest} onClick={jumpToLatest}><ArrowDown size={16} aria-hidden="true" /> {voicePresentation ? "Dernier échange" : "Dernier message"}</button>}
 
         <div className={styles.composerRegion}>
-          {memoryWarning && <p className={`${styles.error} ${styles.memoryWarning}`} role="status">{memoryWarning}</p>}
+          {memoryWarning && <p className={`${styles.error} ${styles.memoryWarning} soma-motion-state`} role="status">{memoryWarning}</p>}
           {error && <div className={`${styles.error} ${notConfigured ? styles.configurationError : ""}`} role="alert">
             <strong>{notConfigured ? "Assistant non configuré" : activeId && conversationLoadErrorId === activeId ? "Conversation indisponible" : "Envoi impossible"}</strong>
             <span>{error}</span>
             {activeId && conversationLoadErrorId === activeId && <button className={styles.retryConversation} type="button" onClick={() => void openConversation(activeId)}>Réessayer</button>}
           </div>}
           <form className={styles.composer} onSubmit={(event) => void sendMessage(event)}>
-            {photos.length > 0 && <ul className={styles.photoList} aria-label="Photos à joindre">{photos.map((photo) => (
+            {photos.length > 0 && <ul className={`${styles.photoList} soma-motion-state`} aria-label="Photos à joindre">{photos.map((photo) => (
               <li key={photo.id}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- local object URL selected by the user */}
                 <img src={photo.previewUrl} alt="Aperçu de la photo à joindre" />

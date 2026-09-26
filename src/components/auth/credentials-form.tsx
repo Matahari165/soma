@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMotionUpdate } from "@/components/motion/use-motion-update";
+import { useRef, useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 export function CredentialsForm({ next }: { next?: string | null }) {
+  const formRef = useRef<HTMLFormElement>(null);
   const [mode, setMode] = useState<"login" | "register" | "recover">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,6 +15,7 @@ export function CredentialsForm({ next }: { next?: string | null }) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [recoveryRequested, setRecoveryRequested] = useState(false);
   const [loading, setLoading] = useState(false);
+  useMotionUpdate(formRef, mode);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -94,10 +97,10 @@ export function CredentialsForm({ next }: { next?: string | null }) {
         </button>
       </div>}
 
-      <form className="auth-credentials-form" onSubmit={handleSubmit}>
+      <form ref={formRef} className="auth-credentials-form" onSubmit={handleSubmit}>
         {mode === "recover" && <p className="auth-recovery-copy">Enter your account address. We’ll send a link to set a new password.</p>}
         {successMessage && (
-          <div className="auth-success-banner" role="status">
+          <div className="auth-success-banner soma-motion-state" role="status">
             <CheckCircle2 size={16} aria-hidden="true" />
             <span>
               {successMessage}
@@ -161,7 +164,7 @@ export function CredentialsForm({ next }: { next?: string | null }) {
         )}
 
         {error && (
-          <p className="form-error auth-error" role="alert">
+          <p className="form-error auth-error soma-motion-state" role="alert">
             {error}
           </p>
         )}
