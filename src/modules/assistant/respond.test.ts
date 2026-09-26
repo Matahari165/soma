@@ -120,6 +120,28 @@ describe("respondToAssistant", () => {
     }));
   });
 
+  it("keeps chat available when compaction persistence fails and exposes a safe retry status", async () => {
+    const state = setup();
+    state.user.sequence = 25;
+    state.repository.listMessages.mockResolvedValueOnce(Array.from({ length: 25 }, (_, index) => ({
+      ...state.user,
+      id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+      sequence: index + 1,
+      role: index % 2 ? "assistant" : "user",
+      parts: [{ type: "text", text: index === 0 ? "Je corrige : ma séance habituelle est la boxe du jeudi." : `Ancien échange ${index + 1}.` }],
+    })) as never);
+    state.repository.updateConversation.mockRejectedValue(new Error("private database failure"));
+
+    const result = await respondToAssistant("user-1", {
+      requestId: "request-memory-retry-123", text: "Et pour cette semaine ?", conversationId: ids.conversation,
+    }, { apiKey: "test-key", dependencies: state as never });
+
+    expect(result).toMatchObject({ memoryStatus: { state: "retry_pending", complete: false, retryOnNextMessage: true } });
+    expect(result.memoryStatus.warning).toContain("fenêtre récente bornée");
+    expect(state.generate).toHaveBeenCalled();
+    expect(state.repository.updateConversation).toHaveBeenCalledWith("user-1", ids.conversation, expect.objectContaining({ summary_through_sequence: 5 }));
+  });
+
   it("replays a completed idempotent request without calling GPT-6 Luna", async () => {
     const state = setup();
     state.repository.findRunByRequestId.mockResolvedValueOnce({
