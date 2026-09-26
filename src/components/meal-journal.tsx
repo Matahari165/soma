@@ -1,5 +1,6 @@
 "use client";
 
+import { useMotionPresence } from "@/components/motion/use-motion-presence";
 import { useRouter } from "next/navigation";
 
 import {
@@ -224,7 +225,14 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   const targetEditingEnabled = !readOnly && (allowTargetEditing ?? variant !== "lab");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [analyzingSlots, setAnalyzingSlots] = useState<readonly MealSlot[]>([]);
-  const [pendingDelete, setPendingDelete] = useState<{ kind: "photo"; slot: MealSlot; photoId: string } | { kind: "meal"; slot: MealSlot } | null>(null);
+  type PendingDelete = { kind: "photo"; slot: MealSlot; photoId: string } | { kind: "meal"; slot: MealSlot };
+  const [pendingDelete, setPendingDeleteState] = useState<PendingDelete | null>(null);
+  const [displayedDelete, setDisplayedDelete] = useState<PendingDelete | null>(null);
+  const deletePresent = useMotionPresence(Boolean(pendingDelete));
+  const setPendingDelete = useCallback((next: PendingDelete | null) => {
+    if (next) setDisplayedDelete(next);
+    setPendingDeleteState(next);
+  }, []);
   const pendingDeleteTrigger = useRef<HTMLElement | null>(null);
   const pendingDeleteCancelRef = useRef<HTMLButtonElement>(null);
   const objectUrls = useRef(new Set<string>());
@@ -313,7 +321,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       else window.history.pushState(window.history.state, "", nextUrl);
       window.dispatchEvent(new CustomEvent(MEAL_DATE_EVENT, { detail: { date: nextDate } }));
     }
-  }, [navigationDisabled, onDateChange, readOnly, router, selectedDate, selectedDateProp, stashLocalDrafts, today, variant]);
+  }, [navigationDisabled, onDateChange, readOnly, router, selectedDate, selectedDateProp, stashLocalDrafts, today, variant, setPendingDelete]);
 
   const selectDate = useCallback((nextDate: string) => {
     goToDate(nextDate);
@@ -358,7 +366,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       return;
     }
     void load();
-  }, [initialData, initialDate, load, selectedDate, selectedDateProp, stashLocalDrafts]);
+  }, [initialData, initialDate, load, selectedDate, selectedDateProp, stashLocalDrafts, setPendingDelete]);
 
   // The POST only accepts the job. Polling this small status endpoint lets a
   // resumed tab reconcile the durable result without repeating the XAI call.
@@ -426,7 +434,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     setConfirmError({});
     setLoadState("loading");
     setLoadError(null);
-  }, [selectedDateProp, stashLocalDrafts]);
+  }, [selectedDateProp, stashLocalDrafts, setPendingDelete]);
 
   useEffect(() => () => { objectUrls.current.forEach((url) => URL.revokeObjectURL(url)); }, []);
 
@@ -492,7 +500,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [pendingDelete]);
+  }, [pendingDelete, setPendingDelete]);
 
   const applyLoadedTargets = useCallback((nextBase: NutritionTargets, nextEffective: NutritionTargets, nextContext: EffortTargetContext, targetDate: string) => {
     const baseUnchanged = JSON.stringify(targetBaseRef.current) === JSON.stringify(nextBase);
@@ -1166,10 +1174,10 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
           )
         }</div>;
       })}</div>}
-    {pendingDelete && <div className={styles.deleteBackdrop} onClick={(event) => { if (event.target === event.currentTarget) cancelPendingDelete(); }}>
-      <div id="meal-delete-dialog" className={styles.deleteDialog} role="alertdialog" aria-modal="true" aria-labelledby="meal-delete-title" aria-describedby="meal-delete-description">
-        <h3 id="meal-delete-title">Delete this {pendingDelete.kind}?</h3>
-        <p id="meal-delete-description">{pendingDelete.kind === "meal" ? `This permanently removes ${SLOT_LABELS[pendingDelete.slot].toLowerCase()} and its analysis from your nutrition totals.` : `It will be removed from ${SLOT_LABELS[pendingDelete.slot].toLowerCase()}. Already analyzed photos remain described in the note.`}</p>
+    {deletePresent && displayedDelete && <div className={`${styles.deleteBackdrop} soma-motion-overlay`} data-motion-open={Boolean(pendingDelete)} inert={!pendingDelete} aria-hidden={!pendingDelete || undefined} onClick={(event) => { if (event.target === event.currentTarget) cancelPendingDelete(); }}>
+      <div id="meal-delete-dialog" className={styles.deleteDialog} role={pendingDelete ? "alertdialog" : undefined} aria-modal={pendingDelete ? true : undefined} aria-labelledby="meal-delete-title" aria-describedby="meal-delete-description">
+        <h3 id="meal-delete-title">Delete this {displayedDelete.kind}?</h3>
+        <p id="meal-delete-description">{displayedDelete.kind === "meal" ? `This permanently removes ${SLOT_LABELS[displayedDelete.slot].toLowerCase()} and its analysis from your nutrition totals.` : `It will be removed from ${SLOT_LABELS[displayedDelete.slot].toLowerCase()}. Already analyzed photos remain described in the note.`}</p>
         <div className={styles.deleteActions}>
           <button ref={pendingDeleteCancelRef} className={styles.secondaryButton} type="button" onClick={cancelPendingDelete}>Cancel</button>
           <button className={styles.confirmButton} type="button" onClick={() => void confirmPendingDelete()}>Delete</button>
