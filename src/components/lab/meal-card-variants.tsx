@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Camera, ChevronDown, ChevronUp, ImagePlus, Pencil, Trash2, X } from "lucide-react";
+import { ArrowRight, Camera, Check, ChevronDown, ChevronUp, ImagePlus, Pencil, Trash2, X } from "lucide-react";
 import React, { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import type {
@@ -232,12 +232,13 @@ export interface LabMealCardProps {
   confirmError?: string | null;
 }
 
-function MealAnalysisScreen({ slot, stage, note, photoCount, onCancel }: {
+function MealAnalysisScreen({ slot, stage, note, photoCount, phase, onCancel }: {
   slot: MealSlot;
   stage: "connecting" | "preparing" | "queued" | "analyzing";
   note: string;
   photoCount: number;
   onCancel: () => void;
+  phase?: string;
 }) {
   const label = {
     connecting: "Connexion…",
@@ -245,6 +246,8 @@ function MealAnalysisScreen({ slot, stage, note, photoCount, onCancel }: {
     queued: "Analyse en attente…",
     analyzing: "Analyse du repas…",
   }[stage];
+  const activeStep = stage === "connecting" || stage === "preparing" ? 0 : stage === "queued" ? 1 : 2;
+  const steps = ["Préparer", "En attente", "Analyser"];
 
   return <article className={`${styles.analysisScreen} ${styles.personalLabType}`} aria-labelledby={`meal-${slot}-title`} aria-busy="true" data-purpose={`meal-${slot}-analyzing`}>
     <div className={styles.analysisScreenTop}>
@@ -253,8 +256,12 @@ function MealAnalysisScreen({ slot, stage, note, photoCount, onCancel }: {
     <div className={styles.analysisScreenBody}>
       {note.trim() && <p className={styles.analysisMealNote}>{note.trim()}</p>}
       {photoCount > 0 && <p className={styles.analysisPhotoCount}>{photoCount} {photoCount === 1 ? "photo" : "photos"}</p>}
-      <div className={styles.analysisSignal} aria-hidden="true"><span /></div>
-      <p className={styles.analysisScreenTitle} role="status" aria-live="polite" aria-atomic="true">{label}</p>
+      <ol className={styles.analysisSteps} aria-label="Progression de l’analyse">
+        {steps.map((step, index) => <li key={step} data-state={index < activeStep ? "complete" : index === activeStep ? "active" : "upcoming"} aria-current={index === activeStep ? "step" : undefined}>
+          <span aria-hidden="true">0{index + 1}</span>{step}
+        </li>)}
+      </ol>
+      <p className={styles.analysisScreenTitle} role="status" aria-live="polite" aria-atomic="true">{phase?.trim() || label}</p>
     </div>
     <button type="button" className={styles.analysisCancel} onClick={onCancel}>Annuler l’analyse</button>
   </article>;
@@ -302,6 +309,9 @@ export function LabMealCard({
   const isAnalyzing = status === "analyzing" || status === "accepted";
   const isConfirmedOrReview = status === "confirmed" || status === "review";
   const isFilled = isConfirmedOrReview && Boolean(meal?.analysis) && !isLocalEditing;
+  const previousResultState = useRef({ status, analysis: meal?.analysis ?? null });
+  const resultArrivalRef = useRef<HTMLElement | null>(null);
+  const confirmationRef = useRef<SVGSVGElement | null>(null);
 
   const photos = meal?.status === "confirmed"
     ? []
@@ -312,6 +322,9 @@ export function LabMealCard({
   const canAnalyze = hasPhotos || hasText;
   const confirmRetryAction = status === "review" && meal?.error && onConfirm && (
     <button type="button" className={styles.analyzeButton} disabled={saving || mutationBusy} onClick={onConfirm}>Retry confirmation</button>
+  );
+  const confirmationPending = status === "review" && saving && !meal?.error && (
+    <p className={styles.confirmationPending} role="status" aria-live="polite">Saving meal…</p>
   );
 
   useEffect(() => {
@@ -331,6 +344,23 @@ export function LabMealCard({
       setCorrectionText("");
     }
   }, [meal?.analysis, meal?.error]);
+
+  useEffect(() => {
+    const previous = previousResultState.current;
+    const wasAnalyzing = previous.status === "accepted" || previous.status === "analyzing";
+    const receivedNewAnalysis = wasAnalyzing
+      && !isAnalyzing
+      && (status === "review" || status === "confirmed")
+      && Boolean(meal?.analysis)
+      && previous.analysis !== meal?.analysis
+      && !meal?.error;
+
+    if (receivedNewAnalysis && resultArrivalRef.current) resultArrivalRef.current.classList.add(styles.analysisResultArrival);
+    if (status === "confirmed" && previous.status !== "confirmed" && !meal?.error && confirmationRef.current) {
+      confirmationRef.current.classList.add(styles.confirmationTickArrival);
+    }
+    previousResultState.current = { status, analysis: meal?.analysis ?? null };
+  }, [isAnalyzing, meal?.analysis, meal?.error, status]);
 
   const handleFiles = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []).filter((f) => f.type.startsWith("image/"));
@@ -522,8 +552,13 @@ export function LabMealCard({
 
   // Analyzing indicator
   if (isAnalyzing) {
-    return <MealAnalysisScreen slot={slot} stage={analysisProgress?.stage ?? (status === "analyzing" ? "analyzing" : "queued")} note={noteText} photoCount={photos.length} onCancel={onCancelAnalysis} />;
+    return <MealAnalysisScreen slot={slot} stage={analysisProgress?.stage ?? (status === "analyzing" ? "analyzing" : "queued")} note={noteText} photoCount={photos.length} phase={analysisProgress?.phase} onCancel={onCancelAnalysis} />;
   }
+
+  const confirmedIndicator = status === "confirmed" && !meal?.error ? <span className={styles.confirmedIndicator}>
+    <Check ref={confirmationRef} size={14} aria-hidden="true" onAnimationEnd={(event: React.AnimationEvent<SVGSVGElement>) => event.currentTarget.classList.remove(styles.confirmationTickArrival)} />
+    Confirmed
+  </span> : null;
 
   if (status === "error") {
     if (designVariant === "v1") {
@@ -538,7 +573,7 @@ export function LabMealCard({
             {!isSkipped && onMarkSkipped && <button type="button" className="min-h-11 min-w-11 px-2 text-xs font-sans text-content-secondary hover:text-content-primary transition-colors" disabled={disabled || mutationBusy} onClick={onMarkSkipped}>Skip</button>}
           </div>
           {photoStrip}
-          <div className="space-y-1.5" role="alert">
+          <div className={`${styles.errorState} space-y-1.5`} role="alert">
             <strong className="text-xs font-medium text-signal-neg font-sans block">Analysis interrupted</strong>
             <p className="text-xs text-content-secondary font-sans">{visibleAnalysisError(meal?.error)}</p>
           </div>
@@ -612,15 +647,18 @@ export function LabMealCard({
   if (designVariant === "v1") {
     if (isFilled) {
       return (
-        <article className={`rounded border border-hairline bg-surface-card/60 animate-fade-in transition-opacity duration-300 ${styles.personalLabType}`} data-purpose={`meal-${slot}`}>
+        <article ref={resultArrivalRef} className={`rounded border border-hairline bg-surface-card/60 transition-opacity duration-300 ${styles.personalLabType}`} onAnimationEnd={(event) => { if (event.target === event.currentTarget) event.currentTarget.classList.remove(styles.analysisResultArrival); }} data-purpose={`meal-${slot}`}>
           {fileInputs}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h3 className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
             </div>
-            <button type="button" className={styles.mealDisclosureButton} onClick={() => setShowDetails((open) => !open)} aria-label={`${showDetails ? "Replier" : "Déplier"} ${slotLabel}`} aria-expanded={showDetails} aria-controls={detailsId}>
-              <ChevronDown size={18} strokeWidth={1.75} aria-hidden="true" className={showDetails ? styles.mealDisclosureOpen : undefined} />
-            </button>
+            <div className={styles.v1FilledActions}>
+              {confirmedIndicator}
+              <button type="button" className={styles.mealDisclosureButton} onClick={() => setShowDetails((open) => !open)} aria-label={`${showDetails ? "Replier" : "Déplier"} ${slotLabel}`} aria-expanded={showDetails} aria-controls={detailsId}>
+                <ChevronDown size={18} strokeWidth={1.75} aria-hidden="true" className={showDetails ? styles.mealDisclosureOpen : undefined} />
+              </button>
+            </div>
           </div>
           {photoStrip}
           {meal?.analysis?.ingredients && meal.analysis.ingredients.length > 0 && (
@@ -629,6 +667,7 @@ export function LabMealCard({
             </p>
           )}
           {confirmRetryAction}
+          {confirmationPending}
           <div className={`pt-2 border-t border-hairline flex items-center justify-between text-xs font-mono ${styles.personalLabNutritionRow}`}>
             <span className="text-content-primary font-medium">{calValue !== null ? `${Math.round(calValue)} kcal` : "— kcal"}</span>
             <dl className={styles.personalLabNutrients}>
@@ -742,7 +781,7 @@ export function LabMealCard({
   // =========================================================================
   if (designVariant === "v2") {
     return (
-      <article className={styles.cardRoot} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy}>
+      <article ref={resultArrivalRef} className={styles.cardRoot} onAnimationEnd={(event) => { if (event.target === event.currentTarget) event.currentTarget.classList.remove(styles.analysisResultArrival); }} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy}>
         {fileInputs}
         <div className={styles.headerRow}>
           <div className={styles.titleArea}>
@@ -751,6 +790,7 @@ export function LabMealCard({
           </div>
           {isFilled && (
             <div className={styles.headerActions}>
+              {confirmedIndicator}
               <button
                 type="button"
                 className={styles.editButton}
@@ -768,6 +808,7 @@ export function LabMealCard({
         {isFilled ? (
           <div className={styles.v2FilledSummary}>
             <p className={styles.v2DishText}>{getSummaryText(meal)}</p>
+            {confirmationPending}
             <MealMetrics metrics={metrics} slot={slot} targets={targets} />
             {confirmRetryAction}
             {isCorrectionOpen && correctionForm}
@@ -859,11 +900,12 @@ export function LabMealCard({
   // VERSION 3 : SPLIT MATRIX (Asymmetric & direct focus)
   // =========================================================================
   return (
-    <article className={styles.cardRoot} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy}>
+    <article ref={resultArrivalRef} className={styles.cardRoot} onAnimationEnd={(event) => { if (event.target === event.currentTarget) event.currentTarget.classList.remove(styles.analysisResultArrival); }} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy}>
       {fileInputs}
       <div className={styles.v3Row}>
         <div className={styles.v3SlotSide}>
           <h3 id={headingId} className={styles.v3SlotHeading}>{slotLabel}</h3>
+          {confirmedIndicator}
           {isFilled && (
             <button
               type="button"
@@ -882,6 +924,7 @@ export function LabMealCard({
           {isFilled ? (
             <>
               <p className={styles.v1DishText}>{getSummaryText(meal)}</p>
+              {confirmationPending}
               <MealMetrics metrics={metrics} slot={slot} targets={targets} />
               {confirmRetryAction}
               {isCorrectionOpen && correctionForm}

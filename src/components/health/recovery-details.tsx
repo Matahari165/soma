@@ -219,10 +219,10 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
       timezone={data.timezone}
       heroScore={<span className="sr-only">Recovery score: {scoreText(score)} out of 100. 30-day average: {scoreText(averages.recovery)} out of 100.</span>}
     >
-      <section className={`${styles.content} health-observatory-content`} aria-label="Recovery content" data-health-reveal-root>
+      <section className={`${styles.content} health-observatory-content`} aria-label="Recovery content" data-scroll-reveal-root>
         <HealthScrollReveal />
         {latest ? <>
-          <section className={`${styles.heroScene} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-score-summary-title">
+          <section className={`${styles.heroScene} health-observatory-panel`} data-scroll-reveal="score" aria-labelledby="recovery-score-summary-title">
             <div className={styles.radarRegion} data-detail-open={detailOpen}>
               <h2 className="sr-only">Score factors</h2>
               <RecoveryRadar dimensions={dimensions} detailId={detailId} interactive selectedId={selectedAxis} onSelect={(id) => setSelectedAxis((current) => (current === id ? null : id))} registerButton={(id, node) => { radarButtonRefs.current[id] = node; }} />
@@ -256,7 +256,7 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
             </aside>
           </section>
 
-          <section className={`${styles.section} health-observatory-panel`} data-health-reveal aria-label="Recent recovery signals">
+          <section className={`${styles.section} health-observatory-panel`} data-scroll-reveal="measurements" aria-label="Recent recovery signals">
             <div className={styles.signalRows}>
               {[
                 { label: "HRV", value: latest.hrv_ms, average: signalAverages.hrv, unit: "ms", decimals: 0 },
@@ -266,17 +266,17 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
             </div>
           </section>
 
-          <section className={`${styles.section} ${styles.trendsSection} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-label="Recovery trends over 30 days" data-health-reveal>
+          <section className={`${styles.section} ${styles.trendsSection} health-observatory-panel`} aria-label="Recovery trends over 30 days" data-scroll-reveal="trends">
             <div className={styles.trendGrid}>
               {visibleTrendKeys.map((key) => <MetricTrendCard key={key} label={trendLabels[key].label} unit={trendLabels[key].unit} points={points(data.days, key)} direction={directionMap[trendLabels[key].direction]} format={(value) => value.toFixed(1)} valueFormat="decimal" chartType="bar" compact averageInChart animateCurrent animationFormat="decimal" />)}
             </div>
           </section>
 
-          <section className={`${styles.section} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-label="Heart-rate zones, daily average of measured days" data-health-reveal>
+          <section className={`${styles.section} health-observatory-panel`} aria-label="Heart-rate zones, daily average of measured days" data-scroll-reveal="distribution">
             <div className={styles.zonesHeading}><span>Heart-rate zones</span><span className={styles.sectionDate}>{weeklyZones.startDate && weeklyZones.endDate ? `${formatCivilDate(weeklyZones.startDate)} – ${formatCivilDate(weeklyZones.endDate)}` : "—"}</span></div>
             <WeeklyZoneChart summary={weeklyZones} />
           </section>
-        </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-empty-heading"><span className={styles.emptyMark} aria-hidden="true">+</span><div><h2 id="recovery-empty-heading">No recovery data</h2><p>0 measured days over the last 30 days. Import your signals from a connected health source, then return here.</p><p><a className={styles.emptyAction} href="/settings">Check your health connection</a></p></div></section>}
+        </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} aria-labelledby="recovery-empty-heading" data-scroll-reveal="empty"><span className={styles.emptyMark} aria-hidden="true">+</span><div><h2 id="recovery-empty-heading">No recovery data</h2><p>0 measured days over the last 30 days. Import your signals from a connected health source, then return here.</p><p><a className={styles.emptyAction} href="/settings">Check your health connection</a></p></div></section>}
       </section>
     </HealthPageShell>
   </div>;

@@ -231,7 +231,7 @@ export function MealRecipeLibrary({ initialRecipes, initialError, embedded = fal
   }
 
   return (
-    <section className={[styles.page, embedded ? styles.embedded : "", className].filter(Boolean).join(" ")} aria-labelledby="recipe-library-title" aria-busy={retrying}>
+    <section className={[styles.page, embedded ? styles.embedded : "", className].filter(Boolean).join(" ")} aria-labelledby="recipe-library-title" aria-busy={retrying} data-scroll-reveal="recipes">
       <header className={styles.header}>
         <div className={styles.heading}>
           {!embedded && <span className="eyebrow">Repères personnels</span>}

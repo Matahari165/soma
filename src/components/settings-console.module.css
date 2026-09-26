@@ -59,6 +59,37 @@
   .page :global(.ai-recent-table) { min-width: 460px; }
 }
 
+
+.page :global([data-scroll-reveal][data-reveal="pending"]) {
+  opacity: .3;
+  transform: translate3d(0, 20px, 0);
+  clip-path: inset(0 0 16% 0);
+}
+.page :global([data-scroll-reveal][data-reveal="visible"]) {
+  opacity: 1;
+  transform: none;
+  clip-path: inset(0);
+  transition: opacity 760ms cubic-bezier(.16, 1, .3, 1), transform 760ms cubic-bezier(.16, 1, .3, 1), clip-path 820ms cubic-bezier(.16, 1, .3, 1);
+}
+.page :global([data-scroll-reveal][data-reveal="pending"]:focus-within) { opacity: 1; transform: none; clip-path: none; transition: none; }
+.page :global([data-scroll-reveal="privacy"][data-reveal="visible"]) { transition-duration: 680ms; }
+.page :global(.privacy-actions > :nth-child(2)[data-scroll-reveal="privacy"][data-reveal="visible"]) { transition-delay: 65ms; }
+.page :global(.privacy-actions > :nth-child(3)[data-scroll-reveal="privacy"][data-reveal="visible"]) { transition-delay: 130ms; }
+.page :global(.privacy-actions > :nth-child(4)[data-scroll-reveal="privacy"][data-reveal="visible"]) { transition-delay: 195ms; }
+
+/* The observed section needs an unclipped box to enter the viewport. */
+.page :global([data-scroll-reveal][data-reveal="pending"]) { clip-path: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .page :global([data-scroll-reveal]) {
+    opacity: 1 !important;
+    transform: none !important;
+    clip-path: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
 .heartRateSetting { display: grid; gap: 16px; margin-top: 32px; min-width: 0; }
 .heartRateSetting h3 { margin: 0; color: var(--lab-text-primary); font: 500 18px/1.4 var(--font-soma-ui), system-ui, sans-serif; }
 .heartRateSetting > p { margin: 0; max-width: 65ch; color: var(--lab-text-secondary); font-size: 14px; line-height: 1.5; }

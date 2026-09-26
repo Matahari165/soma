@@ -114,7 +114,7 @@ export function MealNutritionTrends({
   const selectedScoreTrend = limitMealTrendPoints(scoreTrend, period);
   const hasAnySeries = metrics.length > 0 || foodGroups.length > 0 || scoreTrend.length > 0;
 
-  return <section className={[styles.root, className].filter(Boolean).join(" ")} aria-labelledby="meal-trends-title" data-period={period}>
+  return <section className={[styles.root, className].filter(Boolean).join(" ")} aria-labelledby="meal-trends-title" data-period={period} data-scroll-reveal="trends">
     <h2 className={styles.srOnly} id="meal-trends-title">Nutrition trends</h2>
     <div className={styles.toolbar}>
       <fieldset className={styles.periodPicker}>

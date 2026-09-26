@@ -59,6 +59,7 @@ function StreamedJournalCapture({
 }
 
 export function LabWorldWorkspace({
+  className,
   date: initialDateString,
   effects,
   capture,
@@ -70,6 +71,7 @@ export function LabWorldWorkspace({
   initialSelectedDate,
   personalization,
 }: {
+  className?: string;
   date?: string;
   radar?: ReactNode;
   effects?: ReactNode;
@@ -195,7 +197,7 @@ export function LabWorldWorkspace({
     window.addEventListener("lab-theme-change", change);
     return () => window.removeEventListener("lab-theme-change", change);
   }, []);
-  return <main ref={root} id="main-page-content" className="lab-experience lab-continuous" data-continuous-theme={theme}>
+  return <main ref={root} id="main-page-content" className={`lab-experience lab-continuous${className ? ` ${className}` : ""}`} data-continuous-theme={theme}>
     <RefreshActiveHealthPage />
     <div className="lab-intro">
       {theme === "observatory" && <ArrivalBackdrop variant={radarPresentation.backdrop} />}

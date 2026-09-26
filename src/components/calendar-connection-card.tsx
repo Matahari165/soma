@@ -54,9 +54,9 @@ export function CalendarConnectionCard({ initialNotice = null }: { initialNotice
     } finally { setBusy(null); }
   }
 
-  if (loading) return <article className="connection-card" aria-busy="true"><span className="connection-logo"><LoaderCircle className="spin" size={19} /></span><div><strong>Google Calendar</strong><p>Checking connection…</p></div></article>;
+  if (loading) return <article className="connection-card" data-scroll-reveal="source" aria-busy="true"><span className="connection-logo"><LoaderCircle className="spin" size={19} /></span><div><strong>Google Calendar</strong><p>Checking connection…</p></div></article>;
   return <>
-    <article className="connection-card">
+    <article className="connection-card" data-scroll-reveal="source">
       <span className="connection-logo" aria-hidden="true"><CalendarDays size={19} /></span>
       <div><strong>Google Calendar</strong><p>{connection ? `${connection.status === "connected" ? "Connected" : "Attention required"} · Last synced: ${connection.last_synced_at ? new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(connection.last_synced_at)) : "pending"}` : "Not connected · primary calendar only"}</p></div>
       {connection ? <div className="connection-actions"><button className="sync-now-button" disabled={Boolean(busy)} onClick={() => void sync()} type="button">{busy === "sync" ? <LoaderCircle className="spin" /> : <RefreshCw />}Sync now</button><button disabled={Boolean(busy)} onClick={() => setConfirming(true)} type="button"><Unplug />Disconnect</button></div> : <a href="/api/calendar/google/connect">Connect <ExternalLink /></a>}

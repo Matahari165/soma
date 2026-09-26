@@ -1,0 +1,228 @@
+.observatoryScroll {
+  min-height: 100svh;
+  --observatory-motion-ease: cubic-bezier(.16, 1, .3, 1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .observatoryScroll :global(.arrival-heading h1) {
+    animation: observatory-title-uncover 860ms var(--observatory-motion-ease) 80ms both;
+  }
+
+  @supports (animation-timeline: scroll(root)) {
+    .observatoryScroll :global(.lab-intro .arrival-art) {
+      animation: observatory-art-recede linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 0px 880px;
+    }
+  }
+
+  @supports (animation-timeline: view()) {
+    .observatoryScroll :global(.personal-lab-day-strip) {
+      animation: date-ribbon-enter linear both;
+      animation-timeline: view(block);
+      animation-range: entry 0% entry 54%;
+    }
+
+    .observatoryScroll :global(.journal-workspace-header) {
+      animation: journal-title-enter linear both;
+      animation-timeline: view(block);
+      animation-range: entry 0% entry 60%;
+    }
+
+    .observatoryScroll :global(.personal-lab-journal-column [data-purpose$="-habits"]) {
+      animation: journal-phase-enter linear both;
+      animation-timeline: view(block);
+      animation-range: entry 0% entry 62%;
+    }
+
+    .observatoryScroll :global(.personal-lab-journal-column [data-purpose$="-habits"]:nth-of-type(even)) {
+      animation-name: journal-phase-enter-from-right;
+      animation-range: entry 0% entry 58%;
+    }
+
+    .observatoryScroll :global(.personal-lab-meal-column .meal-journal-lab > header) {
+      animation: meal-heading-enter linear both;
+      animation-timeline: view(block);
+      animation-range: entry 0% entry 62%;
+    }
+  }
+
+  .observatoryScroll :global(.personal-lab-day-strip button[aria-current="date"]) {
+    transition: background-color 360ms var(--observatory-motion-ease), color 360ms var(--observatory-motion-ease), transform 360ms var(--observatory-motion-ease);
+  }
+
+  .observatoryScroll :global(.personal-lab-day-strip button[aria-current="date"]:active) {
+    transform: translateY(1px);
+  }
+
+  .observatoryScroll :global(.journal-field-row) {
+    position: relative;
+    background-color: transparent;
+    transition: background-color 170ms var(--observatory-motion-ease);
+  }
+
+  .observatoryScroll :global(.journal-field-row[data-state="recorded"]) {
+    background-color: color-mix(in srgb, var(--lab-signal) 7%, transparent);
+  }
+
+  .observatoryScroll :global(.journal-field-row[data-state="skipped"]) {
+    background-color: color-mix(in srgb, var(--lab-text-secondary) 4%, transparent);
+  }
+
+  .observatoryScroll :global(.journal-field-row__state-icon) {
+    display: inline-grid;
+    flex: 0 0 16px;
+    width: 16px;
+    height: 16px;
+    place-items: center;
+    color: var(--lab-text-secondary);
+    transform-origin: center;
+    transition: color 170ms var(--observatory-motion-ease);
+  }
+
+  .observatoryScroll :global(.journal-field-row[data-state="recorded"] .journal-field-row__state-icon) {
+    color: var(--lab-signal);
+  }
+
+  .observatoryScroll :global(.journal-field-row[data-state="skipped"] .journal-field-row__state-icon) {
+    color: var(--lab-text-secondary);
+  }
+
+  .observatoryScroll :global(.journal-field-row--changed .journal-field-row__state-icon) {
+    animation: field-confirm-mark 560ms var(--observatory-motion-ease) both;
+  }
+
+  .observatoryScroll :global(.journal-field-row__feedback) {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 1px;
+    background: var(--lab-signal);
+    transform: scaleX(0);
+    transform-origin: left center;
+    pointer-events: none;
+    animation: field-confirm-line 520ms var(--observatory-motion-ease) both;
+  }
+
+  .observatoryScroll :global(.journal-field-row > button) {
+    transition: transform 160ms var(--observatory-motion-ease);
+  }
+
+  .observatoryScroll :global(.journal-field-row > button:active) {
+    transform: translateY(1px);
+  }
+
+  .observatoryScroll :global(.journal-header-validate) {
+    transition: transform 160ms var(--observatory-motion-ease), color 180ms var(--observatory-motion-ease), border-color 180ms var(--observatory-motion-ease);
+  }
+
+  .observatoryScroll :global(.journal-header-validate:active) {
+    transform: translateY(1px);
+  }
+
+  .observatoryScroll :global(.journal-header-validated) {
+    animation: day-validation-confirm 620ms var(--observatory-motion-ease) both;
+  }
+
+  .observatoryScroll :global(.journal-header-validated svg path) {
+    stroke-dasharray: 20;
+    stroke-dashoffset: 20;
+    animation: day-validation-check 540ms var(--observatory-motion-ease) 70ms both;
+  }
+
+  .observatoryScroll :global(.personal-lab-journal-column [data-purpose$="-habits"]:focus-within),
+  .observatoryScroll :global(.personal-lab-meal-column .meal-journal-lab > header:focus-within) {
+    animation: none;
+    clip-path: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes observatory-title-uncover {
+  from { clip-path: inset(0 0 100% 0); transform: translateY(12px); }
+  to { clip-path: inset(0); transform: translateY(0); }
+}
+
+@keyframes observatory-art-recede {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: .82; transform: translateY(42px) scale(.94); }
+}
+
+@keyframes date-ribbon-enter {
+  from { clip-path: inset(0 100% 0 0); transform: translateX(-18px); }
+  to { clip-path: inset(0); transform: translateX(0); }
+}
+
+@keyframes journal-title-enter {
+  from { clip-path: inset(0 100% 0 0); transform: translateX(-22px); }
+  to { clip-path: inset(0); transform: translateX(0); }
+}
+
+@keyframes journal-phase-enter {
+  from { clip-path: inset(0 100% 0 0); transform: translateX(-20px); }
+  to { clip-path: inset(0); transform: translateX(0); }
+}
+
+@keyframes journal-phase-enter-from-right {
+  from { clip-path: inset(0 0 0 100%); transform: translateX(20px); }
+  to { clip-path: inset(0); transform: translateX(0); }
+}
+
+@keyframes meal-heading-enter {
+  from { clip-path: inset(0 0 0 100%); transform: translateX(20px); }
+  to { clip-path: inset(0); transform: translateX(0); }
+}
+
+@keyframes field-confirm-mark {
+  0% { opacity: .7; transform: scale(.84); }
+  30% { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes field-confirm-line {
+  0% { opacity: .5; transform: scaleX(0); }
+  30% { opacity: 1; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(1); }
+}
+
+@keyframes day-validation-confirm {
+  0% { opacity: 0; transform: translateY(4px); }
+  24% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes day-validation-check {
+  from { stroke-dashoffset: 20; }
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .observatoryScroll :global(.arrival-heading h1),
+  .observatoryScroll :global(.lab-intro .arrival-art),
+  .observatoryScroll :global(.personal-lab-day-strip),
+  .observatoryScroll :global(.journal-workspace-header),
+  .observatoryScroll :global(.personal-lab-journal-column [data-purpose$="-habits"]),
+  .observatoryScroll :global(.personal-lab-meal-column .meal-journal-lab > header),
+  .observatoryScroll :global(.journal-field-row--changed .journal-field-row__state-icon),
+  .observatoryScroll :global(.journal-field-row__feedback),
+  .observatoryScroll :global(.journal-header-validated),
+  .observatoryScroll :global(.journal-header-validated svg path) {
+    animation: none !important;
+    clip-path: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .observatoryScroll :global(.personal-lab-day-strip button),
+  .observatoryScroll :global(.journal-field-row),
+  .observatoryScroll :global(.journal-field-row > button),
+  .observatoryScroll :global(.journal-header-validate) {
+    transition: none;
+  }
+
+  .observatoryScroll :global(.journal-field-row > button:active),
+  .observatoryScroll :global(.journal-header-validate:active) {
+    transform: none;
+  }
+}

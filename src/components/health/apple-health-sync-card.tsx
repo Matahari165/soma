@@ -28,7 +28,7 @@ export function AppleHealthSyncCard() {
   }
 
   return (
-    <article className="settings-card apple-health-sync-card" aria-labelledby="apple-health-sync-title">
+    <article className="settings-card apple-health-sync-card" data-scroll-reveal="source" aria-labelledby="apple-health-sync-title">
       <header className="settings-card__header">
         <div className="settings-card__icon" aria-hidden="true">
           <Smartphone size={20} />

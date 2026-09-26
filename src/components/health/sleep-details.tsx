@@ -244,7 +244,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   ] : [];
 
   return <div className={`${styles.root} health-observatory-route`}><HealthPageShell kind="sleep" title="Sleep" description="Duration, efficiency, and regularity of your sleep." score={score} freshness={freshness} timezone={data.timezone} showHeroScore={false} showFreshness={true}>
-    <section className={`${styles.redesign} health-observatory-content`} aria-label="Sleep content" data-health-reveal-root>
+    <section className={`${styles.redesign} health-observatory-content`} aria-label="Sleep content" data-scroll-reveal-root>
       <HealthScrollReveal />
       {latest ? <>
         <section className={`${styles.overviewSection} health-observatory-panel`} aria-label="Sleep summary">
@@ -256,7 +256,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
           />
         </section>
 
-        <section className={styles.readingsSection} aria-label="Sleep indicators" data-health-reveal>
+        <section className={styles.readingsSection} aria-label="Sleep indicators" data-scroll-reveal="measurements">
           <div className={styles.readingsGrid}>
             {[
               { label: "Duration", value: formatDurationMinutes(latest.sleep_minutes), context: `30-day avg · ${formatDurationMinutes(averageSleep)}`, detail: "Measured sleep duration compared with your estimated need." },
@@ -267,7 +267,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
           </div>
         </section>
 
-        <section className={`${styles.trendsSection} health-observatory-panel`} aria-label="Sleep trends" data-health-reveal>
+        <section className={`${styles.trendsSection} health-observatory-panel`} aria-label="Sleep trends" data-scroll-reveal="trends">
           <div className={styles.trendGrid}>
             <MetricTrendCard label="Duration" points={points(data.days, "sleep_minutes")} direction="higher_is_better" format={formatDurationMinutes} valueFormat="duration" chartType="bar" compact averageInChart animateCurrent animationFormat="duration" />
             <MetricTrendCard label="Efficiency" points={points(data.days, "sleep_efficiency")} unit="%" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" />
@@ -276,11 +276,11 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
             <MetricTrendCard label="Deep + REM sleep" points={restorativeSleepPoints(data.days)} direction="higher_is_better" format={formatDurationMinutes} valueFormat="duration" chartType="bar" compact averageInChart animateCurrent animationFormat="duration" />
           </div>
         </section>
-        <section className={`${styles.lastNightSection} health-observatory-panel`} aria-label="Last night sleep stages" data-health-reveal>
+        <section className={`${styles.lastNightSection} health-observatory-panel`} aria-label="Last night sleep stages" data-scroll-reveal="distribution">
           <p className={styles.stagePeriod}>{clock(latest.bedtime, data.timezone)} → {clock(latest.wake_time, data.timezone)}</p>
           <div className={styles.distributionPanel}><SleepStageDistribution stages={[{ label: "Deep", value: latest.sleep_deep_percent, tone: "deep" }, { label: "REM", value: latest.sleep_rem_percent, tone: "rem" }, { label: "Light", value: latest.sleep_light_percent, tone: "light" }, { label: "Awake", value: latest.sleep_awake_percent, tone: "awake" }]} /></div>
         </section>
-      </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} aria-labelledby="sleep-empty-heading"><MoonStar size={24} aria-hidden="true" /><div><h2 id="sleep-empty-heading">No sleep data</h2><p>0 measured nights over the last 30 days. Import your sleep from a connected health source, then return here.</p><p><a href="/settings">Check your health connection</a></p></div></section>}
+      </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} aria-labelledby="sleep-empty-heading" data-scroll-reveal="empty"><MoonStar size={24} aria-hidden="true" /><div><h2 id="sleep-empty-heading">No sleep data</h2><p>0 measured nights over the last 30 days. Import your sleep from a connected health source, then return here.</p><p><a href="/settings">Check your health connection</a></p></div></section>}
     </section>
   </HealthPageShell></div>;
 }
