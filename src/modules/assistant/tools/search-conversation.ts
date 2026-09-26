@@ -174,7 +174,7 @@ export async function searchAssistantConversation(input: {
 
 export function createSearchConversationTool(context: { userId: string; runId: string; conversationId: string }) {
   return tool({
-    description: "Recherche dans les anciens messages de cette conversation et restitue de courts extraits avec leurs références. Utilise-le pour retrouver un fait déjà dit, une correction, une réponse, une analyse ou une photo jointe. Les résultats d’analyse conservent leur période et leurs preuves; les paroles historiques ne deviennent pas des souvenirs confirmés.",
+    description: "Recherche dans les anciens messages de cette conversation et restitue de courts extraits avec leurs références. Lis ensuite le texte complet via readConversationMessage avec messageId et ses pages bornées. Utilise-le pour retrouver un fait déjà dit, une correction, une réponse, une analyse ou une photo jointe. Les résultats d’analyse conservent leur période et leurs preuves; les paroles historiques ne deviennent pas des souvenirs confirmés.",
     inputSchema,
     execute: async (input, options) => executeAuditedAssistantTool({
       context,

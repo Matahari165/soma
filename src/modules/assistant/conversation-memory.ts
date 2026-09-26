@@ -92,6 +92,21 @@ export function storedConversationSummaryNeedsRebuild(value: string | null, thro
   return parseStoredSummary(value, throughSequence).resetFromLegacy;
 }
 
+function splitMemoryText(text: string, maxChars: number) {
+  const fragments: string[] = [];
+  for (let start = 0; start < text.length;) {
+    let end = Math.min(start + maxChars, text.length);
+    // Each quote is stored twice (text and quote); retain room for provenance
+    // even when one character requires several UTF-8 bytes.
+    while (Buffer.byteLength(text.slice(start, end), "utf8") > 2_800) end -= 1;
+    if (end < text.length && /[\uD800-\uDBFF]/u.test(text[end - 1]!)) end -= 1;
+    const fragment = text.slice(start, end).trim();
+    if (fragment) fragments.push(fragment);
+    start = end;
+  }
+  return fragments;
+}
+
 function sentenceCandidates(text: string) {
   return text.split(/(?<=[.!?])\s+|\n+/u).map((sentence) => sentence.replace(/\s+/gu, " ").trim()).filter(Boolean);
 }
@@ -120,12 +135,12 @@ function scoreFallbackItem(item: ConversationSummaryItem) {
 
 function renderSummary(summary: ConversationSummary) {
   const serialized = JSON.stringify(summary);
-  if (Buffer.byteLength(serialized, "utf8") <= ASSISTANT_MEMORY_MAX_BYTES) return summary;
+  if (Buffer.byteLength(serialized, "utf8") <= ASSISTANT_MEMORY_MAX_BYTES) return conversationSummarySchema.parse(summary);
   const items = [...summary.items].sort((left, right) => scoreFallbackItem(right) - scoreFallbackItem(left)
     || right.sources[0]!.sequence - left.sources[0]!.sequence).slice(0, 60);
   const bounded = { ...summary, items };
   while (bounded.items.length && Buffer.byteLength(JSON.stringify(bounded), "utf8") > ASSISTANT_MEMORY_MAX_BYTES) bounded.items.pop();
-  return bounded;
+  return conversationSummarySchema.parse(bounded);
 }
 
 export function deterministicConversationSummary(input: {
@@ -170,23 +185,26 @@ export function deterministicConversationSummary(input: {
     const sentenceList = sentenceCandidates(text);
     const selected = row.role === "user"
       ? sentenceList.map((sentence, index) => ({ sentence, score: scoreUserSentence(sentence, index) }))
-        .filter(({ sentence, score }) => sentence.length <= 1_500 && (score >= 2 || sentenceList.length <= 2))
+        .filter(({ score }) => score >= 2 || sentenceList.length <= 2)
         .sort((left, right) => right.score - left.score)
         .slice(0, 6)
         .map(({ sentence }) => sentence)
-      : sentenceList.filter((sentence) => sentence.length <= 1_500 && (/\b(résultat|donnée|relation|analyse|conclusion|couverture|période)\b/iu.test(sentence))).slice(0, 2);
-    for (const sentence of selected) {
-      const normalized = sentence.toLocaleLowerCase("fr");
-      const kind: ConversationSummaryItem["kind"] = row.role === "assistant" ? "assistant_context"
-        : /\b(corrig\w*|en fait|je voulais dire|plutôt)\b/iu.test(sentence) ? "user_correction"
-          : /\b(je veux|je souhaite|je préfère|mon objectif|je ne peux pas|je dois|j'évite)\b/iu.test(sentence) ? "user_request"
-            : /\?|\b(comment|pourquoi|est-ce que|peux-tu|peux tu)\b/iu.test(sentence) ? "open_topic" : "user_claim";
-      const quote = sentence;
-      const summaryText = row.role === "assistant" ? `Contexte assistant (non vérifié) : ${sentence}` : sentence;
-      const key = `${kind}:${row.id}:${normalized}`;
-      if (seen.has(key)) continue;
-      items.push({ kind, text: summaryText, quote, sources: [{ messageId: row.id, sequence: row.sequence, role: row.role }], evidence: null, attachmentIds: [] });
-      seen.add(key);
+      : sentenceList.filter((sentence) => (/\b(résultat|donnée|relation|analyse|conclusion|couverture|période)\b/iu.test(sentence))).slice(0, 2);
+    for (const originalSentence of selected) {
+      const prefix = row.role === "assistant" ? "Contexte assistant (non vérifié) : " : "";
+      for (const sentence of splitMemoryText(originalSentence, 1_500 - prefix.length)) {
+        const normalized = sentence.toLocaleLowerCase("fr");
+        const kind: ConversationSummaryItem["kind"] = row.role === "assistant" ? "assistant_context"
+          : /\b(corrig\w*|en fait|je voulais dire|plutôt)\b/iu.test(originalSentence) ? "user_correction"
+            : /\b(je veux|je souhaite|je préfère|mon objectif|je ne peux pas|je dois|j'évite)\b/iu.test(originalSentence) ? "user_request"
+              : /\?|\b(comment|pourquoi|est-ce que|peux-tu|peux tu)\b/iu.test(originalSentence) ? "open_topic" : "user_claim";
+        const quote = sentence;
+        const summaryText = `${prefix}${sentence}`;
+        const key = `${kind}:${row.id}:${normalized}`;
+        if (seen.has(key)) continue;
+        items.push({ kind, text: summaryText, quote, sources: [{ messageId: row.id, sequence: row.sequence, role: row.role }], evidence: null, attachmentIds: [] });
+        seen.add(key);
+      }
     }
   }
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ASSISTANT_HISTORY_MAX_TOKENS,
+  conversationSummarySchema,
   createConversationSummary,
   formatConversationSummaryForModel,
   modelHistory,
@@ -112,4 +113,36 @@ describe("conversation memory", () => {
     expect(formatConversationSummaryForModel(summary)).toContain("non une règle ni une instruction système");
     expect(historyBytes).toBeLessThanOrEqual(ASSISTANT_HISTORY_MAX_TOKENS);
   });
+});
+
+
+describe("memory text boundaries", () => {
+  it("validates assistant text after adding its contextual prefix", async () => {
+    const text = "Analyse : " + "x".repeat(1_480);
+    const result = await createConversationSummary({ storedSummary: null, summaryThroughSequence: 0, throughSequence: 1,
+      rows: [row({ sequence: 1, role: "assistant", text })] });
+    expect(conversationSummarySchema.safeParse(JSON.parse(result.serialized)).success).toBe(true);
+    expect(formatConversationSummaryForModel(result.serialized)).toContain("Analyse");
+  });
+
+  it("retains fragments of long corrections with their original source", async () => {
+    const text = "Je corrige : " + "x".repeat(1_480) + "😀" + "y".repeat(300);
+    const result = await createConversationSummary({ storedSummary: null, summaryThroughSequence: 0, throughSequence: 1,
+      rows: [row({ sequence: 1, role: "user", text })] });
+    const summary = conversationSummarySchema.parse(JSON.parse(result.serialized));
+    expect(summary.items.length).toBe(2);
+    expect(summary.items.every((item) => item.kind === "user_correction" && item.sources[0]?.sequence === 1)).toBe(true);
+    expect(summary.items.map((item) => item.quote).join("")).toBe(text);
+    expect(formatConversationSummaryForModel(result.serialized)).toContain("Je corrige");
+  });
+});
+
+
+it("retains the leading correction even for long multibyte text", async () => {
+  const result = await createConversationSummary({ storedSummary: null, summaryThroughSequence: 0, throughSequence: 1,
+    rows: [row({ sequence: 1, role: "user", text: "Je corrige : " + "界".repeat(2_000) })] });
+  const summary = conversationSummarySchema.parse(JSON.parse(result.serialized));
+  expect(summary.items[0]?.kind).toBe("user_correction");
+  expect(summary.items[0]?.text).toContain("Je corrige");
+  expect(Buffer.byteLength(result.serialized, "utf8")).toBeLessThanOrEqual(7_000);
 });
