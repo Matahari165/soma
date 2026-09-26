@@ -10,7 +10,7 @@
 .composer:hover,.composer:focus-within { border-color:#777; background:#1a1a1a; }
 .composer textarea { display:block; flex:1; width:100%; min-width:0; min-height:40px; max-height:160px; padding:9px 0; resize:none; border:0; outline:0; background:transparent; color:#f1f1f1; font:400 15px/1.45 var(--font-soma-ui),sans-serif; }
 .composer textarea::placeholder { color:#aaa; }
-.entry .composer textarea:focus-visible { outline:none!important; }
+.conversation .composer textarea:focus-visible { outline:none!important; }
 .composer.expanded textarea { min-height:100px; }
 .actions { display:flex; flex:none; gap:2px; align-items:center; }
 .actions button { display:grid; place-items:center; width:40px; height:40px; border:0; border-radius:50%; cursor:pointer; }
@@ -25,7 +25,8 @@
 .srOnly { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 @media(max-width:700px) {
   .entry { width:100%; margin-top:24px; }
-  .observation { min-height:44px; font-size:16px; line-height:1.55; }
+  .conversation { margin-top:16px; }
+  .observation { min-height:44px; font-size:16px; line-height:1.45; }
   .composer { min-height:56px; padding-left:14px; }
   .composer textarea { min-height:44px; font-size:16px; }
   .actions button { width:44px; height:44px; }
