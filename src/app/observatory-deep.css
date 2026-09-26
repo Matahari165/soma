@@ -1165,3 +1165,13 @@ html[data-lab-theme="observatory"] .arrival-art--conversation [data-home-rings] 
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art.arrival-art--conversation { margin:0!important; }
   html[data-lab-theme="observatory"] .arrival-visual { height:min(410px,106vw); }
 }
+
+/* Keep rings aligned with the hero and let details extend the composition. */
+@media(min-width:1101px) {
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art:has([data-home-rings]) {
+    align-self:start;
+    margin-top:88px!important;
+  }
+}
+html[data-lab-theme="observatory"] .arrival-visual:has([data-home-rings]) { height:auto; }
+html[data-lab-theme="observatory"] .arrival-visual [data-home-rings] { height:auto; }
