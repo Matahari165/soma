@@ -291,8 +291,18 @@
   .page { height: calc(100dvh - 52px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
 }
 
-/* Observatory navigation reserves 72px above every authenticated chat surface. */
+/* Desktop navigation uses the top rail; phones reserve the bottom dock instead. */
 :global(body.observatory-mode) .page { height: calc(100dvh - 72px - env(safe-area-inset-bottom)); }
+
+@media (max-width: 700px) {
+  :global(body.observatory-mode) .page {
+    height: calc(100dvh - 116px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    min-height: 0;
+  }
+  :global(body.local-preview.observatory-mode) .page {
+    height: calc(100dvh - 144px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .starters, .welcome { animation: none; }
@@ -410,6 +420,7 @@
   .mobileToolbar button:last-child { grid-column: 3; }
   .messageBody, .starterList button { font-size: 17px; }
   .composerRegion { padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+  :global(body.observatory-mode) .composerRegion { padding-bottom: 8px; }
   .composer { padding: 12px; transition: border-color 160ms ease, background-color 160ms ease, transform 180ms cubic-bezier(.2,.8,.2,1); }
   .composer:focus-within { transform: scale(1.015); transform-origin: center bottom; }
   .composer textarea { min-height: 48px; padding: 10px 0; font-size: 17px; }

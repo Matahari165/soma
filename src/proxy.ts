@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { MAX_MEAL_MULTIPART_BYTES } from "@/domain/meals";
-import { isLocalPreviewMode } from "@/lib/env";
+import { isLocalPreviewMode, isRemoteDemoPreviewMode } from "@/lib/env";
 
 const publicMachinePaths = [
   "/api/health/webhook",
@@ -67,6 +67,21 @@ export async function proxy(request: NextRequest) {
   const publicMachineRoute = publicMachinePaths.some((path) => request.nextUrl.pathname.startsWith(path));
   const bearerRequest = /^Bearer [A-Za-z0-9_-]{32,}$/.test(request.headers.get("authorization") ?? "");
   const unsafeMethod = !["GET", "HEAD", "OPTIONS"].includes(request.method);
+  if (isRemoteDemoPreviewMode() && unsafeMethod) {
+    return secureResponse(NextResponse.json({ error: "Cet aperçu est en lecture seule." }, { status: 403 }));
+  }
+  if (isRemoteDemoPreviewMode() && [
+    "/auth/",
+    "/api/cron/",
+    "/api/settings/ai-usage",
+    "/api/health/apple-sync",
+    "/api/health/google/callback",
+    "/api/calendar/google/callback",
+    "/api/assistant/attachments/",
+    "/api/account/archive",
+  ].some((path) => request.nextUrl.pathname.startsWith(path))) {
+    return secureResponse(NextResponse.json({ error: "Indisponible dans cet aperçu." }, { status: 403 }));
+  }
   if (unsafeMethod) {
     const contentLength = Number(request.headers.get("content-length") ?? 0);
     const requestLimit = requestBodyLimitForPath(request.nextUrl.pathname);
