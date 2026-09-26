@@ -53,7 +53,7 @@ export function PersonalLabDateStrip({
         disabled={disabled}
         aria-current={isSelected ? "date" : undefined}
         onClick={() => onDateChange(date)}
-        className={`${isSelected ? "is-selected" : ""} personal-lab-day-strip__day flex flex-col items-center justify-center py-1.5 px-2 rounded transition-all duration-150 relative interactive-press active:scale-[0.96]`}
+        className={`${isSelected ? "is-selected" : ""} personal-lab-day-strip__day flex flex-col items-center justify-center py-1.5 px-2 rounded transition-all duration-150 relative interactive-press`}
       >
         <div className="flex items-center justify-center gap-1.5 text-[11px] font-mono text-content-secondary">
           <span className={`${isSelected ? "text-content-primary " : ""}personal-lab-day-strip__label`} data-mobile-label={isToday ? todayLabel : weekday}>{isToday ? `${todayLabel}${french ? " " : ", "}${monthDay}` : weekday}</span>

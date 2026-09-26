@@ -126,7 +126,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
         </nav>
       </header>
 
-      <div key={pathname} className="main-content">{children}</div>
+      <div key={pathname} className={isPersonalLab ? "main-content" : "main-content soma-motion-route"}>{children}</div>
     </div>
   );
 }

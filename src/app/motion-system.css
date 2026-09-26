@@ -5,6 +5,7 @@
   --soma-ease-state: cubic-bezier(.2, .8, .2, 1);
   --soma-motion-feedback: 165ms;
   --soma-motion-state: 240ms;
+  --soma-motion-exit: 180ms;
   --soma-motion-enter: 680ms;
   --soma-motion-distance: 10px;
 
@@ -27,8 +28,54 @@
   to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
-:is(.meals-page, .health-observatory-content, .settings-page) > :is(header, section, div) {
-  animation: soma-page-enter var(--soma-motion-enter) var(--soma-ease-enter) both;
+/* Routine navigation fades once; child data keeps its own authored entrance. */
+.soma-motion-route, .soma-motion-state {
+  animation: soma-state-enter var(--soma-motion-state) var(--soma-ease-state);
+}
+
+@keyframes soma-state-enter {
+  from { opacity: .72; }
+  to { opacity: 1; }
+}
+
+.soma-motion-disclosure {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows var(--soma-motion-exit) var(--soma-ease-state), opacity var(--soma-motion-exit) var(--soma-ease-state);
+}
+.soma-motion-disclosure[data-motion-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition-duration: var(--soma-motion-state);
+}
+.soma-motion-disclosure[hidden] { display: none; }
+.soma-motion-disclosure__content { min-height: 0; overflow: hidden; }
+
+@starting-style {
+  .soma-motion-disclosure[data-motion-open="true"] { grid-template-rows: 0fr; opacity: 0; }
+}
+
+.soma-motion-overlay {
+  animation: soma-state-enter var(--soma-motion-state) var(--soma-ease-state);
+  transition: opacity var(--soma-motion-exit) var(--soma-ease-state);
+}
+.soma-motion-overlay[data-motion-open="false"] { opacity: 0; pointer-events: none; }
+
+/* Native disclosures keep their keyboard behavior and gain progressive motion. */
+@supports (interpolate-size: allow-keywords) {
+  details:not(.matrix-disclosure)::details-content {
+    interpolate-size: allow-keywords;
+    block-size: 0;
+    overflow: clip;
+    opacity: 0;
+    transition: block-size var(--soma-motion-exit) var(--soma-ease-state), opacity var(--soma-motion-exit) var(--soma-ease-state), content-visibility var(--soma-motion-exit) allow-discrete;
+  }
+  details:not(.matrix-disclosure)[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+    transition-duration: var(--soma-motion-state);
+  }
 }
 
 /* One restrained authored entrance for the landing scene. */
@@ -83,13 +130,13 @@
 }
 
 .observatory-radar {
-  --soma-radar-fill-duration: 580ms;
-  --soma-radar-trace-duration: 500ms;
+  --soma-radar-fill-duration: 300ms;
+  --soma-radar-trace-duration: 340ms;
   --soma-radar-point-duration: 170ms;
-  --soma-radar-fill-delay: 2540ms;
-  --soma-radar-trace-delay: 400ms;
-  --soma-radar-point-delay: 310ms;
-  --soma-radar-stagger: 540ms;
+  --soma-radar-fill-delay: 560ms;
+  --soma-radar-trace-delay: 80ms;
+  --soma-radar-point-delay: 210ms;
+  --soma-radar-stagger: 130ms;
   --soma-radar-ease: cubic-bezier(.35, .08, .65, .92);
 }
 
@@ -129,7 +176,10 @@ details > summary {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :is(.meals-page, .health-observatory-content, .settings-page) > :is(header, section, div) { animation: none !important; }
+  .soma-motion-route, .soma-motion-state, .soma-motion-overlay { animation: none !important; transition: none !important; }
+  .soma-motion-disclosure { transition: none; }
+  details::details-content { transition: none !important; }
+  .lab-global-nav__more-panel { transition: none !important; }
 
   .lab-continuous .arrival-masthead,
   .lab-continuous .arrival-heading,
@@ -149,4 +199,26 @@ details > summary {
     stroke-dashoffset: 0 !important;
     transform: none !important;
   }
+}
+
+/* No second reveal when a date changes: the new measurements arrive together. */
+.arrival-visual[data-motion-updated="true"] :is(svg, svg *) { animation: none !important; }
+.lab-continuous .arrival-heading h1 { animation: none !important; }
+
+.personal-lab-day-strip button { transition: color var(--soma-motion-feedback) var(--soma-ease-state), background-color var(--soma-motion-feedback) var(--soma-ease-state); }
+.personal-lab-day-strip button:active { transform: translateY(1px); }
+
+html[data-lab-theme="observatory"] .lab-global-nav__more-panel {
+  animation: none;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--soma-motion-exit) var(--soma-ease-state), transform var(--soma-motion-exit) var(--soma-ease-state);
+}
+html[data-lab-theme="observatory"] .lab-global-nav__more-panel[data-motion-open="false"] { opacity: 0; transform: translateY(4px); pointer-events: none; }
+@starting-style {
+  html[data-lab-theme="observatory"] .lab-global-nav__more-panel[data-motion-open="true"] { opacity: 0; transform: translateY(4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .personal-lab-day-strip button:active { transform: none; }
+  html[data-lab-theme="observatory"] .lab-global-nav__more-panel[data-motion-open] { transform: none; }
 }

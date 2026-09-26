@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useMotionUpdate } from "@/components/motion/use-motion-update";
 import { arrivalMessageFor, type ArrivalActivity, type ArrivalMessage } from "@/domain/lab/arrival-message";
 import type { PersonalLabActivitySummary } from "@/domain/lab/activity-summary";
 import { JOURNAL_PROGRESS_EVENT } from "./personal-lab-journal-workspace";
@@ -41,6 +42,10 @@ export function LabArrival({
     lines: ["Your own", "observatory."],
     activityNote: null,
   });
+  const visualRef = useRef<HTMLDivElement>(null);
+  const [visualDate, setVisualDate] = useState({ date: selectedDate, updated: false });
+  if (visualDate.date !== selectedDate) setVisualDate({ date: selectedDate, updated: true });
+  useMotionUpdate(visualRef, selectedDate ?? null);
   const [journalProgress, setJournalProgress] = useState<JournalProgress | null>(null);
   const activity = personalization?.activity;
   const dayActivitySummary = activitySummaries?.find((summary) => summary.date === selectedDate && summary.count > 0) ?? null;
@@ -94,7 +99,7 @@ export function LabArrival({
         </section>}
         {observations}
       </div>
-      <div className={"arrival-art" + (personalization ? " arrival-art--conversation" : "")} style={{ position: "relative", zIndex: 1 }}><div className="arrival-visual">{radar}</div>{composer}</div>
+      <div className={"arrival-art" + (personalization ? " arrival-art--conversation" : "")} style={{ position: "relative", zIndex: 1 }}><div ref={visualRef} className="arrival-visual" data-motion-updated={visualDate.updated}>{radar}</div>{composer}</div>
     </div>
   );
   return <section className="lab-arrival" data-arrival-theme={theme} aria-label="Personal lab home" key={theme}>
