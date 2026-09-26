@@ -2,7 +2,7 @@ import { Footprints } from "lucide-react";
 
 import { calculateSignalFreshness } from "@/domain/health/freshness";
 import { activityRegularity, completedActivityDays } from "@/domain/metrics/wellness";
-import { calculateEffortScoreFromAvailable, diminishingLoad, effortScoreTargets, type EffortScoreTargets } from "@/domain/scores/effort";
+import { calculateEffortScoreFromAvailable, activityGoalProgress, activityLoadFromScoreRow, effortScoreTargets, type EffortScoreTargets } from "@/domain/scores/effort";
 import type { HealthAnalytics, HealthMetricDay, ScoreDay } from "@/services/health-analytics";
 
 import { ActivityScoreOverview, type ActivityScoreBreakdown } from "./activity-score-overview";
@@ -26,10 +26,10 @@ type EffortTargetSource = "nutrition_targets" | "fallback";
 
 export function effortComponentDefinitions(targets: EffortScoreTargets, targetSource: EffortTargetSource): readonly EffortComponentDefinition[] {
   return [
-    { id: "zoneMinutes", label: "Zone minutes", target: targets.zoneMinutes, targetLabel: `${targets.zoneMinutes} min`, weight: 50, unit: "min", key: "zone_minutes", formula: `diminishing returns · baseline ${targets.zoneMinutes} min` },
-    { id: "exerciseMinutes", label: "Exercise duration", target: targets.exerciseMinutes, targetLabel: `${targets.exerciseMinutes} min`, weight: 25, unit: "min", key: "exercise_minutes", formula: `diminishing returns · baseline ${targets.exerciseMinutes} min` },
-    { id: "activeEnergyKcal", label: "Active calories", target: targets.activeEnergyKcal, targetLabel: `${targets.activeEnergyKcal.toLocaleString("en-US")} kcal`, weight: 15, unit: "kcal", key: "active_energy_kcal", formula: targetSource === "nutrition_targets" ? "diminishing returns · app calorie target" : `diminishing returns · default target ${targets.activeEnergyKcal.toLocaleString("en-US")} kcal (no target set)` },
-    { id: "steps", label: "Steps", target: targets.steps, targetLabel: `${targets.steps.toLocaleString("en-US")} steps`, weight: 10, unit: "steps", key: "steps", formula: `diminishing returns · baseline ${targets.steps.toLocaleString("en-US")} steps` },
+    { id: "zoneMinutes", label: "Zone minutes", target: targets.zoneMinutes, targetLabel: `${targets.zoneMinutes} min`, weight: 50, unit: "min", key: "zone_minutes", formula: `goal completion · target ${targets.zoneMinutes} min` },
+    { id: "exerciseMinutes", label: "Exercise duration", target: targets.exerciseMinutes, targetLabel: `${targets.exerciseMinutes} min`, weight: 25, unit: "min", key: "exercise_minutes", formula: `goal completion · target ${targets.exerciseMinutes} min` },
+    { id: "activeEnergyKcal", label: "Active calories", target: targets.activeEnergyKcal, targetLabel: `${targets.activeEnergyKcal.toLocaleString("en-US")} kcal`, weight: 15, unit: "kcal", key: "active_energy_kcal", formula: targetSource === "nutrition_targets" ? "goal completion · app calorie target" : `goal completion · default target ${targets.activeEnergyKcal.toLocaleString("en-US")} kcal (no target set)` },
+    { id: "steps", label: "Steps", target: targets.steps, targetLabel: `${targets.steps.toLocaleString("en-US")} steps`, weight: 10, unit: "steps", key: "steps", formula: `goal completion · target ${targets.steps.toLocaleString("en-US")} steps` },
   ];
 }
 
@@ -53,15 +53,14 @@ function activityScoreBreakdown(latest: HealthMetricDay | undefined, targets: Ef
   if (!latest) return null;
   const values = definitions.map((component) => ({ ...component, value: latest[component.key] as number | null }));
   const result = calculateEffortScoreFromAvailable({ zoneMinutes: latest.zone_minutes, activeEnergyKcal: latest.active_energy_kcal, exerciseMinutes: latest.exercise_minutes, steps: latest.steps }, { activeEnergyKcalTarget: targets.activeEnergyKcal });
-  const availableWeight = values.filter((component) => measured(component.value)).reduce((sum, component) => sum + component.weight, 0);
   const components = values.map((component) => {
     const normalizedValue = normalizeEffortTargetValue(component.value, component.target);
-    const scoreNormalizedValue = measured(component.value) ? Math.min(1, Math.max(0, diminishingLoad(component.value, component.target))) : null;
+    const scoreNormalizedValue = measured(component.value) ? Math.min(1, Math.max(0, activityGoalProgress(component.value, component.target))) : null;
     return {
       id: component.id, label: component.label, weight: component.weight, sourceValueLabel: formatComponentValue(component.value, component.unit), targetLabel: component.targetLabel, normalizedValue,
       scoreNormalizedValue,
-      contribution: scoreNormalizedValue === null || availableWeight === 0 ? null : scoreNormalizedValue * component.weight / availableWeight * 100,
-      formula: component.formula, normalization: `visual gauge ${normalizedValue === null ? "unavailable" : `${Math.round(normalizedValue * 100)} /100`} · diminishing sub-score ${scoreNormalizedValue === null ? "unavailable" : `${Math.round(scoreNormalizedValue * 100)} /100`}`,
+      contribution: scoreNormalizedValue === null ? null : scoreNormalizedValue * component.weight,
+      formula: component.formula, normalization: `visual gauge ${normalizedValue === null ? "unavailable" : `${Math.round(normalizedValue * 100)} /100`} · goal completion ${scoreNormalizedValue === null ? "unavailable" : `${Math.round(scoreNormalizedValue * 100)} /100`}`,
     };
   });
   return { score: result.score, algorithmVersion: result.algorithmVersion, coverage: result.coverage, components };
@@ -79,33 +78,6 @@ function comparison(value: number | null, average: number | null): ActivityRadar
   return value > average ? "up" : "down";
 }
 function comparisonLabel(average: number | null, unit: string) { return measured(average) ? `30-day avg · ${formatComponentValue(average, unit)}` : undefined; }
-function dateOffset(date: string, days: number) {
-  const value = new Date(`${date}T12:00:00.000Z`);
-  if (!Number.isFinite(value.getTime())) return null;
-  value.setUTCDate(value.getUTCDate() + days);
-  return value.toISOString().slice(0, 10);
-}
-
-function finiteValuesInWindow<Key extends NumericHealthMetricKey>(days: readonly HealthMetricDay[], key: Key, endDate: string): number[] {
-  const startDate = dateOffset(endDate, -29);
-  if (!startDate) return [];
-  const values: Array<number | null> = days
-    .filter((day) => day.metric_date >= startDate && day.metric_date <= endDate)
-    .map((day) => day[key]);
-  return values.filter((value): value is number => measured(value));
-}
-
-/** Min-max normalization for a context-only axis; null stays unavailable. */
-export function normalizeEffortContextValue(value: number | null, windowValues: readonly number[]) {
-  if (!measured(value) || !windowValues.length) return null;
-  const finite = windowValues.filter((item) => Number.isFinite(item));
-  if (!finite.length) return null;
-  const minimum = Math.min(...finite);
-  const maximum = Math.max(...finite);
-  if (maximum === minimum) return 1;
-  return Math.min(1, Math.max(0, (value - minimum) / (maximum - minimum)));
-}
-
 export function ActivityDetails({ data }: { data: HealthAnalytics }) {
   const currentDate = new Intl.DateTimeFormat("en-CA", { timeZone: data.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const activityDays = completedActivityDays(data.days, currentDate);
@@ -129,37 +101,21 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
     weeklyLoad: latest ? averageLast30Measured(activityDays, "weekly_load", latest.metric_date) : null,
     acuteChronicLoadRatio: latest ? averageLast30Measured(activityDays, "acute_chronic_load_ratio", latest.metric_date) : null,
   };
-  const weeklyLoadWindow = latest ? finiteValuesInWindow(activityDays, "weekly_load", latest.metric_date) : [];
-  const weeklyLoadNormalized = latest ? normalizeEffortContextValue(latest.weekly_load, weeklyLoadWindow) : null;
-  const regularity = activityRegularity(activityDays.slice(-28).map((day) => ({ steps: day.steps, activeZoneMinutes: day.zone_minutes, activeMinutes: day.active_minutes, effortScore: effortScores.findLast((item) => item.score_date === day.metric_date)?.score ?? null })));
+  const regularity = activityRegularity(activityDays.slice(-28).map((day) => ({ steps: day.steps, activeZoneMinutes: day.zone_minutes, activeMinutes: day.active_minutes, effortScore: activityLoadFromScoreRow(effortScores.findLast((item) => item.score_date === day.metric_date)) })));
   const scoreCoverage = score === null ? null : scoreBreakdown?.coverage ?? null;
   const freshness = calculateSignalFreshness({ measuredAt: latestSourceMeasuredAt(latest), importedAt: data.importedAt, coverage: scoreCoverage ?? 0 });
   const sourceLabel = healthSourceLabel(latest);
-  const radarDimensions: ActivityRadarDimension[] = latest ? [...effortComponents.map((component) => {
+  const radarDimensions: ActivityRadarDimension[] = latest ? effortComponents.map((component) => {
     const value = latest[component.key] as number | null;
     const average = component.id === "steps" ? averages.steps : component.id === "zoneMinutes" ? averages.zoneMinutes : component.id === "exerciseMinutes" ? averages.exerciseMinutes : averages.activeCalories;
     const breakdown = scoreBreakdown?.components.find((item) => item.id === component.id);
     return {
       id: component.id, label: component.label, normalizedValue: breakdown?.normalizedValue ?? null, valueLabel: formatComponentValue(value, component.unit), averageLabel: comparisonLabel(average, component.unit),
       definition: component.id === "zoneMinutes" ? "Cumulative time in measured intensity zones." : component.id === "exerciseMinutes" ? "Exercise duration recorded by health source." : component.id === "activeEnergyKcal" ? "Active energy estimated by health source." : "Number of steps recorded during the day.",
-      readingDirection: "Higher = more load achieved", scoreRole: `Activity score component · ${component.weight}%`, scoreWeight: component.weight, scoreFormula: component.formula, scoreNormalization: "diminishing returns, then weighting", scoreContribution: breakdown?.contribution ?? null, comparison: comparison(value, average), comparisonLabel: comparisonLabel(average, component.unit), comparisonTone: metricTone(value, average, "higher_is_better"),
+      readingDirection: "100% = daily goal reached", scoreRole: `Activity score component · ${component.weight}%`, scoreWeight: component.weight, scoreFormula: component.formula, scoreNormalization: "goal completion capped at 100%, then weighting", scoreContribution: breakdown?.contribution ?? null, comparison: comparison(value, average), comparisonLabel: comparisonLabel(average, component.unit), comparisonTone: metricTone(value, average, "higher_is_better"),
       sourceLabel,
     };
-  }), {
-    id: "weeklyLoad",
-    label: "Weekly load",
-    normalizedValue: weeklyLoadNormalized,
-    valueLabel: formatComponentValue(latest.weekly_load, "pts"),
-    averageLabel: comparisonLabel(averages.weeklyLoad, "pts"),
-    definition: "Context reference to situate recent load within 30-day finite values.",
-    readingDirection: "Context, not a score component",
-    scoreRole: "Context · excluded from score",
-    scoreFormula: "min–max normalization over 30-day finite values",
-    comparison: comparison(latest.weekly_load, averages.weeklyLoad),
-    comparisonLabel: comparisonLabel(averages.weeklyLoad, "pts"),
-    comparisonTone: "neutral",
-    sourceLabel: "Soma",
-  }] : [];
+  }) : [];
   return <div className={styles.root}>
     <RefreshActiveHealthPage />
     <HealthPageShell kind="activity" title="Activity" description="Today's activity score based on zone minutes, exercise duration, active energy, and steps." score={score} freshness={freshness} timezone={data.timezone} showFreshness={true} heroScore={<span className="sr-only">Activity score: {score === null ? "unavailable" : `${score} out of 100`}. 30-day average: {averages.effort === null ? "unavailable" : `${Math.round(averages.effort)} out of 100`}. {scoreCoverage === null ? "Score coverage unavailable" : `${Math.round(scoreCoverage * 100)}% score coverage`}.</span>}>

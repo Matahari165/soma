@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 import { calculateSleepScore } from "@/domain/scores/sleep";
 import { buildPreviewAnalytics, type HealthAnalytics, type HealthMetricDay } from "@/services/health-analytics";
 
-import { ActivityDetails, effortComponentDefinitions, normalizeEffortContextValue, normalizeEffortTargetValue } from "./activity-details";
+import { ActivityDetails, effortComponentDefinitions, normalizeEffortTargetValue } from "./activity-details";
 import { averageWeeklyZoneMinutes, RecoveryDetails } from "./recovery-details";
 import { SleepDetails } from "./sleep-details";
 import { SleepStageDistribution, ZoneDistribution } from "./health-charts";
@@ -143,7 +143,7 @@ describe("health route states", () => {
     expect(markup).toContain("Activity score: 75 out of 100");
     expect(markup).toContain("8,000 steps");
     expect(markup).toContain("40 min");
-    expect(markup).toContain("125 pts");
+    expect(markup).toContain("<strong>125</strong>");
   });
 
   it("keeps the effort targets aligned between the radar and its detail", () => {
@@ -157,9 +157,9 @@ describe("health route states", () => {
     }));
     const readable = markup.replaceAll("\u202f", " ");
 
-    expect(readable).toContain("Radar de l’effort avec 5 composantes");
+    expect(readable).toContain("Radar de l’effort avec 4 composantes");
     expect(readable).toContain("Weekly load");
-    expect(readable).toContain("Context · excluded from score");
+    expect(readable).not.toContain("Context · excluded from score");
     expect(readable).toContain("Workout history");
     expect(readable).toContain("Running");
     expect(readable).toContain("Pace");
@@ -175,11 +175,7 @@ describe("health route states", () => {
     expect(components.find((component) => component.id === "activeEnergyKcal")).toMatchObject({ target: 1_000, targetLabel: "1,000 kcal" });
   });
 
-  it("normalizes weekly load from finite values without inventing missing data", () => {
-    expect(normalizeEffortContextValue(20, [10, 20, 30])).toBeCloseTo(0.5);
-    expect(normalizeEffortContextValue(null, [10, 20, 30])).toBeNull();
-    expect(normalizeEffortContextValue(20, [])).toBeNull();
-    expect(normalizeEffortContextValue(20, [20, 20])).toBe(1);
+  it("keeps goal gauges capped without inventing missing data", () => {
     expect(normalizeEffortTargetValue(10_000, 10_000)).toBe(1);
     expect(normalizeEffortTargetValue(12_000, 10_000)).toBe(1);
     expect(normalizeEffortTargetValue(null, 10_000)).toBeNull();

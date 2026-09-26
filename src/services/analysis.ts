@@ -266,7 +266,7 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
       sleepScore: sleep?.score ?? null,
     });
     const effort = calculateEffortScoreFromAvailable({ zoneMinutes: day.zone_minutes, activeEnergyKcal: day.active_energy_kcal, exerciseMinutes: day.exercise_minutes, steps: day.steps }, effortScoreOptions);
-    effortByDate.set(day.metric_date, effort.score);
+    effortByDate.set(day.metric_date, effort.loadScore);
     const weekday = new Date(`${day.metric_date}T12:00:00Z`).getUTCDay();
     const weekStart = index - ((weekday + 6) % 7);
     const weeklyEfforts = days.slice(Math.max(0, weekStart), index + 1)
@@ -315,7 +315,7 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
     scoreRows.push(
       { user_id: userId, score_date: day.metric_date, kind: "sleep", score: sleep?.score ?? null, status: sleep ? (sleep.score >= 80 ? "restorative" : sleep.score >= 60 ? "steady" : "building") : "limited", drivers: sleep ? { duration: sleep.durationComponent, efficiency: sleep.efficiencyComponent, regularity: sleep.regularityComponent, bedtimeRecommendationMinutes: bedtimeRecommendation.bedtimeMinutes } : {}, algorithm_version: sleep?.algorithmVersion ?? "sleep-v0.2" },
       { user_id: userId, score_date: day.metric_date, kind: "recovery", score: recovery.score, status: recovery.status, drivers: recovery.drivers, algorithm_version: recovery.algorithmVersion },
-      { user_id: userId, score_date: day.metric_date, kind: "effort", score: effort.score, status: effort.status, drivers: { coverage: effort.coverage }, algorithm_version: effort.algorithmVersion },
+      { user_id: userId, score_date: day.metric_date, kind: "effort", score: effort.score, status: effort.status, drivers: { coverage: effort.coverage, activityLoadScore: effort.loadScore }, algorithm_version: effort.algorithmVersion },
     );
   }
 
