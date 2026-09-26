@@ -254,11 +254,11 @@ export function buildCorrelationMatrix(input: {
     { ...bedtime, direction: "target" as const },
     { ...wakeTime, direction: "target" as const },
     scoreOutcome("recovery", "Recovery", "pts", "higher"),
-    scoreOutcome("effort", "Effort", "pts", "target"),
+    scoreOutcome("effort", "Strain", "pts", "target"),
   ].filter((outcome) => ["result", "both"].includes(metricRoleFor(outcome.id, input.metricPreferences)));
   const intense = combinedHealthSeries(health, "intense_minutes", "Intense-zone effort", "min", ["vigorous_zone_minutes", "peak_zone_minutes"]);
   const exercise = healthSeries(health, "exercise_minutes", "Exercise time", "min", "exercise_minutes");
-  const effortSeries: MatrixSeries = { id: "effort", label: "Effort", unit: "pts", kind: "numeric", presentation: "amount", points: input.observations.flatMap((day) => day.effortScore === null ? [] : [{ date: day.date, value: day.effortScore }]) };
+  const effortSeries: MatrixSeries = { id: "effort", label: "Strain", unit: "pts", kind: "numeric", presentation: "amount", points: input.observations.flatMap((day) => day.effortScore === null ? [] : [{ date: day.date, value: day.effortScore }]) };
 
   type RowSpec = { series: MatrixSeries; acuteLags: number[]; chronic: boolean; journal: boolean; timing: "overnight" | "daytime" | "journal" | "unknown" };
   const automaticRows: RowSpec[] = [

@@ -26,7 +26,7 @@ const navigation = [
   { label: "Nutrition", href: "/meals", icon: Utensils },
   { label: "Sleep", href: "/sleep", icon: BedDouble },
   { label: "Recovery", href: "/recovery", icon: HeartPulse },
-  { label: "Activity", href: "/activity", icon: Activity },
+  { label: "Strain", href: "/strain", icon: Activity },
 ];
 
 // Single navigation source: mobile uses the same destinations,
@@ -38,7 +38,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
   const displayName = user?.displayName ?? "Soma User";
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "S";
   const isPersonalLab = pathname === "/";
-  const isStitchWorkspace = ["/assistant", "/analysis", "/meals", "/sleep", "/recovery", "/activity"].some((route) => pathname.startsWith(route)) || isPersonalLab;
+  const isStitchWorkspace = ["/assistant", "/analysis", "/meals", "/sleep", "/recovery", "/strain"].some((route) => pathname.startsWith(route)) || isPersonalLab;
   const activeNavigation = navigation;
   const activeMobileNavigation = navigation.filter(({ href }) => href !== "/");
 

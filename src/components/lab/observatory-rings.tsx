@@ -74,20 +74,20 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
   const rings = [
     { id: "sleep", label: "Sommeil", value: data.sleepMinutes, target: 510, display: valid(data.sleepMinutes) ? duration(data.sleepMinutes) : "—", ringDisplay: valid(data.sleepMinutes) ? duration(data.sleepMinutes).replace(" ", "") : "—", goal: "8h 30", color: "#a9d8f2", labelColor: "#86bada" },
     { id: "recovery", label: "Récupération", value: data.recoveryScore, target: 100, display: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", ringDisplay: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", goal: "100", color: "#a7e0c4", labelColor: "#83c4a4" },
-    { id: "effort", label: "Effort", value: data.effortScore, target: 100, display: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", ringDisplay: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", goal: "21", color: "#f1c995", labelColor: "#d0a46f" },
+    { id: "effort", label: "Strain", value: data.effortScore, target: 100, display: valid(data.effortScore) ? String(Math.round(data.effortScore)) : "—", ringDisplay: valid(data.effortScore) ? String(Math.round(data.effortScore)) : "—", goal: "100", color: "#f1c995", labelColor: "#d0a46f" },
     { id: "calories", label: "Calories", value: calories, target: calorieTarget, display: valid(calories) ? `${Math.round(calories).toLocaleString("fr-FR")} kcal` : "—", ringDisplay: valid(calories) ? String(Math.round(calories)) : "—", goal: valid(calorieTarget) && calorieTarget > 0 ? `${Math.round(calorieTarget).toLocaleString("fr-FR")} kcal` : "—", color: "#dfb9ef", labelColor: "#b88cd1" },
   ] as const;
   const details = {
     sleep: { reference: "Repère de sommeil", description: "Durée de sommeil issue des mesures synchronisées. Le repère de cet anneau est de 8 h 30.", average: valid(data.averageSleepMinutes) ? duration(data.averageSleepMinutes) : null, href: "/sleep" },
     recovery: { reference: "Échelle du score", description: "Score calculé par Soma à partir des signaux de récupération disponibles. Plus il est élevé, meilleure est la récupération estimée.", average: valid(data.averageRecoveryScore) ? String(Math.round(data.averageRecoveryScore)) : null, href: "/recovery" },
-    effort: { reference: "Échelle de charge", description: "Charge quotidienne calculée par Soma, affichée sur 21. Une valeur plus élevée signifie davantage d’effort, pas une meilleure récupération.", average: valid(data.averageEffortScore) ? (data.averageEffortScore * .21).toFixed(1) : null, href: "/activity" },
+    effort: { reference: "Échelle du score", description: "Score Strain quotidien sur 100. Atteindre tous les objectifs quotidiens donne 100.", average: valid(data.averageEffortScore) ? String(Math.round(data.averageEffortScore)) : null, href: "/strain" },
     calories: { reference: "Cible alimentaire", description: "Énergie des repas confirmés dans le journal. Le total est comparé à votre cible lorsqu’elle est renseignée.", average: valid(data.averageCaloriesKcal) ? `${Math.round(data.averageCaloriesKcal).toLocaleString("fr-FR")} kcal` : null, href: "/meals" },
   };
   const activeId = hoveredId ?? focusedId ?? selectedId;
   const selectedRing = rings.find(ring => ring.id === (selectedId ?? lastSelectedId));
   const selectedDetail = selectedRing ? details[selectedRing.id] : null;
 
-  return <figure ref={figureRef} className={styles.figure} data-home-rings="" data-expanded={Boolean(selectedId)} aria-label="Progression du jour pour le sommeil, la récupération, l’effort et les calories" onKeyDown={event => {
+  return <figure ref={figureRef} className={styles.figure} data-home-rings="" data-expanded={Boolean(selectedId)} aria-label="Progression du jour pour le sommeil, la récupération, Strain et les calories" onKeyDown={event => {
     if (event.key === "Escape" && selectedId) { event.preventDefault(); closeDetail(); }
   }}>
     <div className={styles.visual}>
@@ -139,11 +139,11 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
         <dl className={styles.facts}>
           <div><dt>{selectedDetail.reference}</dt><dd>{selectedRing.goal === "—" ? "Non renseignée" : selectedRing.goal}</dd></div>
           <div><dt>Progression</dt><dd>{progress(selectedRing.value, selectedRing.target) === null ? "Indisponible" : `${Math.round(progress(selectedRing.value, selectedRing.target)! * 100)} %`}</dd></div>
-          {selectedRing.id === "effort" && valid(selectedRing.value) && <div><dt>Score d’activité Soma</dt><dd>{Math.round(selectedRing.value)} / 100</dd></div>}
+          {selectedRing.id === "effort" && valid(selectedRing.value) && <div><dt>Score Strain Soma</dt><dd>{Math.round(selectedRing.value)} / 100</dd></div>}
           {selectedDetail.average && <div><dt>Moyenne sur 30 jours</dt><dd>{selectedDetail.average}</dd></div>}
         </dl>
         <p className={styles.description}>{valid(selectedRing.value) ? selectedDetail.description : "Aucune mesure disponible pour ce jour."}</p>
-        <a className={styles.link} href={`${selectedDetail.href}${date ? `?date=${encodeURIComponent(date)}` : ""}`}>Voir {selectedRing.id === "calories" ? "les repas" : selectedRing.id === "effort" ? "l’activité" : selectedRing.id === "sleep" ? "le sommeil" : "la récupération"}</a>
+        <a className={styles.link} href={`${selectedDetail.href}${date ? `?date=${encodeURIComponent(date)}` : ""}`}>Voir {selectedRing.id === "calories" ? "les repas" : selectedRing.id === "effort" ? "Strain" : selectedRing.id === "sleep" ? "le sommeil" : "la récupération"}</a>
       </div>}
     </aside>
   </figure>;

@@ -1,3 +1,4 @@
+import { activityLoadFromScoreRow } from "@/domain/scores/effort";
 import type { LabObservation } from "@/domain/lab/observation";
 import { arrivalActivityFor, type ArrivalActivity } from "@/domain/lab/arrival-message";
 import { aggregateConfirmedMeals, type ConfirmedMealRecord } from "@/domain/lab/meals";
@@ -119,14 +120,15 @@ function effortCoverage(score: ScoreDay | undefined) {
   return value !== null && value >= 0 && value <= 1 ? value : null;
 }
 
-export function effortContextForDate(scores: ScoreDay[], date: string) {
+export function effortContextForDate(scores: ScoreDay[], date: string, mode: "goals" | "load" = "goals") {
   const effortRows = scores.filter((score) => score.kind === "effort");
   const current = effortRows.find((score) => score.score_date === date);
   const recent = effortRows.filter((score) => score.score_date >= addDays(date, -29) && score.score_date <= date);
+  const scoreValue = (row: ScoreDay | undefined) => mode === "load" ? activityLoadFromScoreRow(row) : toNumber(row?.score);
   return {
-    effortScore: toNumber(current?.score),
+    effortScore: scoreValue(current),
     effortCoverage: effortCoverage(current),
-    averageEffortScore: average(recent.map((score) => toNumber(score.score))),
+    averageEffortScore: average(recent.map(scoreValue)),
   };
 }
 
@@ -197,7 +199,7 @@ export function buildTodayData(input: {
   const mealByDate = new Map(mealDays.map((day) => [day.date, day]));
   const recentMealDays = mealDays.filter((day) => day.date >= addDays(todayDate, -29) && day.date <= todayDate);
   const baseTargets = input.targets ?? DEFAULT_NUTRITION_TARGETS;
-  const targetForDate = (date: string) => nutritionTargetsForEffort(baseTargets, effortContextForDate(input.scores, date)).caloriesKcal.likely;
+  const targetForDate = (date: string) => nutritionTargetsForEffort(baseTargets, effortContextForDate(input.scores, date, "load")).caloriesKcal.likely;
   const history = Array.from({ length: 7 }, (_, index): PersonalLabHistoryPoint => {
     const date = addDays(todayDate, index - 6);
     const observation = observations.find((day) => day.date === date);

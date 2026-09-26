@@ -147,7 +147,7 @@ export async function getPersonalLabToday(user: SomaUser): Promise<PersonalLabTo
   const todayHealth = healthRows.find((day) => day.metric_date === todayDate);
   const todayScores = scoreRows.filter((score) => score.score_date === todayDate);
   const todayEffort = effortContextForDate(scoreRows, todayDate);
-  const effectiveTargets = nutritionTargetsForEffort(targets, todayEffort);
+  const effectiveTargets = nutritionTargetsForEffort(targets, effortContextForDate(scoreRows, todayDate, "load"));
   return {
     sleepMinutes: toNumber(todayHealth?.sleep_minutes),
     sleepRegularity: toNumber(todayHealth?.sleep_regularity),
