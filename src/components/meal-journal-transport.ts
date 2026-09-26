@@ -19,7 +19,7 @@ import {
 import { recordAnalysisToApi } from "./meal-journal-logic";
 
 export type MealAnalysisProgress = {
-  stage?: "connecting" | "preparing" | "queued" | "analyzing";
+  stage?: "connecting" | "preparing" | "queued" | "analyzing" | "finalizing";
   phase?: string;
   dishType?: string;
   foods: string[];
@@ -213,12 +213,17 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
 
   const body = await readJson(response);
   if (response.status === 202 || body?.queued) {
+    // A retry may join an existing durable job. Follow the request that owns
+    // that job rather than polling a newly generated id with no matching row.
+    const joinedRequestId = body?.analysis?.analysisRequestId;
+    const statusRequestId = typeof joinedRequestId === "string" && /^[a-zA-Z0-9._:-]{8,160}$/.test(joinedRequestId)
+      ? joinedRequestId : analysisRequestId;
     options.onProgress?.({ stage: "queued", phase: "En attente de l’analyse…", foods: [] });
     for (let attempt = 0; attempt < 45; attempt += 1) {
       if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 2_000));
       const statusResponse = await fetchMealWithTimeout(
         `/api/meals/${encodeURIComponent(mealId)}/analyze`,
-        { cache: "no-store", headers: { "X-Analysis-Request-Id": analysisRequestId } },
+        { cache: "no-store", headers: { "X-Analysis-Request-Id": statusRequestId } },
         MEAL_ANALYSIS_STATUS_TIMEOUT_MS,
         { operation: "load", requestId: analysisRequestId },
       );
@@ -236,22 +241,22 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
 export async function defaultSave(meal: MealRecord) {
   let mealId = meal.id;
   if (mealId.startsWith("meal-")) {
-    const createResponse = await fetch("/api/meals", {
+    const createResponse = await fetchMealWithTimeout("/api/meals", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Idempotency-Key": meal.id },
       body: JSON.stringify({ mealDate: meal.date, mealType: meal.slot, status: "draft", entryState: meal.entryState ?? "recorded", ...(meal.note.trim() ? { note: meal.note.trim().slice(0, 500) } : {}) }),
-    });
+    }, 15_000, { operation: "create" });
     const created = await readJson(createResponse) as { meal: { id: string } };
     mealId = created.meal.id;
   }
-  const response = await fetch(`/api/meals/${encodeURIComponent(mealId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+  const response = await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(mealId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
     status: "confirmed",
     entryState: meal.entryState ?? "recorded",
     note: meal.note.trim().slice(0, 500),
     mouthWarmthIntensity: serializeRating(meal.mouthHeat),
     stomachOverfullIntensity: serializeRating(meal.stomachLoad),
     ...(meal.analysis ? { confirmedAnalysis: recordAnalysisToApi(meal.analysis) } : {}),
-  }) });
+  }) }, 15_000, { operation: "update" });
   const body = await readJson(response);
   return body.meal ? apiMealToRecord(body.meal) : meal;
 }
