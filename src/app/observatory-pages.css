@@ -190,3 +190,41 @@ html[data-lab-theme="observatory"] .health-detail-page .health-observatory-recom
   html[data-lab-theme="observatory"] .meals-page > section > header { min-height: 0; grid-template-columns: 1fr; gap: 16px; }
   html[data-lab-theme="observatory"] .meals-page > section > header h1 { font-size: 30px; line-height: 36px; }
 }
+
+/* One viewport budget for every mobile surface, including the measured dock. */
+@media (max-width: 700px) {
+  html[data-lab-theme="observatory"] body.observatory-mode {
+    --soma-mobile-top-space: env(safe-area-inset-top, 0px);
+    --soma-mobile-bottom-space: var(--soma-mobile-nav-height, calc(64px + env(safe-area-inset-bottom, 0px)));
+    --soma-mobile-content-height: calc(100svh - var(--soma-mobile-top-space) - var(--soma-mobile-bottom-space));
+    --soma-mobile-live-content-height: calc(100dvh - var(--soma-mobile-top-space) - var(--soma-mobile-bottom-space));
+  }
+  html[data-lab-theme="observatory"] body.local-preview.observatory-mode {
+    --soma-mobile-top-space: calc(28px + env(safe-area-inset-top, 0px));
+  }
+  html[data-lab-theme="observatory"] body.observatory-mode .app-shell .main-content,
+  html[data-lab-theme="observatory"] body.observatory-mode .app-shell:has(.lab-continuous) .main-content,
+  html[data-lab-theme="observatory"] body.local-preview.observatory-mode .app-shell:has(.lab-continuous) .main-content {
+    min-height: 100svh;
+    padding-top: var(--soma-mobile-top-space);
+    padding-bottom: var(--soma-mobile-bottom-space);
+  }
+  html[data-lab-theme="observatory"] body.observatory-mode .lab-experience.lab-continuous .lab-intro {
+    min-height: var(--soma-mobile-content-height);
+    margin-top: 0;
+    padding-block: 24px 32px;
+  }
+  html[data-lab-theme="observatory"] body.observatory-mode .health-detail-page {
+    min-height: var(--soma-mobile-content-height);
+    padding-top: 24px;
+    gap: 24px;
+  }
+  html[data-lab-theme="observatory"] body.observatory-mode .health-detail-page .health-detail-hero,
+  html[data-lab-theme="observatory"] body.observatory-mode .health-detail-page .health-detail-hero > div:first-child {
+    min-height: 36px;
+    height: auto;
+  }
+  html[data-lab-theme="observatory"] body.observatory-mode :is(.system-loading, .workout-loading) {
+    min-height: var(--soma-mobile-content-height);
+  }
+}
