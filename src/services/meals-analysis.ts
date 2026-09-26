@@ -17,7 +17,7 @@ import {
   findMealAnalysisByRequestId,
   findQueuedMealAnalysis,
   insertMealAnalysis,
-  listFailedMealAnalyses,
+  listRetryableFailedMealAnalyses,
   listQueuedMealAnalyses,
   touchMealAnalysis,
   updateMeal,
@@ -44,6 +44,20 @@ import {
 import { loadMealPhotoForAnalysis, purgeMealPhoto } from "./meals-photos";
 
 const { refreshCloudflareLockWithToken } = cloudflareDb;
+
+// Keep this candidate list aligned with isRetryableAnalysisCode: the service
+// rechecks it after the database has narrowed the retry scan.
+const RETRYABLE_ANALYSIS_CODE_VALUES = [
+  "provider_rate_limited",
+  "provider_request",
+  "provider_timeout",
+  "provider_unavailable",
+  "provider_empty_response",
+  "response_parse_error",
+  "response_schema_error",
+  "storage_error",
+  "unknown_analysis_error",
+] as const;
 
 export async function finalizeMealAnalysis(userId: string, mealId: string, analysis: Partial<Pick<AnalysisRow, "id" | "source_fingerprint" | "source_photo_ids">> & { sourceFingerprint?: string | null; sourcePhotoIds?: string[]; result?: unknown | null }) {
   if (!analysis.result) return null;
@@ -208,7 +222,14 @@ async function enqueueMealAnalysisLocked(userId: string, mealId: string, options
 
 /** Requeue transient failures while their source photos are still available. */
 export async function requeueRetryableMealAnalyses(now = Date.now()) {
-  const rows = await listFailedMealAnalyses(100);
+  const nowIso = new Date(now).toISOString();
+  const rows = await listRetryableFailedMealAnalyses({
+    now: nowIso,
+    retentionCutoff: new Date(now - FAILED_ANALYSIS_PHOTO_TTL_MS).toISOString(),
+    retryableCodes: RETRYABLE_ANALYSIS_CODE_VALUES,
+    maxAttempts: MAX_AUTOMATIC_ANALYSIS_RETRIES,
+    limit: 100,
+  });
   let requeued = 0;
   for (const row of rows) {
     const failedAt = Date.parse(String(row.failure_started_at ?? row.completed_at ?? row.updated_at ?? row.created_at));
@@ -248,10 +269,12 @@ function workerFailure(error: unknown) {
  * Claims one durable job, executes it outside the UI request, and commits the
  * result only while its persisted lease token still owns the row.
  */
-export async function processNextMealAnalysis(target?: { userId: string; analysisId: string }) {
-  await requeueRetryableMealAnalyses().catch((error) => {
-    logMeal("warn", "retry_scan", error);
-  });
+export async function processNextMealAnalysis(target?: { userId: string; analysisId: string }, options: { retriesAlreadyScanned?: boolean } = {}) {
+  // The minute cron scans once before draining. Standalone drains retain their
+  // recovery behavior; targeted runs already follow an explicit enqueue.
+  if (!target && !options.retriesAlreadyScanned) {
+    await requeueRetryableMealAnalyses().catch((error) => logMeal("warn", "retry_scan", error));
+  }
   const candidate = target
     ? await findQueuedMealAnalysis(target.userId, target.analysisId)
     : (await listQueuedMealAnalyses(1))[0];

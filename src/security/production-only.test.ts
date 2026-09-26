@@ -46,7 +46,7 @@ describe("production-only application contract", () => {
     const page = readFileSync(`${sourceRoot}/app/page.tsx`, "utf8");
     expect(page).toContain("createPersonalLabStream");
     expect(page).toContain("includeAnalysis: false");
-    expect(page).toContain("<LabWorldPreview stream={stream} />");
+    expect(page).toContain("<LabWorldPreview stream={stream}");
     expect(page).not.toContain("PersonalLabOverviewSection");
     expect(page).not.toContain("PersonalLabJournalSection");
   });

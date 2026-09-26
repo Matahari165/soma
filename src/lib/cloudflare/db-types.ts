@@ -102,7 +102,10 @@ export type SupabaseStoredRow = {
 export type SupabaseFilter = Filter & { field: string };
 export type SupabaseOrTerm = { field: string; operator: string; value: string | null };
 
-export type SupabaseRequest = <T>(path: string, init?: RequestInit, timeoutMs?: number) => Promise<T>;
+export type SupabaseRequest = {
+  <T>(path: string, init?: RequestInit, timeoutMs?: number): Promise<T>;
+  count?: (path: string, timeoutMs?: number) => Promise<number>;
+};
 
 export type RpcResult = {
   data: any;

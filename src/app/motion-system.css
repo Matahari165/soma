@@ -5,8 +5,8 @@
   --soma-ease-state: cubic-bezier(.2, .8, .2, 1);
   --soma-motion-feedback: 165ms;
   --soma-motion-state: 240ms;
-  --soma-motion-enter: 680ms;
-  --soma-motion-distance: 10px;
+  --soma-motion-enter: 180ms;
+  --soma-motion-distance: 4px;
 
   /* Radars enter as one calm, shared sequence on every health surface. */
   --soma-radar-fill-name: soma-radar-fill;
@@ -23,7 +23,7 @@
 
 /* CSS entrance runs without changing server-rendered attributes during hydration. */
 @keyframes soma-page-enter {
-  from { opacity: 0; transform: translate3d(0, var(--soma-motion-distance), 0); }
+  from { opacity: 1; transform: translate3d(0, var(--soma-motion-distance), 0); }
   to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
@@ -44,6 +44,17 @@
 .lab-continuous .arrival-heading { animation-duration: 760ms !important; animation-delay: 60ms; }
 .lab-continuous .arrival-journal-progress { animation: soma-scene-enter 720ms var(--soma-ease-enter) 120ms both; }
 .lab-continuous .arrival-artwork { animation-duration: 860ms !important; animation-delay: 170ms; }
+
+/* The greeting and measured values are readable as soon as HTML arrives.
+   Keep the authored entrance on secondary artwork rather than hiding text. */
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading,
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-journal-progress,
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-title-line > span {
+  animation: none !important;
+  opacity: 1;
+  transform: none;
+  clip-path: none;
+}
 
 @keyframes soma-scene-enter {
   from { opacity: 0; transform: translate3d(0, 8px, 0); }
@@ -122,8 +133,8 @@ details > summary {
 
 @media (max-width: 700px) {
   :root {
-    --soma-motion-enter: 620ms;
-    --soma-motion-distance: 8px;
+    --soma-motion-enter: 180ms;
+    --soma-motion-distance: 4px;
   }
 
 }

@@ -7,6 +7,9 @@ import { CloudflareQueryBuilder } from "@/lib/cloudflare/db-d1";
 import type { D1DatabaseLike } from "@/lib/cloudflare/db-types";
 
 describe("Cloudflare D1 row identity", () => {
+  it("invalidates analytical cache on nutrition target changes", () => {
+    expect(affectsLabMatrixRevision("nutrition_targets")).toBe(true);
+  });
   it("keeps idempotent sync jobs on the same connection-scoped row", () => {
     const row = {
       id: "job-1",
@@ -278,8 +281,8 @@ describe("Supabase storage pagination", () => {
         "lt.2026-09-15T00:00:00.000Z",
       ]);
       expect(url.searchParams.get("order")).toBe("json_data->>measured_at.desc");
-      expect(url.searchParams.get("limit")).toBe("2000");
-      expect(url.searchParams.get("offset")).toBeNull();
+      expect(url.searchParams.get("limit")).toBe("1000");
+      expect(url.searchParams.get("offset")).toBe("0");
       return new Response(JSON.stringify([]), { status: 200, headers: { "content-type": "application/json" } });
     });
 
@@ -458,9 +461,9 @@ describe("Supabase logical-row JSON filters", () => {
     const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(String(input));
-      expect(url.searchParams.get("select")).toBe("table_name,row_key,user_id,metric_date:json_data->metric_date,steps:json_data->steps");
+      expect(url.searchParams.get("select")).toBe("user_id,soma_field_metric_date:json_data->metric_date,soma_field_steps:json_data->steps");
       return new Response(JSON.stringify([{
-        table_name: "daily_health_metrics", row_key: "day-1", user_id: "user-1", metric_date: "2026-09-20", steps: 42,
+        user_id: "user-1", soma_field_metric_date: "2026-09-20", soma_field_steps: 42,
       }]), { status: 200, headers: { "content-type": "application/json" } });
     });
 
@@ -573,6 +576,7 @@ describe("Personal Lab matrix revision", () => {
       "journal_entries",
       "journal_days",
       "lab_metric_preferences",
+      "nutrition_targets",
     ]);
   });
 

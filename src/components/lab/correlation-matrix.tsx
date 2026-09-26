@@ -5,6 +5,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import type { CSSProperties, ReactNode, RefObject } from "react";
 
 import { isPersonalLabDisplayableRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, selectSummaryRelations, summaryRelationKey, type AnalysisPeriod, type MatrixRelation, type PersonalLabRelationDisplayOptions } from "@/domain/lab/matrix";
+import type { StrongestEffectsRelation, StrongestEffectsResponse } from "@/domain/lab/strongest-effects-response";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
 import { localizedMetricLabel, localizedMetricUnit } from "./lab-copy";
@@ -12,6 +13,7 @@ import { effectText, outcomeExplanation, percentText, RelationDetail } from "./r
 import { StrongestEffectsLoading } from "./strongest-effects-loading";
 import { calculableRelations, compareInfluenceGroups, groupMatrixRows, groupRelationsByComparison, influenceGroup, significantRelations } from "./relationship-groups";
 import { useTemporalStabilityPreference } from "./personal-lab-preferences";
+import { LatestRequest } from "./latest-request";
 
 export function periodLabel(period: AnalysisPeriod) {
   return period === "all" ? "Tout" : `${period} j`;
@@ -21,7 +23,7 @@ function periodDisplayLabel(period: AnalysisPeriod) {
   return period === "all" ? "Tout" : `${period} j`;
 }
 
-function strongestUncertaintyLabel(relation: MatrixRelation) {
+function strongestUncertaintyLabel(relation: Pick<MatrixRelation, "effectConfidenceLow" | "effectConfidenceHigh" | "outcomeUnit">) {
   if (relation.effectConfidenceLow === null || relation.effectConfidenceHigh === null) return "incertitude indisponible";
   const low = effectText({ effect: relation.effectConfidenceLow, outcomeUnit: relation.outcomeUnit });
   const high = effectText({ effect: relation.effectConfidenceHigh, outcomeUnit: relation.outcomeUnit });
@@ -74,7 +76,7 @@ function scrollToMatrixElement(element: Element | null) {
   element?.scrollIntoView({ behavior: matrixScrollBehavior(), block: "start" });
 }
 
-function effectDirection(relation: MatrixRelation, direction: "higher" | "lower" | "target") {
+function effectDirection(relation: Pick<MatrixRelation, "effect">, direction: "higher" | "lower" | "target") {
   void direction;
   return relation.effect === null || relation.effect === 0 ? 0 : relation.effect > 0 ? 1 : -1;
 }
@@ -92,7 +94,9 @@ export function daysUntilFirstResult(relations: MatrixRelation[]) {
 
 export type MatrixCellState = "collecting" | "no-signal" | "excluded" | null;
 
-export function matrixCellState(relations: MatrixRelation[], displayed: MatrixRelation[]): MatrixCellState {
+type MatrixCellRelation = Pick<MatrixRelation, "excluded" | "coefficient" | "minimumDaysRemaining"> & Partial<Pick<MatrixRelation, "sampleSize">>;
+
+export function matrixCellState<T extends MatrixCellRelation>(relations: T[], displayed: T[]): MatrixCellState {
   if (displayed.length) return null;
   const eligible = relations.filter((relation) => !relation.excluded);
   if (!eligible.length) return "excluded";
@@ -101,7 +105,7 @@ export function matrixCellState(relations: MatrixRelation[], displayed: MatrixRe
   return "no-signal";
 }
 
-export function strongestEffectsEmptyState(relations: MatrixRelation[]): Exclude<MatrixCellState, null> {
+export function strongestEffectsEmptyState<T extends MatrixCellRelation>(relations: T[]): Exclude<MatrixCellState, null> {
   return relations.length ? matrixCellState(relations, []) ?? "no-signal" : "collecting";
 }
 
@@ -146,8 +150,8 @@ function strongestRowKey(relation: Pick<MatrixRelation, "period" | "predictorId"
 }
 
 /** Relation details must stay within the published relation set. */
-export function publishedRelationsForPair(
-  relations: MatrixRelation[],
+export function publishedRelationsForPair<T extends Parameters<typeof isPersonalLabDisplayableRelation>[0]>(
+  relations: T[],
   relation: Pick<MatrixRelation, "predictorId" | "outcomeId">,
   options: PersonalLabRelationDisplayOptions = {},
 ) {
@@ -336,11 +340,15 @@ export function groupOutcomeThemes(outcomes: PersonalLabSnapshot["matrix"]["outc
   }, []);
 }
 
-function StrongestEffects({ relations, outcomes, onSelect, selectedRelations = null, detailRef = null, onCloseSelection = () => {}, scrollReveal = false, periodControl = null, filterControl = null, requireTemporalStability = true, standalone = false }: {
-  relations: MatrixRelation[];
+function StrongestEffects({ relations, outcomes, onSelect, selectedRelations = null, selectedSummaryRelation = null, deferredDetailState = null, onRetryDetail = () => {}, onRefreshDetail = () => {}, detailRef = null, onCloseSelection = () => {}, scrollReveal = false, periodControl = null, filterControl = null, requireTemporalStability = true, standalone = false }: {
+  relations: StrongestEffectsRelation[];
   outcomes: PersonalLabSnapshot["matrix"]["outcomes"];
-  onSelect: (relation: MatrixRelation, trigger: HTMLButtonElement) => void;
+  onSelect: (relation: StrongestEffectsRelation, trigger: HTMLButtonElement) => void;
   selectedRelations?: MatrixRelation[] | null;
+  selectedSummaryRelation?: StrongestEffectsRelation | null;
+  deferredDetailState?: "loading" | "error" | "stale" | null;
+  onRetryDetail?: () => void;
+  onRefreshDetail?: () => void;
   detailRef?: RefObject<HTMLElement | null> | null;
   onCloseSelection?: () => void;
   scrollReveal?: boolean;
@@ -352,7 +360,7 @@ function StrongestEffects({ relations, outcomes, onSelect, selectedRelations = n
   const meaningful = useMemo(() => selectMeaningfulRelations(relations, relations.length, { requireTemporalStability }), [relations, requireTemporalStability]);
   const emptyState = strongestEffectsEmptyState(relations);
   const meaningfulGroups = useMemo(() => {
-    const groups = new Map<string, { group: string; predictorId: string; predictorLabel: string; relations: MatrixRelation[] }>();
+    const groups = new Map<string, { group: string; predictorId: string; predictorLabel: string; relations: StrongestEffectsRelation[] }>();
     for (const relation of meaningful) {
       const key = `${relation.period}:${relation.predictorId}`;
       const current = groups.get(key) ?? {
@@ -374,7 +382,7 @@ function StrongestEffects({ relations, outcomes, onSelect, selectedRelations = n
     return [...categories.entries()];
   }, [meaningful]);
   const sectionRef = useRef<HTMLElement | null>(null);
-  const selectedRelation = selectedRelations?.[0] ?? null;
+  const selectedRelation = selectedSummaryRelation ?? selectedRelations?.[0] ?? null;
   useEffect(() => {
     const section = sectionRef.current;
     if (!section) return;
@@ -482,7 +490,9 @@ function StrongestEffects({ relations, outcomes, onSelect, selectedRelations = n
             </span>
             <span className={`strongest-effects__outcome ${sign > 0 ? "is-positive" : sign < 0 ? "is-negative" : "is-neutral"}`}><strong>{outcomeLabel}</strong><small><b>{effectText(relation)}</b>{percentText(relation) && <span> ({percentText(relation)})</span>}<em>{strongestTimingText(relation.lagDays)}</em></small></span>
           </button>
-          {selectedForRow && selectedRelations && detailRef && <RelationDetail relations={selectedRelations} direction={direction} onClose={onCloseSelection} detailRef={detailRef} variant="inline" panelId="relation-detail-panel" />}
+          {selectedForRow && detailRef && (selectedRelations
+            ? <RelationDetail relations={selectedRelations} direction={direction} onClose={onCloseSelection} detailRef={detailRef} variant="inline" panelId="relation-detail-panel" />
+            : selectedSummaryRelation && <DeferredRelationDetail relation={relation} state={deferredDetailState ?? "loading"} onClose={onCloseSelection} onRetry={onRetryDetail} onRefresh={onRefreshDetail} detailRef={detailRef} />)}
         </li>;
       })}</ol>
         </section>)}
@@ -495,7 +505,15 @@ function StrongestEffects({ relations, outcomes, onSelect, selectedRelations = n
 
 const strongestEffectPeriods: AnalysisPeriod[] = [15, 30, 90, "all"];
 
-function EffectsSummary({ relations }: { relations: MatrixRelation[] }) {
+type StrongestEffectsSelection = {
+  relation: StrongestEffectsRelation;
+  relations: MatrixRelation[] | null;
+  state: "loading" | "loaded" | "error" | "stale";
+};
+
+type StrongestEffectsPeriodData = Pick<StrongestEffectsResponse, "rows" | "outcomes" | "generation">;
+
+function EffectsSummary({ relations }: { relations: StrongestEffectsRelation[] }) {
   const entries = relations.slice(0, 3);
   return <section className="effects-summary" aria-label="Résumé des associations">
     {entries.length ? <ol>{entries.map((relation) => <li key={summaryRelationKey(relation)}>
@@ -505,38 +523,79 @@ function EffectsSummary({ relations }: { relations: MatrixRelation[] }) {
   </section>;
 }
 
+function DeferredRelationDetail({ relation, state, onClose, onRetry, onRefresh, detailRef }: {
+  relation: StrongestEffectsRelation;
+  state: "loading" | "error" | "stale";
+  onClose: () => void;
+  onRetry: () => void;
+  onRefresh: () => void;
+  detailRef: RefObject<HTMLElement | null>;
+}) {
+  const predictorLabel = localizedMetricLabel(relation.predictorId, relation.predictorLabel);
+  const outcomeLabel = localizedMetricLabel(relation.outcomeId, relation.outcomeLabel);
+  return <aside id="relation-detail-panel" ref={detailRef} className="relation-detail relation-detail--inline" tabIndex={-1} role="dialog" aria-modal="false" aria-labelledby="relation-detail-title" aria-busy={state === "loading"}>
+    <header>
+      <div><h3 id="relation-detail-title">{predictorLabel} → {outcomeLabel}</h3></div>
+      <button type="button" className="icon-button" aria-label="Fermer le détail de la relation" onClick={onClose}><X size={17} /></button>
+    </header>
+    <div className="relation-detail__body">
+      {state === "loading"
+        ? <p className="relation-detail__finding" role="status">Chargement du détail…</p>
+        : state === "stale"
+          ? <p className="relation-detail__finding" role="alert">Les données ont changé depuis l’affichage de cette relation. <button type="button" className="text-link" onClick={onRefresh}>Recharger cette période</button></p>
+          : <p className="relation-detail__finding" role="alert">Le détail n’a pas pu être chargé. <button type="button" className="text-link" onClick={onRetry}>Réessayer</button></p>}
+    </div>
+  </aside>;
+}
+
 export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: boolean } = {}) {
   const [period, setPeriod] = useState<AnalysisPeriod>(90);
-  const [rowsByPeriod, setRowsByPeriod] = useState<Partial<Record<AnalysisPeriod, PersonalLabSnapshot["matrix"]["rows"]>>>({});
-  const [outcomes, setOutcomes] = useState<PersonalLabSnapshot["matrix"]["outcomes"]>([]);
+  const [dataByPeriod, setDataByPeriod] = useState<Partial<Record<AnalysisPeriod, StrongestEffectsPeriodData>>>({});
+  const dataByPeriodRef = useRef(dataByPeriod);
   const [loadingPeriod, setLoadingPeriod] = useState<AnalysisPeriod | null>(90);
   const [loadError, setLoadError] = useState(false);
-  const [selected, setSelected] = useState<MatrixRelation[] | null>(null);
+  const [selected, setSelected] = useState<StrongestEffectsSelection | null>(null);
   const relationDetailRef = useRef<HTMLElement | null>(null);
   const relationTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const periodRequestRef = useRef(new LatestRequest());
+  const detailRequestRef = useRef(new LatestRequest());
   const { requireTemporalStability, setRequireTemporalStability } = useTemporalStabilityPreference();
 
   const loadPeriod = useCallback(async (nextPeriod: AnalysisPeriod, force = false) => {
-    if (!force && rowsByPeriod[nextPeriod]) return;
+    if (!force && dataByPeriodRef.current[nextPeriod]) {
+      periodRequestRef.current.cancel();
+      setLoadError(false);
+      setLoadingPeriod(null);
+      return;
+    }
+    const request = periodRequestRef.current.start();
     setLoadingPeriod(nextPeriod);
     setLoadError(false);
     try {
-      const response = await fetch(`/api/lab/matrix?period=${nextPeriod}`, { cache: "no-store" });
-      const result = await response.json().catch(() => ({})) as Partial<Pick<PersonalLabSnapshot["matrix"], "rows" | "outcomes">>;
-      if (!response.ok || !Array.isArray(result.rows) || !Array.isArray(result.outcomes)) throw new Error("Matrix request failed");
-      setRowsByPeriod((current) => ({ ...current, [nextPeriod]: result.rows }));
-      setOutcomes(result.outcomes);
+      const response = await fetch(`/api/lab/matrix?period=${nextPeriod}&format=compact`, { cache: "no-store", signal: request.signal });
+      const result = await response.json().catch(() => ({})) as Partial<StrongestEffectsResponse>;
+      if (!response.ok || !Array.isArray(result.rows) || !Array.isArray(result.outcomes) || typeof result.generation !== "string") throw new Error("Matrix request failed");
+      if (!request.isCurrent()) return;
+      const data = { rows: result.rows, outcomes: result.outcomes, generation: result.generation };
+      const nextDataByPeriod = { ...dataByPeriodRef.current, [nextPeriod]: data };
+      dataByPeriodRef.current = nextDataByPeriod;
+      setDataByPeriod(nextDataByPeriod);
     } catch {
-      setLoadError(true);
+      if (request.isCurrent()) setLoadError(true);
     } finally {
-      setLoadingPeriod(null);
+      if (request.isCurrent()) setLoadingPeriod(null);
     }
-  }, [rowsByPeriod]);
+  }, []);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => void loadPeriod(90), 0);
     return () => window.clearTimeout(timeout);
   }, [loadPeriod]);
+
+  useEffect(() => () => {
+    periodRequestRef.current.cancel();
+    detailRequestRef.current.cancel();
+  }, []);
 
   useEffect(() => {
     if (!selected) return;
@@ -547,6 +606,7 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
 
   function selectPeriod(nextPeriod: AnalysisPeriod) {
     setPeriod(nextPeriod);
+    detailRequestRef.current.cancel();
     setSelected(null);
     setLoadError(false);
     void loadPeriod(nextPeriod);
@@ -554,16 +614,63 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
 
   function toggleTemporalStability(next: boolean) {
     setRequireTemporalStability(next);
+    detailRequestRef.current.cancel();
     setSelected(null);
+  }
+
+  async function openRelation(relation: StrongestEffectsRelation, trigger?: HTMLButtonElement | null) {
+    if (trigger) relationTriggerRef.current = trigger;
+    const generation = dataByPeriodRef.current[period]?.generation;
+    const request = detailRequestRef.current.start();
+    setSelected({ relation, relations: null, state: "loading" });
+    if (!generation) {
+      if (request.isCurrent()) setSelected({ relation, relations: null, state: "error" });
+      return;
+    }
+    const params = new URLSearchParams({
+      period: String(period),
+      generation,
+      relationKey: summaryRelationKey(relation),
+      requireTemporalStability: String(requireTemporalStability),
+    });
+    try {
+      const response = await fetch(`/api/lab/matrix/detail?${params}`, { cache: "no-store", signal: request.signal });
+      if (response.status === 409) {
+        if (request.isCurrent()) setSelected({ relation, relations: null, state: "stale" });
+        return;
+      }
+      const result = await response.json().catch(() => ({})) as { generation?: unknown; relations?: unknown };
+      if (!response.ok || result.generation !== generation || !Array.isArray(result.relations)) throw new Error("Relation detail request failed");
+      if (!request.isCurrent()) return;
+      const relations = result.relations as MatrixRelation[];
+      const primary = relations.find((candidate) => summaryRelationKey(candidate) === summaryRelationKey(relation));
+      if (!primary) throw new Error("Relation detail did not match the selected effect");
+      setSelected({ relation, relations: [primary, ...relations.filter((candidate) => candidate !== primary)], state: "loaded" });
+    } catch {
+      if (request.isCurrent()) setSelected({ relation, relations: null, state: "error" });
+    }
+  }
+
+  function retrySelectedDetail() {
+    if (selected) void openRelation(selected.relation);
+  }
+
+  function refreshSelectedDetail() {
+    detailRequestRef.current.cancel();
+    setSelected(null);
+    void loadPeriod(period, true);
   }
 
   function closeSelectedRelation() {
     const trigger = relationTriggerRef.current;
+    detailRequestRef.current.cancel();
     setSelected(null);
     window.requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
   }
 
-  const rows = rowsByPeriod[period] ?? [];
+  const periodData = dataByPeriod[period];
+  const rows = periodData?.rows ?? [];
+  const outcomes = periodData?.outcomes ?? [];
   const relations = rows.flatMap((row) => row.relations);
   const summaryRelations = showSummary ? selectSummaryRelations(relations, { requireTemporalStability }) : [];
   const periodControl = <div className="strongest-effects__periods" role="group" aria-label="Période d’analyse">
@@ -580,7 +687,7 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
     </span>
   </label>;
 
-  if (loadError && !rowsByPeriod[period]) return <div className="strongest-effects-panel lab-entry__section" aria-busy="false">
+  if (loadError && !periodData) return <div className="strongest-effects-panel lab-entry__section" aria-busy="false">
     <section className="strongest-effects" aria-labelledby="strongest-effects-loading-title">
       <header>
         <div><h2 id="strongest-effects-loading-title">Strongest Effects</h2></div>
@@ -601,12 +708,12 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
     <StrongestEffects
       relations={relations}
       outcomes={outcomes}
-      onSelect={(relation, trigger) => {
-        relationTriggerRef.current = trigger;
-        const matchingRelations = publishedRelationsForPair(relations, relation, { requireTemporalStability });
-        setSelected([relation, ...matchingRelations.filter((candidate) => candidate !== relation)]);
-      }}
-      selectedRelations={selected}
+      onSelect={(relation, trigger) => void openRelation(relation, trigger)}
+      selectedRelations={selected?.relations ?? null}
+      selectedSummaryRelation={selected?.relation ?? null}
+      deferredDetailState={selected && !selected.relations ? selected.state === "loaded" ? "loading" : selected.state : null}
+      onRetryDetail={retrySelectedDetail}
+      onRefreshDetail={refreshSelectedDetail}
       detailRef={relationDetailRef}
       onCloseSelection={closeSelectedRelation}
       scrollReveal

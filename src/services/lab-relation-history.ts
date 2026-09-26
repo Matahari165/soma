@@ -44,6 +44,8 @@ type PreviousSnapshot = {
   rawRelations: unknown[];
 };
 
+type RelationHistorySource = Pick<PersonalLabSnapshot, "todayDate" | "matrix">;
+
 function parsePreviousSnapshot(value: unknown): PreviousSnapshot | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const row = value as Record<string, unknown>;
@@ -170,7 +172,7 @@ function recordedRelations(matrix: PersonalLabSnapshot["matrix"], previous: Prev
 }
 
 /** One revision-aware snapshot per local calendar day, written only when 90-day analysis is requested. */
-export async function saveDailyLabRelationSnapshot(userId: string, snapshot: PersonalLabSnapshot, inputRevision: string | null) {
+export async function saveDailyLabRelationSnapshot(userId: string, snapshot: RelationHistorySource, inputRevision: string | null) {
   if (!snapshot.matrix.rows.some((row) => row.period === 90)) return false;
   const admin = createCloudflareAdminClient();
   const previousResult = await admin.from("lab_relation_snapshots")
