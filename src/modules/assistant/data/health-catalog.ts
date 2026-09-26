@@ -37,7 +37,7 @@ const units: Partial<Record<AssistantHealthMetricField, string>> = {
 };
 
 const somaCalculationFields = new Set<AssistantHealthMetricField>([
-  "sleep_need_minutes", "daily_sleep_debt_minutes", "active_day", "active_day_rate_28d",
+  "sleep_need_minutes", "sleep_regularity", "daily_sleep_debt_minutes", "cumulative_sleep_debt_minutes", "active_day", "active_day_rate_28d",
   "activity_consistency_28d", "weekly_load", "acute_chronic_load_ratio",
 ]);
 

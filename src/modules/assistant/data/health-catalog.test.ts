@@ -32,6 +32,15 @@ describe("assistant health and activity catalog", () => {
     expect(assistantDerivedMetricCatalog.map((metric) => metric.key)).toContain("run_day");
   });
 
+  it("distinguishes computed sleep regularity and debt from source observations", () => {
+    for (const key of ["sleep_regularity", "cumulative_sleep_debt_minutes"]) {
+      expect(assistantHealthMetricCatalog.find((metric) => metric.key === key)).toMatchObject({ source: "soma_calculation" });
+    }
+    for (const key of ["sleep_minutes", "hrv_ms", "steps"]) {
+      expect(assistantHealthMetricCatalog.find((metric) => metric.key === key)).toMatchObject({ source: "health_source" });
+    }
+  });
+
   it("resolves French and English boxing names to the stored exercise type before pagination", () => {
     expect(assistantActivityTypeFilterValues(["boxe"])).toEqual(["BOXING"]);
     expect(assistantActivityTypeFilterValues(["boxing"])).toEqual(["BOXING"]);

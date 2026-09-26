@@ -1,8 +1,39 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ExerciseSummary, HealthMetricDay, ScoreDay } from "@/services/health-analytics";
 import { decodeAssistantCursor, encodeAssistantCursor, queryAssistantData, type AssistantPageRequest } from "./semantic-query";
 import { assistantHealthMetricCatalog } from "./health-catalog";
+
+const storage = vi.hoisted(() => ({ records: [] as Record<string, unknown>[], ranges: [] as number[] }));
+vi.mock("@/lib/cloudflare/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/cloudflare/db")>();
+  const { matches, sortRows } = await import("@/lib/cloudflare/db-query");
+  return { ...actual, createCloudflareAdminClient: () => ({ from: (table: string) => {
+    let rows = table === "health_records" ? [...storage.records] : [];
+    const sorts: Array<{ field: string; ascending: boolean }> = [];
+    const builder = {
+      select: () => builder,
+      eq: (field: string, value: unknown) => filter(field, "eq", value),
+      gte: (field: string, value: unknown) => filter(field, "gte", value),
+      lte: (field: string, value: unknown) => filter(field, "lte", value),
+      lt: (field: string, value: unknown) => filter(field, "lt", value),
+      is: (field: string, value: unknown) => filter(field, "is", value),
+      in: (field: string, value: unknown[]) => filter(field, "in", value),
+      order: (field: string, options: { ascending: boolean }) => { sorts.push({ field, ...options }); return builder; },
+      range: async (from: number, to: number) => {
+        storage.ranges.push(to - from + 1);
+        return { data: sortRows(rows, sorts).slice(from, to + 1), error: null };
+      },
+      maybeSingle: async () => ({ data: table === "profiles" ? { timezone: "Europe/Paris" } : null, error: null }),
+    };
+    const filter = (field: string, operator: "eq" | "gte" | "lte" | "lt" | "is" | "in", value: unknown) => {
+      rows = rows.filter((row) => matches(row, { field, operator, value }));
+      return builder;
+    };
+    return builder;
+  } }) };
+});
+afterEach(() => { storage.records = []; storage.ranges = []; });
 
 const secret = "test-assistant-cursor-secret-123456";
 const baseHealthDay = (date: string, steps: number | null): HealthMetricDay => ({
@@ -189,5 +220,39 @@ describe("assistant semantic data queries", () => {
       dataset: "scores", period: { from: "2026-09-21", to: "2026-09-21" }, kinds: ["recovery"], pagination: { limit: 10, cursor: null, order: "asc" },
     }, { sources: sources({ scores: [{ score_date: "2026-09-21", kind: "recovery", score: 0, drivers: {}, algorithm_version: "recovery-v1" }] }), cursorSecret: secret });
     expect(result.items[0]).toMatchObject({ type: "score", observation: { value: 0, availability: "observed", provenance: { algorithmVersion: "recovery-v1" } } });
+  });
+});
+
+describe("default activity storage pagination", () => {
+  it.each(["asc", "desc"] as const)("consumes storage prefixes with null times and equal keys (%s)", async (order) => {
+    const row = (id: string, civilDate: string | null, time: string | null, provider = "google_health") => ({
+      user_id: "user-1", data_type: "exercise", provider, source_record_id: id,
+      civil_date: civilDate, start_time: time, end_time: null,
+      payload: { exercise: { exerciseType: "RUNNING" } },
+    });
+    storage.records = [
+      row("A", "2026-09-26", "2026-09-26T10:00:00Z"),
+      row("B", "2026-09-26", null),
+      row("C", null, "2026-09-26T05:00:00Z"),
+      row("Z", "2026-09-26", "2026-09-26T10:00:00Z"),
+      row("a", "2026-09-26", "2026-09-26T10:00:00Z"),
+      row("D", null, "2026-09-26T10:00:00Z"),
+      row("outside", "2026-09-25", "2026-09-25T10:00:00Z"),
+      { ...row("other-user", "2026-09-26", null), user_id: "user-2" },
+    ];
+    const ids: string[] = [];
+    let cursor: string | null = null;
+    for (let index = 0; index < 10; index += 1) {
+      const result = await queryAssistantData("user-1", {
+        dataset: "activities", period: { from: "2026-09-26", to: "2026-09-26" },
+        activityTypes: ["running"], pagination: { limit: 2, cursor, order },
+      }, { cursorSecret: secret });
+      ids.push(...result.items.flatMap((item) => item.type === "activity" ? [item.activity.id] : []));
+      cursor = result.manifest.nextCursor;
+      if (!result.manifest.hasMore) { expect(result.manifest.complete).toBe(true); break; }
+    }
+    expect(cursor).toBeNull();
+    expect(ids).toEqual(order === "asc" ? ["C", "A", "Z", "a", "D", "B"] : ["B", "a", "Z", "A", "D", "C"]);
+    expect(storage.ranges.every((size) => size === 3)).toBe(true);
   });
 });

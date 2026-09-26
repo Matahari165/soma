@@ -219,33 +219,52 @@ const defaultSources: AssistantDataSources = {
       if (nativeTypes.length) query = query.in("payload.exercise.exerciseType", nativeTypes);
       let ordered = query.order(field, { ascending: pageRequest.order === "asc" });
       if (field !== "start_time") ordered = ordered.order("start_time", { ascending: pageRequest.order === "asc" });
-      const result = await ordered.order("source_record_id", { ascending: pageRequest.order === "asc" })
+      const result = await ordered.order("source_record_id", { ascending: pageRequest.order === "asc" }).order("provider", { ascending: pageRequest.order === "asc" })
         .range(offset, offset + pageRequest.limit);
       if (result.error) throw new Error("Exercise history could not be loaded.");
       const rows = (result.data ?? []) as Array<Record<string, unknown>>;
       return {
-        items: rows.slice(0, pageRequest.limit).map((row) => exerciseSummaryFromRecord(row as Parameters<typeof exerciseSummaryFromRecord>[0])),
+        items: rows.slice(0, pageRequest.limit).map((row) => ({
+          item: exerciseSummaryFromRecord(row as Parameters<typeof exerciseSummaryFromRecord>[0]),
+          startTime: typeof row.start_time === "string" ? row.start_time : null,
+        })),
         hasMore: rows.length > pageRequest.limit,
       };
     };
     const [civilDate, startTime] = await Promise.all([
       queryDate("civil_date", offsets.civilDate), queryDate("start_time", offsets.startTime),
     ]);
-    const combined = [
-      ...civilDate.items.filter((item) => assistantActivityTypeMatches(item.type, activityTypes)).map((item) => ({ source: "civilDate" as const, item })),
-      ...startTime.items.filter((item) => assistantActivityTypeMatches(item.type, activityTypes)).map((item) => ({ source: "startTime" as const, item })),
-    ].sort((left, right) => activityPosition(left.item).localeCompare(activityPosition(right.item)) * (pageRequest.order === "asc" ? 1 : -1));
-    const selected = combined.slice(0, pageRequest.limit);
-    const consumed = {
-      civilDate: selected.filter((entry) => entry.source === "civilDate").length,
-      startTime: selected.filter((entry) => entry.source === "startTime").length,
+    // Consume only prefixes of each storage stream. Re-sorting a fetched window
+    // would invalidate offsets, especially for null times and collated record IDs.
+    const consumed = { civilDate: 0, startTime: 0 };
+    const selected: ExerciseSummary[] = [];
+    const direction = pageRequest.order === "asc" ? 1 : -1;
+    const compare = (left: (typeof civilDate.items)[number], right: (typeof startTime.items)[number]) => {
+      const date = left.item.date < right.item.date ? -1 : left.item.date > right.item.date ? 1 : 0;
+      if (date) return date * direction;
+      // Match storage null ordering; use the stored time, not a payload fallback.
+      const time = left.startTime === right.startTime ? 0 : left.startTime === null ? 1
+        : right.startTime === null ? -1 : left.startTime < right.startTime ? -1 : 1;
+      return time * direction;
     };
-    const hasMore = combined.length > pageRequest.limit || civilDate.hasMore || startTime.hasMore;
+    while (selected.length < pageRequest.limit) {
+      const left = civilDate.items[consumed.civilDate];
+      const right = startTime.items[consumed.startTime];
+      if (!left && !right) break;
+      // Equal keys use a fixed stream preference; preserve storage's ID order
+      // within each stream instead of comparing IDs with a different collation.
+      const source = left && (!right || compare(left, right) <= 0) ? "civilDate" : "startTime";
+      const entry = source === "civilDate" ? left : right;
+      consumed[source] += 1;
+      if (entry && assistantActivityTypeMatches(entry.item.type, activityTypes)) selected.push(entry.item);
+    }
+    const hasMore = consumed.civilDate < civilDate.items.length || consumed.startTime < startTime.items.length
+      || civilDate.hasMore || startTime.hasMore;
     const nextPosition = hasMore ? JSON.stringify({
       civilDate: offsets.civilDate + consumed.civilDate,
       startTime: offsets.startTime + consumed.startTime,
     }) : null;
-    return { items: selected.map((entry) => entry.item), hasMore, nextPosition, totalItems: null };
+    return { items: selected, hasMore, nextPosition, totalItems: null };
   },
 };
 
