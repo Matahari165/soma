@@ -6,6 +6,7 @@ const state = vi.hoisted(() => ({
   stored: [] as Array<Record<string, unknown>>,
   connected: true,
   personalBpm: 200 as number | null,
+  timeZone: "UTC",
   dateOfBirth: "1986-02-01" as string | null,
   zoneFetch: vi.fn(),
 }));
@@ -34,7 +35,7 @@ vi.mock("@/lib/cloudflare/db", () => ({
         gte: () => query, lte: () => query, lt: () => query, gt: () => query,
         order: () => query, limit: () => query, in: () => query,
         range: async () => result(),
-        maybeSingle: async () => ({ data: table === "profiles" ? { timezone: "UTC", date_of_birth: state.dateOfBirth, maximum_heart_rate_bpm: state.personalBpm } : state.connected ? {
+        maybeSingle: async () => ({ data: table === "profiles" ? { timezone: state.timeZone, date_of_birth: state.dateOfBirth, maximum_heart_rate_bpm: state.personalBpm } : state.connected ? {
           id: "synthetic-connection", status: "connected", scopes: ["heart"],
           access_token_ciphertext: "synthetic-ciphertext", token_expires_at: "2099-01-01T00:00:00Z",
         } : null, error: null }),
@@ -62,6 +63,7 @@ describe("workout heart-rate completion", () => {
     state.stored = [];
     state.connected = true;
     state.personalBpm = 200;
+    state.timeZone = "UTC";
     state.dateOfBirth = "1986-02-01";
     state.zoneFetch.mockReset();
     state.fetch.mockReset();
@@ -85,6 +87,17 @@ describe("workout heart-rate completion", () => {
     const result = await getActivitySessionTelemetry("synthetic-user", range);
     expect(result.calculatedZones?.maximumHeartRate).toEqual({ bpm: 180, source: "age_estimate" });
     expect(state.zoneFetch).not.toHaveBeenCalled();
+  });
+
+  it("preserves readings and age-based zones when the profile timezone is invalid", async () => {
+    state.timeZone = "Invalid/Timezone";
+    state.personalBpm = null;
+    state.connected = false;
+    state.rows = [row(0), row(10), row(20), row(30), row(40)];
+    const result = await getActivitySessionTelemetry("synthetic-user", range);
+    expect(result.heartRateSampleCount).toBe(5);
+    expect(result.calculatedZones?.maximumHeartRate).toEqual({ bpm: 180, source: "age_estimate" });
+    expect(result.coverage.percent).toBe(100);
   });
 
   it("keeps the trace without inventing zone thresholds when no reference can be resolved", async () => {

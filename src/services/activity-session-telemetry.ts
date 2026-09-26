@@ -242,7 +242,12 @@ export async function getActivitySessionTelemetry(
     readSessionProfile(userId),
   ]);
   const { timeZone } = profile;
-  const localDate = new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date(startTime));
+  let localDate: string;
+  try {
+    localDate = new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date(startTime));
+  } catch {
+    localDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(new Date(startTime));
+  }
   const maximumHeartRate = resolveMaximumHeartRate({ ...profile, date: localDate });
   const archivedRows = await readR2ArchiveRows(userId, manifests, startTime, endTime);
   let heartRateRecords = deduplicateRows([...liveRows, ...archivedRows]).map((row) => ({
