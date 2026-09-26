@@ -6,7 +6,7 @@
 .observation:hover > svg { color:var(--lab-text-primary); transform:translate(2px,-2px); }
 .observation:focus-visible { outline:2px solid var(--lab-text-primary); outline-offset:4px; }
 .loading { min-height:23px; margin:0 0 14px; color:var(--lab-text-secondary); font:400 14px/1.5 var(--font-soma-ui),sans-serif; }
-.composer { display:flex; align-items:flex-end; gap:8px; min-height:52px; padding:5px 6px 5px 17px; border:1px solid var(--lab-rule-strong); border-radius:25px; background:var(--lab-surface-subtle); transition:border-color 180ms ease,background-color 180ms ease; }
+.composer { cursor:text; display:flex; align-items:flex-end; gap:8px; min-height:52px; padding:5px 6px 5px 17px; border:1px solid var(--lab-rule-strong); border-radius:25px; background:var(--lab-surface-subtle); transition:border-color 180ms ease,background-color 180ms ease; }
 .composer:hover,.composer:focus-within { border-color:var(--lab-text-muted); background:var(--lab-surface-selected); }
 .composer textarea { display:block; flex:1; width:100%; min-width:0; min-height:40px; max-height:160px; padding:9px 0; resize:none; border:0; outline:0; background:transparent; color:var(--lab-text-primary); font:400 15px/1.45 var(--font-soma-ui),sans-serif; }
 .composer textarea::placeholder { color:var(--lab-text-secondary); }

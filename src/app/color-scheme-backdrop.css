@@ -8,5 +8,9 @@ html[data-lab-theme="observatory"]:not([data-color-scheme="dark"]) .arrival-back
   filter:none;
 }
 
-/* Le voile de la palette claire conserve le contraste des métadonnées et
-   des chiffres des anneaux, sans désaturer la nouvelle photographie. */
+/* Un voile plus léger laisse voir la photo ; les petites métadonnées gardent
+   une encre assez foncée sur les sommets, même au bord gauche du dégradé. */
+html[data-lab-theme="observatory"]:not([data-color-scheme="dark"]) .lab-intro {
+  --lab-text-secondary: #414141;
+  --lab-text-muted: #414141;
+}

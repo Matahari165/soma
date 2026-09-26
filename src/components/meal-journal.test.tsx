@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiMealToRecord } from "@/domain/meal-record";
-import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultRemoveMeal, defaultSave, defaultSetEntryState, firstAvailableMealSlot, groupMealIngredients, mealHistoryDates, mealPhotoLimitMessage, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
+import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultRemoveMeal, defaultSave, defaultSetEntryState, firstAvailableMealSlot, groupMealIngredients, localMealDraftsForStash, mealHistoryDates, mealPhotoLimitMessage, mergeLocalMealDrafts, reconcileMealJournalData, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 
@@ -10,6 +10,90 @@ const date = "2026-08-31";
 afterEach(() => vi.unstubAllGlobals());
 
 describe("MealJournal", () => {
+  it("keeps local notes, photos, feelings, and an in-progress meal when fresh SSR data changes", () => {
+    const previousServer: MealJournalData = { date, meals: {
+      lunch: null,
+      dinner: null,
+      breakfast: null,
+      snack: null,
+    } };
+    const localDraft: MealJournalData = { date, meals: {
+      ...previousServer.meals,
+      lunch: {
+        id: "local-meal",
+        date,
+        slot: "lunch",
+        note: "À compléter",
+        photos: [{ id: "local-photo", url: "blob:local", filename: "repas.jpg", origin: "homemade" }],
+        analysis: null,
+        mouthHeat: 2,
+        stomachLoad: 3,
+        status: "analyzing",
+      },
+    } };
+    const refreshedServer: MealJournalData = { date, meals: {
+      ...previousServer.meals,
+      dinner: {
+        id: "new-server-meal",
+        date,
+        slot: "dinner",
+        note: "Repas synchronisé",
+        photos: [],
+        analysis: null,
+        mouthHeat: null,
+        stomachLoad: null,
+        status: "draft",
+      },
+    } };
+
+    expect(reconcileMealJournalData(refreshedServer, localDraft, previousServer).meals).toEqual({
+      ...refreshedServer.meals,
+      lunch: localDraft.meals.lunch,
+    });
+  });
+
+  it("restores a saved local note when fresh server meal data has an empty slot", () => {
+    const emptyServerData: MealJournalData = { date, meals: { breakfast: null, lunch: null, snack: null, dinner: null } };
+
+    const merged = mergeLocalMealDrafts(emptyServerData, date, undefined, { lunch: "Note locale à compléter" });
+
+    expect(merged.meals.lunch).toMatchObject({ date, slot: "lunch", note: "Note locale à compléter", status: "draft" });
+  });
+
+  it("prefers the cached edit for the same meal ID but keeps a different server meal", () => {
+    const cachedDraft: NonNullable<MealJournalData["meals"]["lunch"]> = {
+      id: "meal-existing",
+      date,
+      slot: "lunch",
+      note: "Note locale modifiée",
+      photos: [{ id: "photo-local", url: "blob:photo", filename: "repas.jpg", origin: "homemade" }],
+      analysis: null,
+      mouthHeat: 2,
+      stomachLoad: 3,
+      status: "draft",
+    };
+    const cached: MealJournalData["meals"] = { breakfast: null, lunch: cachedDraft, snack: null, dinner: null };
+    const oldServerMeal = { ...cachedDraft, note: "Ancienne note serveur", photos: [], mouthHeat: null, stomachLoad: null };
+    const replacementServerMeal = { ...oldServerMeal, id: "meal-replacement", note: "Nouveau repas serveur" };
+
+    const sameId = mergeLocalMealDrafts({ date, meals: { lunch: oldServerMeal } }, date, cached, {});
+    const differentId = mergeLocalMealDrafts({ date, meals: { lunch: replacementServerMeal } }, date, cached, {});
+
+    expect(sameId.meals.lunch).toEqual(cachedDraft);
+    expect(differentId.meals.lunch).toEqual(replacementServerMeal);
+  });
+
+  it("stashes an unsaved photo draft before controlled date navigation loads another day", () => {
+    const meals: MealJournalData["meals"] = {
+      breakfast: null,
+      lunch: { id: "local-meal-draft", date, slot: "lunch", note: "", photos: [{ id: "photo-local", url: "blob:photo", filename: "repas.jpg", origin: "homemade" }], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" },
+      snack: null,
+      dinner: null,
+    };
+
+    expect(localMealDraftsForStash(meals).lunch).toEqual(meals.lunch);
+  });
+
   it("garde la note modifiable et masque la photo après confirmation", () => {
     const html = renderToStaticMarkup(<MealJournal initialData={{
       date,

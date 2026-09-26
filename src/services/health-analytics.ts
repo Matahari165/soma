@@ -451,11 +451,14 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
       [],
     )
     : Promise.resolve({ data: [], error: null });
-  const exercisePromise = scope === "activity" || scope === "all"
+  const exercisePromise = scope === "all"
     ? optionalQuery(
       applyQueryTimeout(supabase.from("health_records").select("source_record_id,civil_date,start_time,end_time,payload").eq("user_id", user.id).eq("data_type", "exercise").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(20), SECONDARY_QUERY_TIMEOUT_MS).then((result) => result),
       [],
     )
+    : Promise.resolve({ data: [], error: null });
+  const activityExercisesPromise = scope === "activity"
+    ? applyQueryTimeout(supabase.from("health_records").select("source_record_id,civil_date,start_time,end_time,payload").eq("user_id", user.id).eq("data_type", "exercise").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(3), CRITICAL_QUERY_TIMEOUT_MS)
     : Promise.resolve({ data: [], error: null });
   const effortTargetPromise = scope === "activity" || scope === "all"
     ? optionalValue(loadNutritionTargetsStateForUser(user.id, { timeoutMs: SECONDARY_QUERY_TIMEOUT_MS }), null)
@@ -480,12 +483,13 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
     : Promise.resolve({ data: null, error: null });
   const optionalBasePromise = Promise.all([connectionPromise, sleepPreferencesPromise, effortTargetPromise]);
 
-  const [profileResult, metricsResult, scoresResult] = await Promise.all([
+  const [profileResult, metricsResult, scoresResult, activityExercisesResult] = await Promise.all([
     profilePromise,
     metricsPromise,
     scoresPromise,
+    activityExercisesPromise,
   ]);
-  const failed = [profileResult, metricsResult, scoresResult].find((result) => result.error);
+  const failed = [profileResult, metricsResult, scoresResult, activityExercisesResult].find((result) => result.error);
   if (failed?.error) throw new Error("Health analytics are temporarily unavailable.");
   const [connectionResult, sleepPreferencesResult, effortTargetState] = await optionalValue(
     optionalBasePromise,
@@ -518,7 +522,7 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
   );
   const sleeps = sleepResult.data;
   const heartRates = heartRateResult.data;
-  const exercises = exerciseResult.data;
+  const exercises = scope === "activity" ? activityExercisesResult.data : exerciseResult.data;
 
   const sleep = findObject(sleeps?.[0]?.payload, "sleep");
   const stages = Array.isArray(sleep?.stages) ? sleep.stages : [];
@@ -628,15 +632,18 @@ export function exerciseSummaryFromRecord(record: ExerciseRecord): ExerciseSumma
     };
 }
 
-export async function allImportedExercises(userId: string): Promise<ExerciseSummary[]> {
+export async function allImportedExercises(userId: string, range?: { from: string; to: string }): Promise<ExerciseSummary[]> {
+  if (isLocalPreviewMode()) return buildPreviewAnalytics().exercises.filter((exercise) => !range || (exercise.date >= range.from && exercise.date <= range.to));
   const admin = createCloudflareAdminClient();
   const pageSize = 500;
   const records: ExerciseSummary[] = [];
   for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await admin.from("health_records")
+    const query = admin.from("health_records")
       .select("source_record_id,civil_date,start_time,end_time,payload")
-      .eq("user_id", userId).eq("data_type", "exercise")
-      .order("civil_date", { ascending: false }).order("end_time", { ascending: false })
+      .eq("user_id", userId).eq("data_type", "exercise");
+    if (range) query.gte("civil_date", range.from).lte("civil_date", range.to);
+    const { data, error } = await query
+      .order("civil_date", { ascending: false }).order("end_time", { ascending: false }).order("source_record_id", { ascending: true })
       .range(offset, offset + pageSize - 1);
     if (error) throw new Error("Exercise history could not be loaded.");
     const page = (data ?? []).map(exerciseSummaryFromRecord);
@@ -672,10 +679,5 @@ export async function getPersonalLabActivitySummaries(userId: string, startDate:
 export function getHealthAnalytics() { return loadHealthAnalytics("all"); }
 export function getSleepAnalytics() { return loadHealthAnalytics("sleep"); }
 export function getRecoveryAnalytics() { return loadHealthAnalytics("recovery"); }
-export async function getActivityAnalytics() {
-  const analytics = await loadHealthAnalytics("activity");
-  if (isLocalPreviewMode()) return analytics;
-  const user = await getCurrentUser();
-  return user ? { ...analytics, exercises: await allImportedExercises(user.id) } : analytics;
-}
+export function getActivityAnalytics() { return loadHealthAnalytics("activity"); }
 export function getTrendsAnalytics() { return loadHealthAnalytics("trends"); }

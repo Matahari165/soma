@@ -47,8 +47,9 @@
   --lab-shadow-floating-color: rgba(0, 0, 0, .10);
   --lab-shadow-control-color: rgba(0, 0, 0, .08);
   /* A readable white veil keeps the original photographs in place. */
-  --lab-backdrop-wash: .90;
-  --lab-backdrop-wash-strong: .94;
+  --lab-backdrop-wash: .70;
+  --lab-backdrop-wash-middle: .78;
+  --lab-backdrop-wash-strong: .90;
 
   /* Domain colors: compatibility consumers retain their original tones. */
   --lab-stage-deep: #354966;
@@ -148,7 +149,8 @@ html[data-color-scheme="dark"] {
   --lab-shadow-popup-color: rgba(0, 0, 0, .30);
   --lab-shadow-floating-color: rgba(0, 0, 0, .22);
   --lab-shadow-control-color: rgba(0, 0, 0, .18);
-  --lab-backdrop-wash: .74;
+  --lab-backdrop-wash: .18;
+  --lab-backdrop-wash-middle: .30;
   --lab-backdrop-wash-strong: .82;
 
   /* Keep the established utility accents and chart scales in dark mode. */

@@ -739,9 +739,12 @@ export const PRACTICAL_EFFECT_THRESHOLDS: Readonly<Record<string, number>> = {
   recovery: 3,
 };
 
-export function selectMeaningfulRelations(relations: MatrixRelation[], limit = 8, options: PersonalLabRelationDisplayOptions = {}) {
-  const eligibleByPair = new Map<string, MatrixRelation[]>();
-  const stronger = (first: MatrixRelation, second: MatrixRelation) =>
+type MeaningfulRelation = Parameters<typeof isPersonalLabDisplayableRelation>[0]
+  & Pick<MatrixRelation, "period" | "practicalRatio" | "sampleSize" | "lagDays">;
+
+export function selectMeaningfulRelations<T extends MeaningfulRelation>(relations: T[], limit = 8, options: PersonalLabRelationDisplayOptions = {}) {
+  const eligibleByPair = new Map<string, T[]>();
+  const stronger = (first: T, second: T) =>
     second.practicalRatio - first.practicalRatio
     || first.qValue - second.qValue
     || second.sampleSize - first.sampleSize;
@@ -764,7 +767,7 @@ export function selectMeaningfulRelations(relations: MatrixRelation[], limit = 8
 }
 
 /** Keep the strongest result, then show different outcomes when the evidence allows it. */
-export function selectSummaryRelations(relations: MatrixRelation[], options: PersonalLabRelationDisplayOptions = {}) {
+export function selectSummaryRelations<T extends MeaningfulRelation>(relations: T[], options: PersonalLabRelationDisplayOptions = {}) {
   const candidates = selectMeaningfulRelations(relations, 24, options);
   const selected = candidates.slice(0, 1);
   const outcomes = new Set(selected.map((relation) => relation.outcomeId));

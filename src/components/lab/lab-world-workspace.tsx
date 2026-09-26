@@ -2,7 +2,7 @@
 
 import { Suspense, use, useEffect, useMemo, useRef, useState, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import type { PersonalLabJournal, PersonalLabOverview } from "@/services/personal-lab";
-import type { PersonalLabActivitySummary } from "@/domain/lab/activity-summary";
+import type { PersonalLabActivitySummariesResult, PersonalLabActivitySummary } from "@/domain/lab/activity-summary";
 import { useLabTheme } from "./lab-theme";
 import { LabArrival, type LabArrivalPersonalization } from "./lab-arrival";
 import { OBSERVATORY_RADAR_PRESENTATION, ObservatoryRadar } from "./observatory-radar";
@@ -67,6 +67,7 @@ export function LabWorldWorkspace({
   radar,
   overview,
   activitySummaries,
+  activitySummariesPromise,
   journal,
   initialSelectedDate,
   personalization,
@@ -79,6 +80,7 @@ export function LabWorldWorkspace({
   journalPromise?: Promise<PersonalLabJournal>;
   overview?: PersonalLabOverview;
   activitySummaries?: readonly PersonalLabActivitySummary[];
+  activitySummariesPromise?: Promise<PersonalLabActivitySummariesResult>;
   journal?: PersonalLabJournal;
   initialSelectedDate?: string;
   personalization?: LabArrivalPersonalization;
@@ -222,6 +224,7 @@ export function LabWorldWorkspace({
         personalization={personalization}
         activitySummaries={activitySummaries}
         insightRevision={insightRevision}
+        activitySummariesPromise={activitySummariesPromise}
       />
     </div>
     <div className="lab-world" lang="fr">

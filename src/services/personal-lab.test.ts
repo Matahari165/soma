@@ -180,6 +180,7 @@ describe("Personal Lab progressive stream", () => {
       expect(overview.today).toHaveProperty("sleepMinutes");
       expect(journal.journal.variables.length).toBeGreaterThan(0);
       expect(journal.todayDate).toBe(overview.todayDate);
+      expect(await stream.activityDate).toBe(overview.todayDate);
 
       if (!stream.analysis) throw new Error("Expected the complete analysis stream in preview mode.");
       const analysis = await stream.analysis;

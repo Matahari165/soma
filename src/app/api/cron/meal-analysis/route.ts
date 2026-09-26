@@ -35,7 +35,7 @@ export async function GET(request: Request) {
         return { attempted: 0, cleared: 0 };
       }),
     ]);
-    const result = await processNextMealAnalysis();
+    const result = await processNextMealAnalysis(undefined, { retriesAlreadyScanned: true });
     const body: Record<string, unknown> = { processed: result.processed, status: result.analysis?.status ?? "idle" };
     if (requeued > 0 || purgedExpired > 0 || purgeRetry.attempted > 0 || uploadCleanup.attempted > 0) Object.assign(body, { requeued, purgedExpired, purgeRetry, uploadCleanup });
     return NextResponse.json(body, { headers: { "Cache-Control": "private, no-store" } });
