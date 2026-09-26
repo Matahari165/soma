@@ -307,7 +307,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     const cached = draftCache.current.get(dateKey);
     for (const slot of MEAL_SLOTS) {
       const meal = meals[slot];
-      if (meal && (meal.status === "accepted" || meal.status === "analyzing") && inFlightSlots.current.has(slot) && cached?.[slot]) {
+      if (meal && (meal.status === "accepted" || meal.status === "analyzing") && cached?.[slot]) {
         drafts[slot] = { ...cached[slot], id: meal.id };
       }
     }
@@ -854,8 +854,10 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       }
       return false;
     } finally {
-      inFlightSlots.current.delete(slot);
-      setSavingSlot(null);
+      if (selectedDateRef.current === operationDate) {
+        inFlightSlots.current.delete(slot);
+        setSavingSlot(null);
+      }
     }
   };
 
@@ -904,8 +906,10 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     } catch (error) {
       console.warn("[meal-analysis] stage failed", { stage: "normalization", durationMs: Date.now() - normalizationStartedAt });
       if (selectedDateRef.current === operationDate) setFileError(error instanceof Error ? error.message : "This photo could not be prepared. Please retake it in JPEG or PNG format.");
-      setProcessingFiles(false);
-      inFlightSlots.current.delete(slot);
+      if (selectedDateRef.current === operationDate) {
+        setProcessingFiles(false);
+        inFlightSlots.current.delete(slot);
+      }
       return;
     }
     const targetMeals = dataRef.current?.date === operationDate
@@ -931,8 +935,10 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
         updateCachedMealForDate(operationDate, slot, currentMeal, () => nextMeal);
       }
     }
-    setProcessingFiles(false);
-    inFlightSlots.current.delete(slot);
+    if (selectedDateRef.current === operationDate) {
+      setProcessingFiles(false);
+      inFlightSlots.current.delete(slot);
+    }
   };
 
   const removePhotoFromState = (slot: MealSlot, photoId: string) => {
@@ -1015,8 +1021,10 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       const fallback = pending.kind === "meal" ? "This meal could not be deleted." : "This photo could not be deleted.";
       if (selectedDateRef.current === operationDate) setFileError(error instanceof Error ? error.message : fallback);
     } finally {
-      inFlightSlots.current.delete(pending.slot);
-      setSavingSlot(null);
+      if (selectedDateRef.current === operationDate) {
+        inFlightSlots.current.delete(pending.slot);
+        setSavingSlot(null);
+      }
       if (selectedDateRef.current === operationDate && mealDeleted && typeof window !== "undefined") {
         window.requestAnimationFrame(() => document.getElementById(`meal-${pending.slot}-title`)?.focus({ preventScroll: true }));
       } else if (selectedDateRef.current === operationDate) {
@@ -1166,6 +1174,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
         // et le brouillon local est conservé tel quel.
         return;
       }
+      if (selectedDateRef.current === operationDate && !isCurrentRun()) return;
       clearCachedMealForDate(operationDate, slot, [meal.id, persistedMealId]);
       if (!isCurrentRun()) return;
       const nextStatus = analyzed.status === "error" ? "error" : analyzed.status === "accepted" || analyzed.status === "analyzing"
