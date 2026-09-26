@@ -235,6 +235,8 @@
   font: 400 12px/1.35 var(--font-soma-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
+.recoveryDimensionMetrics dd[data-comparison-tone="positive"] { color: var(--lab-signal, #d5e5da); }
+.recoveryDimensionMetrics dd[data-comparison-tone="negative"] { color: var(--lab-error, #e2b2aa); }
 
 .recoveryDimensionRole { grid-column: 1 / -1; }
 
@@ -337,6 +339,8 @@
   letter-spacing: -.03em;
   line-height: 1;
 }
+.summaryValue strong[data-comparison-tone="positive"] { color: var(--lab-signal, #d5e5da); }
+.summaryValue strong[data-comparison-tone="negative"] { color: var(--lab-error, #e2b2aa); }
 
 .summaryValue span,
 .summaryFacts dd span {

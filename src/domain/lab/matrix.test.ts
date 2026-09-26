@@ -48,6 +48,20 @@ describe("Personal Lab within-person calendar relations", () => {
     expect(isPersonalLabFeatureEligible(oneMatchingBlock)).toBe(false);
   });
 
+  it("does not call a relation stable when one adequately covered block reverses the effect", () => {
+    const blockStrengths = [8, 8, 8, -1];
+    const predictor = Array.from({ length: 400 }, (_, index) => [-3, -1, 1, 3][index % 4]);
+    const outcome = predictor.map((value, index) => value * blockStrengths[Math.floor(index / 100)]);
+    const relation = calculateMatrixRelation(series("load", predictor), series("hrv", outcome));
+
+    expect(relation.stability.adequateBlockCoverage).toBe(true);
+    expect(relation.stability.chronologicalBlocks).toBe(3);
+    expect(relation.stability.directionHeldInBlocks).toBe(false);
+    expect(relation.stability.stabilityReasons).toContain("The effect direction reversed in a calendar block");
+    expect(relation.stable).toBe(false);
+    expect(isPersonalLabFeatureEligible(relation)).toBe(false);
+  });
+
   it("can relax only the chronological stability gate", () => {
     const eligible = {
       predictorId: "steps", outcomeId: "hrv", excluded: false, featureEligible: true,

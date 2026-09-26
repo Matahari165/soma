@@ -21,6 +21,7 @@ export type SleepRadarDimension = {
   normalizedValue: number | null;
   valueLabel?: string;
   averageLabel?: string;
+  averageMeasuredNights?: number;
   chartRangeLabel?: string;
   definition?: string;
   readingDirection?: string;

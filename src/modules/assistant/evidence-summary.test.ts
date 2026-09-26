@@ -23,6 +23,7 @@ describe("assistant evidence summary", () => {
     ]);
     expect(summary).toEqual({
       type: "data-summary", label: "Données Soma consultées", period: { from: "2026-01-01", to: "2026-04-30" },
+      coveredPeriod: { from: "2026-01-01", to: "2026-04-30" },
       itemCount: 120, domains: ["sleep", "recovery", "effort"],
     });
   });
@@ -39,5 +40,13 @@ describe("assistant evidence summary", () => {
   it("does not invent data proof when no valid query result exists", () => {
     expect(dataSummaryFromSteps([{ toolResults: [{ toolName: "getUserContext", input: {}, output: {} }] }])).toBeNull();
     expect(dataSummaryFromSteps([{ toolResults: [{ toolName: "querySomaData", input: {}, output: { manifest: { dataset: "scores" } } }] }])).toBeNull();
+  });
+
+  it("keeps an empty result distinct from the period searched", () => {
+    const original = result(null, 0, true);
+    const empty = { ...original, output: { manifest: { ...original.output.manifest, coveredPeriod: null } } };
+    expect(dataSummaryFromSteps([{ toolResults: [empty] }])).toMatchObject({
+      period: { from: "2026-01-01", to: "2026-04-30" }, coveredPeriod: null, itemCount: 0,
+    });
   });
 });
