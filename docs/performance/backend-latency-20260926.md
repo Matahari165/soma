@@ -1,5 +1,7 @@
 # Backend latency optimizations — 26 September 2026
 
+> État historique de la première passe. Les migrations autorisées ont depuis été appliquées et leurs droits vérifiés ; voir [le rapport de la seconde passe](page-latency-round2-20260926.md). L’application optimisée reste locale.
+
 ## Product behavior
 
 - Activity initially reads the three latest workouts. The existing default 30-day filter still applies. Using any workout filter loads the complete 180-day window once, including pagination beyond 500 workouts. All existing period and activity filters operate on that window. A failed history request shows an error and Retry; it never becomes an empty result silently.
