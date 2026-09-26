@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { arrivalMessageFor, type ArrivalActivity, type ArrivalMessage } from "@/domain/lab/arrival-message";
 import type { PersonalLabActivitySummary } from "@/domain/lab/activity-summary";
 import { JOURNAL_PROGRESS_EVENT } from "./personal-lab-journal-workspace";
-import { HomeSomaEntry } from "./home-soma-entry";
+import { HomeSomaEntry, type HomeSomaParts } from "./home-soma-entry";
 
 export type LabArrivalPersonalization = {
   name: string;
@@ -23,6 +23,7 @@ export function LabArrival({
   todayDate,
   personalization,
   activitySummaries,
+  insightRevision,
 }: {
   theme: string;
   date: string;
@@ -33,6 +34,7 @@ export function LabArrival({
   onDateChange?: (date: string) => void;
   personalization?: LabArrivalPersonalization;
   activitySummaries?: readonly PersonalLabActivitySummary[];
+  insightRevision?: string;
 }) {
   const [message, setMessage] = useState<ArrivalMessage>(() => personalization?.initialMessage ?? {
     moment: "morning",
@@ -62,7 +64,7 @@ export function LabArrival({
     window.addEventListener(JOURNAL_PROGRESS_EVENT, onJournalProgress);
     return () => window.removeEventListener(JOURNAL_PROGRESS_EVENT, onJournalProgress);
   }, []);
-  return <section className="lab-arrival" data-arrival-theme={theme} aria-label="Personal lab home" key={theme}>
+  const composition = ({ observations, composer }: HomeSomaParts) => (
     <div className="arrival-composition" style={{ position: "relative" }}>
       <div className={`arrival-heading${personalization ? " arrival-heading--personalized" : ""}${dayActivitySummary ? " arrival-heading--with-activity" : ""}`} style={{ position: "relative", zIndex: 1 }}>
         <h1 id="arrival-title" tabIndex={-1}>
@@ -90,10 +92,13 @@ export function LabArrival({
             </div>)}
           </dl>
         </section>}
-        {personalization && <HomeSomaEntry visible={!selectedDate || !todayDate || selectedDate === todayDate} />}
+        {observations}
       </div>
-      <div className="arrival-art" style={{ position: "relative", zIndex: 1 }}>{radar}</div>
+      <div className={"arrival-art" + (personalization ? " arrival-art--conversation" : "")} style={{ position: "relative", zIndex: 1 }}><div className="arrival-visual">{radar}</div>{composer}</div>
     </div>
+  );
+  return <section className="lab-arrival" data-arrival-theme={theme} aria-label="Personal lab home" key={theme}>
+    {personalization ? <HomeSomaEntry visible={!selectedDate || !todayDate || selectedDate === todayDate} insightRevision={insightRevision}>{composition}</HomeSomaEntry> : composition({ observations: null, composer: null })}
   </section>;
 }
 
