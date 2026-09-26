@@ -1,5 +1,5 @@
 .figure {
-  --ring-spring: cubic-bezier(.32, .05, .32, 1.18);
+  --ring-spring: var(--soma-ease-state, cubic-bezier(.2, .8, .2, 1));
   position: relative;
   pointer-events: auto;
   display: flex;
