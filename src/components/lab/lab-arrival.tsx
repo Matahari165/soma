@@ -75,7 +75,6 @@ export function LabArrival({
           {message.lines.map((line, index) => <span className={`arrival-title-line${personalization && index > 0 ? " arrival-title-line--secondary" : ""}`} key={`${message.moment}-${index}`}><span>{line}</span></span>)}
         </h1>
         {selectedDate && todayDate && selectedDate !== todayDate && <time className="arrival-context-date" dateTime={selectedDate}>{date}</time>}
-        {message.activityNote && <p className="arrival-signal"><span className="sr-only">Notable signal: </span>{message.activityNote}</p>}
         {journalProgress && <div className="arrival-journal-progress" aria-label={`Journal progress: ${journalProgress.count} habits confirmed out of ${journalProgress.total}`}>
           <div className="arrival-journal-progress__header">
             <span>Habits</span>
@@ -87,8 +86,9 @@ export function LabArrival({
         </div>}
         <ActivitySummarySlot date={date} selectedDate={selectedDate} summaries={activitySummaries} promise={activitySummariesPromise} />
         {observations}
+        {composer}
       </div>
-      <div className={"arrival-art" + (personalization ? " arrival-art--conversation" : "")} style={{ position: "relative", zIndex: 1 }}><div className="arrival-visual">{radar}</div>{composer}</div>
+      <div className={"arrival-art" + (personalization ? " arrival-art--conversation" : "")} style={{ position: "relative", zIndex: 1 }}><div className="arrival-visual">{radar}</div></div>
     </div>
   );
   return <section className="lab-arrival" data-arrival-theme={theme} aria-label="Personal lab home" key={theme}>

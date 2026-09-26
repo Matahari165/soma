@@ -446,7 +446,7 @@ export function MealCard({ meal, slot, saving, processingFiles, mutationBusy, di
   useEffect(() => {
     if (!openRequest || inactive) return;
     const frame = requestAnimationFrame(() => {
-      document.getElementById(`meal-${slot}-note`)?.focus();
+      document.getElementById(`meal-${slot}-note`)?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(frame);
   }, [inactive, openRequest, slot]);
