@@ -161,7 +161,7 @@
   border-radius: 50%;
   background: rgba(5, 5, 5, 0.85);
   border: 0;
-  color: #fff;
+  color: var(--lab-text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -197,8 +197,8 @@
 }
 
 .analyzeButton:hover:not(:disabled) {
-  background: #ffffff;
-  border-color: #ffffff;
+  background: var(--lab-brand);
+  border-color: var(--lab-text-primary);
 }
 
 .analyzeButton:disabled {
@@ -479,7 +479,7 @@
 }
 
 .v1TextInput::placeholder {
-  color: #555555;
+  color: var(--lab-text-muted);
 }
 
 .v1FilledSummary {
@@ -584,7 +584,7 @@
 }
 
 .v2TextInput::placeholder {
-  color: #555555;
+  color: var(--lab-text-muted);
 }
 
 .v2ActionsBar {
@@ -759,7 +759,7 @@
 }
 
 .v3TextInput::placeholder {
-  color: #555555;
+  color: var(--lab-text-muted);
 }
 
 .v3CompactAnalyze {
@@ -1609,7 +1609,7 @@
 }
 
 .correctionTextarea::placeholder {
-  color: #555555;
+  color: var(--lab-text-muted);
 }
 
 .correctionActions {
@@ -1625,7 +1625,7 @@
   padding: 6px 14px;
   min-height: 32px;
   background: var(--lab-brand, #eeeeee);
-  color: #050505;
+  color: var(--lab-canvas);
   border: none;
   border-radius: var(--lab-radius-xs, 2px);
   font-family: var(--font-soma-ui), sans-serif;

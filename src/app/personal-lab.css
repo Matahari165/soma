@@ -139,7 +139,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 .personal-lab-page .personal-lab-day-strip button:hover { background: var(--lab-surface-selected); color: var(--lab-text-primary); }
 .personal-lab-page .personal-lab-day-strip button[aria-current="date"] { background: var(--lab-brand); color: var(--lab-surface); }
 .personal-lab-page .personal-lab-day-strip button[aria-current="date"] { border-radius: var(--lab-radius-sm); box-shadow: inset 0 0 0 2px var(--lab-surface-selected); }
-.personal-lab-page .personal-lab-day-strip button[aria-current="date"] small { color: rgba(255, 255, 255, .82); }
+.personal-lab-page .personal-lab-day-strip button[aria-current="date"] small { color: rgba(var(--lab-ink-rgb), .82); }
 .personal-lab-page .personal-lab-day-strip small { color: inherit; font-size: var(--lab-type-label); line-height: 16px; text-transform: none; }
 .personal-lab-day-strip__check { margin-left: 4px; color: var(--lab-signal); font-weight: 700; }
 .personal-lab-day-strip button[aria-current="date"] .personal-lab-day-strip__check { color: var(--lab-surface); }
@@ -495,7 +495,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 .personal-lab-page .personal-lab-day-strip button:hover { background: var(--lab-surface-selected); color: var(--lab-text-primary); }
 .personal-lab-page .personal-lab-day-strip button:last-of-type { border-right: 0; }
 .personal-lab-page .personal-lab-day-strip button[aria-current="date"] { background: var(--lab-brand); color: var(--lab-surface); }
-.personal-lab-page .personal-lab-day-strip button[aria-current="date"] small { color: rgba(255, 255, 255, .82); }
+.personal-lab-page .personal-lab-day-strip button[aria-current="date"] small { color: rgba(var(--lab-ink-rgb), .82); }
 .personal-lab-page .personal-lab-day-strip small { color: inherit; font-size: var(--lab-type-label); line-height: 16px; text-transform: none; }
 .personal-lab-journal-column .journal-card--personal-lab > .journal-card__header { z-index: 4; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-save-status { min-height: 32px; padding: 4px 8px; border: 0; background: transparent; color: var(--lab-text-secondary); font-size: var(--lab-type-label); }

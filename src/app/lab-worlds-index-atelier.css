@@ -1,15 +1,9 @@
 /* Index is a quiet analytical ledger; Atelier is a matte editorial studio. */
 html[data-lab-theme="index"] {
-  --lab-canvas:#0d1012; --lab-sidebar:#090b0d; --lab-surface:#15191c; --lab-surface-subtle:#1d2226;
-  --lab-surface-selected:#293036; --lab-control-track:#23292e; --lab-border:#2a3035; --lab-border-strong:#454d54;
-  --lab-text-primary:#edf0f1; --lab-text-secondary:#a6afb6; --lab-brand:#d3dde2; --lab-signal:#a9c4b7;
-  --lab-error:#dfaaa4; --lab-warning:#d4c39b; --lab-info:#b1c4d4; --world-rule:#293036; --world-rule-strong:#4a535b; --world-mark:#cbd6dc;
+  --world-rule:var(--lab-rule); --world-rule-strong:var(--lab-rule-strong); --world-mark:var(--lab-text-primary);
 }
 html[data-lab-theme="atelier"] {
-  --lab-canvas:#252729; --lab-sidebar:#1d1f21; --lab-surface:#303335; --lab-surface-subtle:#393c3e;
-  --lab-surface-selected:#464a4c; --lab-control-track:#414547; --lab-border:#45494b; --lab-border-strong:#666b6d;
-  --lab-text-primary:#f0efea; --lab-text-secondary:#babcb9; --lab-brand:#d8d4c7; --lab-signal:#b5c8b8;
-  --lab-error:#dda9a0; --lab-warning:#d8c291; --lab-info:#b8c8cf; --world-rule:#4d5152; --world-rule-strong:#777a79; --world-mark:#ddd8c9;
+  --world-rule:var(--lab-rule); --world-rule-strong:var(--lab-rule-strong); --world-mark:var(--lab-text-primary);
 }
 
 html[data-lab-theme="index"] .lab-world,

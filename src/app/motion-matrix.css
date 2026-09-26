@@ -103,7 +103,7 @@
 /* The observatory uses a near-black canvas: keep the measurement rail legible
  * beneath each coloured effect interval without changing the relation value. */
 .lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects__plot {
-  --effect-track: rgba(255, 255, 255, .72);
+  --effect-track: var(--lab-control-track);
 }
 
 .strongest-effects__interval {

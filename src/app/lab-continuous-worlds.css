@@ -1,12 +1,12 @@
 /* Five continuous worlds. The DOM stays shared; only topology, type and surfaces change. */
 .lab-experience.lab-continuous {
-  --world-bg: #0b0e10;
-  --world-surface: #12181a;
-  --world-surface-strong: #192225;
-  --world-ink: #edf1ef;
-  --world-muted: #a8b4b4;
-  --world-line: #2d393c;
-  --world-accent: #b8d2c0;
+  --world-bg: var(--lab-canvas);
+  --world-surface: var(--lab-surface);
+  --world-surface-strong: var(--lab-surface-subtle);
+  --world-ink: var(--lab-text-primary);
+  --world-muted: var(--lab-text-secondary);
+  --world-line: var(--lab-rule);
+  --world-accent: var(--lab-text-primary);
   --world-radius: 4px;
   min-height: calc(100svh - 88px);
   overflow-x: clip;
@@ -87,7 +87,7 @@
 .lab-experience.lab-continuous :is(#daily-journal, #meal-journal-title) { scroll-margin-top: 112px; }
 
 /* Observatory: instrument panel, with a wide reading surface and paired capture columns. */
-.lab-experience.lab-continuous[data-continuous-theme="observatory"] { --world-bg: #090c0e; --world-surface: #111719; --world-surface-strong: #192124; --world-ink: #edf2f0; --world-muted: #a6b3b4; --world-line: #29363a; --world-accent: #b8d2c0; font-family: var(--font-soma-sans), ui-sans-serif, system-ui, sans-serif; }
+.lab-experience.lab-continuous[data-continuous-theme="observatory"] { --world-bg: var(--lab-canvas); --world-surface: var(--lab-surface); --world-surface-strong: var(--lab-surface-subtle); --world-ink: var(--lab-text-primary); --world-muted: var(--lab-text-secondary); --world-line: var(--lab-rule); --world-accent: var(--lab-text-primary); font-family: var(--font-soma-sans), ui-sans-serif, system-ui, sans-serif; }
 .lab-experience.lab-continuous[data-continuous-theme="observatory"] .lab-intro { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(340px, .8fr); align-items: end; gap: clamp(28px, 5vw, 82px); }
 .lab-experience.lab-continuous[data-continuous-theme="observatory"] .lab-live-metrics { grid-column: 2; grid-row: 1; }
 .lab-experience.lab-continuous[data-continuous-theme="observatory"] .lab-arrival { grid-column: 1; grid-row: 1; }
@@ -98,7 +98,7 @@
 .lab-experience.lab-continuous[data-continuous-theme="observatory"] .lab-world__effects { padding-top: 36px; }
 
 /* Strata: full width mineral chapters, a ribbon of measures, then a vertical field log. */
-.lab-experience.lab-continuous[data-continuous-theme="strata"] { --world-bg: #202725; --world-surface: #2b3431; --world-surface-strong: #34403b; --world-ink: #edf0e8; --world-muted: #b9c2ba; --world-line: #56625b; --world-accent: #d7c89f; font-family: var(--font-soma-sans), ui-sans-serif, system-ui, sans-serif; }
+.lab-experience.lab-continuous[data-continuous-theme="strata"] { --world-bg: var(--lab-canvas); --world-surface: var(--lab-surface); --world-surface-strong: var(--lab-surface-subtle); --world-ink: var(--lab-text-primary); --world-muted: var(--lab-text-secondary); --world-line: var(--lab-rule); --world-accent: var(--lab-text-primary); font-family: var(--font-soma-sans), ui-sans-serif, system-ui, sans-serif; }
 .lab-experience.lab-continuous[data-continuous-theme="strata"] .lab-intro { display: grid; grid-template-columns: minmax(240px, .7fr) minmax(0, 1.3fr); align-items: end; gap: clamp(28px, 5vw, 84px); padding-bottom: 26px; }
 .lab-experience.lab-continuous[data-continuous-theme="strata"] .arrival-composition { display: grid; grid-template-columns: minmax(210px, .62fr) minmax(0, 1.38fr); grid-template-rows: minmax(180px, auto) auto; align-items: center; gap: 20px 34px; }
 .lab-experience.lab-continuous[data-continuous-theme="strata"] .arrival-heading { grid-column: 1; grid-row: 1; }
@@ -116,7 +116,7 @@
 .lab-experience.lab-continuous[data-continuous-theme="strata"] .lab-world__effects { padding-top: 32px; }
 
 /* Index: a compact ledger where the metrics lead the capture ratio. */
-.lab-experience.lab-continuous[data-continuous-theme="index"] { --world-bg: #0e1113; --world-surface: #171c1f; --world-surface-strong: #20282c; --world-ink: #edf1f1; --world-muted: #aab4b8; --world-line: #39444a; --world-accent: #c6d2d6; font-family: var(--font-soma-mono), ui-monospace, monospace; }
+.lab-experience.lab-continuous[data-continuous-theme="index"] { --world-bg: var(--lab-canvas); --world-surface: var(--lab-surface); --world-surface-strong: var(--lab-surface-subtle); --world-ink: var(--lab-text-primary); --world-muted: var(--lab-text-secondary); --world-line: var(--lab-rule); --world-accent: var(--lab-text-primary); font-family: var(--font-soma-mono), ui-monospace, monospace; }
 .lab-experience.lab-continuous[data-continuous-theme="index"] .lab-intro { display: grid; grid-template-columns: minmax(0, .75fr) minmax(390px, 1.25fr); align-items: end; gap: clamp(28px, 5vw, 80px); padding-block: 24px 26px; }
 .lab-experience.lab-continuous[data-continuous-theme="index"] .arrival-art { display: none; }
 .lab-experience.lab-continuous[data-continuous-theme="index"] .arrival-composition { display: grid; grid-template-columns: minmax(180px, .8fr) minmax(280px, 1.2fr); align-items: end; gap: 24px; }
@@ -132,7 +132,7 @@
 .lab-experience.lab-continuous[data-continuous-theme="index"] .lab-world__effects { padding-top: 24px; }
 
 /* Atelier: an editorial left field and a narrow right metric rail; capture is asymmetric. */
-.lab-experience.lab-continuous[data-continuous-theme="atelier"] { --world-bg: #272625; --world-surface: #343432; --world-surface-strong: #403f3b; --world-ink: #f0eee7; --world-muted: #bebbb2; --world-line: #65635c; --world-accent: #d9c7aa; font-family: ui-sans-serif, system-ui, sans-serif; }
+.lab-experience.lab-continuous[data-continuous-theme="atelier"] { --world-bg: var(--lab-canvas); --world-surface: var(--lab-surface); --world-surface-strong: var(--lab-surface-subtle); --world-ink: var(--lab-text-primary); --world-muted: var(--lab-text-secondary); --world-line: var(--lab-rule); --world-accent: var(--lab-text-primary); font-family: ui-sans-serif, system-ui, sans-serif; }
 .lab-experience.lab-continuous[data-continuous-theme="atelier"] .lab-intro { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(260px, .55fr); align-items: end; gap: clamp(30px, 6vw, 96px); padding-block: 34px 38px; }
 .lab-experience.lab-continuous[data-continuous-theme="atelier"] .arrival-composition { display: grid; grid-template-columns: minmax(0, .82fr) minmax(220px, 1.18fr); grid-template-rows: auto auto; align-items: center; gap: 24px 36px; }
 .lab-experience.lab-continuous[data-continuous-theme="atelier"] .arrival-heading { grid-column: 1; grid-row: 1; }
@@ -148,7 +148,7 @@
 .lab-experience.lab-continuous[data-continuous-theme="atelier"] .lab-world__effects { padding-top: 36px; }
 
 /* Focus: quiet centered stack with a native horizontal capture rail. */
-.lab-experience.lab-continuous[data-continuous-theme="focus"] { --world-bg: #111a17; --world-surface: #1a2823; --world-surface-strong: #23342d; --world-ink: #edf2ed; --world-muted: #aebdb5; --world-line: #3e554b; --world-accent: #b9d8c7; font-family: var(--font-soma-sans), ui-sans-serif, system-ui, sans-serif; }
+.lab-experience.lab-continuous[data-continuous-theme="focus"] { --world-bg: var(--lab-canvas); --world-surface: var(--lab-surface); --world-surface-strong: var(--lab-surface-subtle); --world-ink: var(--lab-text-primary); --world-muted: var(--lab-text-secondary); --world-line: var(--lab-rule); --world-accent: var(--lab-text-primary); font-family: var(--font-soma-sans), ui-sans-serif, system-ui, sans-serif; }
 .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-intro { width: min(100%, 1080px); margin-inline: auto; padding-block: 28px 30px; }
 .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-arrival { text-align: center; }
 .lab-experience.lab-continuous[data-continuous-theme="focus"] .arrival-composition { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, .55fr); align-items: center; gap: 30px; }
