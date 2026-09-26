@@ -1,56 +1,61 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import type { ExerciseSummary, HealthMetricDay, ScoreDay } from "@/services/health-analytics";
+import { decodeAssistantCursor, encodeAssistantCursor, queryAssistantData, type AssistantPageRequest, type AssistantActivitySource, type AssistantSleepSessionSource } from "./semantic-query";
+import { assistantHealthMetricCatalog } from "./health-catalog";
 
 import type { Meal } from "@/domain/meals";
 import { mealAnalysisSchema } from "@/domain/meals";
-import type { ExerciseSummary, HealthMetricDay, ScoreDay } from "@/services/health-analytics";
-import { decodeAssistantCursor, encodeAssistantCursor, queryAssistantData, type AssistantActivitySource, type AssistantSleepSessionSource } from "./semantic-query";
 
-const mockDataSources = vi.hoisted(() => ({
-  healthRows: [] as Array<Record<string, unknown>>,
-  queries: [] as Array<{
-    table: string;
-    filters: Array<{ method: string; column: string; value: unknown }>;
-    orders: Array<{ column: string; ascending: boolean }>;
-    ranges: Array<[number, number]>;
-  }>,
-  mealCalls: [] as Array<{ userId: string; from: string; to: string; preferLatestCompletedAnalysis: boolean }>,
-}));
-
-vi.mock("@/lib/cloudflare/db", () => ({
-  claimCloudflareLock: async () => true,
-  claimCloudflareLockWithToken: async () => "test-lock",
-  releaseCloudflareLock: async () => undefined,
-  releaseCloudflareLockWithToken: async () => undefined,
-  createCloudflareAdminClient: () => ({
-    from(table: string) {
-      const query: (typeof mockDataSources.queries)[number] = { table, filters: [], orders: [], ranges: [] };
-      mockDataSources.queries.push(query);
-      type FakeQuery = {
-        select(columns?: string): FakeQuery;
-        eq(column: string, value: unknown): FakeQuery;
-        gte(column: string, value: unknown): FakeQuery;
-        lte(column: string, value: unknown): FakeQuery;
-        lt(column: string, value: unknown): FakeQuery;
-        is(column: string, value: unknown): FakeQuery;
-        order(column: string, options: { ascending: boolean }): FakeQuery;
-        range(from: number, to: number): Promise<{ data: Array<Record<string, unknown>>; error: null }>;
-        maybeSingle(): Promise<{ data: Record<string, unknown>; error: null }>;
-      };
-      const chain: FakeQuery = {
-        select: () => chain,
-        eq: (column, value) => { query.filters.push({ method: "eq", column, value }); return chain; },
-        gte: (column, value) => { query.filters.push({ method: "gte", column, value }); return chain; },
-        lte: (column, value) => { query.filters.push({ method: "lte", column, value }); return chain; },
-        lt: (column, value) => { query.filters.push({ method: "lt", column, value }); return chain; },
-        is: (column, value) => { query.filters.push({ method: "is", column, value }); return chain; },
-        order: (column, options) => { query.orders.push({ column, ascending: options.ascending }); return chain; },
-        range: async (from, to) => { query.ranges.push([from, to]); return { data: mockDataSources.healthRows, error: null }; },
-        maybeSingle: async () => ({ data: table === "profiles" ? { timezone: "Europe/Zurich" } : { last_synced_at: null }, error: null }),
-      };
-      return chain;
-    },
-  }),
-}));
+const mockDataSources = vi.hoisted(() => ({ healthRows: [] as Record<string, unknown>[], queries: [] as Array<{ table: string; filters: Array<{ method: string; column: string; value: unknown }>; orders: Array<{ column: string; ascending: boolean }>; ranges: Array<[number, number]> }>, mealCalls: [] as Array<{ userId: string; from: string; to: string; preferLatestCompletedAnalysis: boolean }> }));
+const storage = vi.hoisted(() => ({ records: [] as Record<string, unknown>[], ranges: [] as number[], useSupabaseAdapter: false }));
+vi.mock("@/lib/cloudflare/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/cloudflare/db")>();
+  const { matches, sortRows } = await import("@/lib/cloudflare/db-query");
+  const { SupabaseQueryBuilder } = await import("@/lib/cloudflare/db-supabase");
+  return { ...actual, createCloudflareAdminClient: () => ({ from: (table: string) => {
+    if (table === "health_records" && storage.useSupabaseAdapter) {
+      return new SupabaseQueryBuilder(async <T>(path: string): Promise<T> => {
+        const params = new URL(path, "https://storage.test").searchParams;
+        const civilBranch = params.getAll("json_data->>civil_date").some((value) => value.startsWith("gte."));
+        const ascending = params.get("order")?.includes(".asc") ?? false;
+        // Synthetic binary database collation intentionally differs from localeCompare.
+        const rows = storage.records.filter((row) => civilBranch ? row.civil_date !== null : row.civil_date === null)
+          .sort((left, right) => (String(left.source_record_id) < String(right.source_record_id) ? -1 : 1) * (ascending ? 1 : -1));
+        const offset = Number(params.get("offset") ?? 0);
+        const limit = Number(params.get("limit"));
+        storage.ranges.push(limit);
+        return rows.slice(offset, offset + limit).map((row) => ({ table_name: table, row_key: String(row.source_record_id), json_data: row })) as T;
+      }, table);
+    }
+    const recordedQuery: (typeof mockDataSources.queries)[number] = { table, filters: [], orders: [], ranges: [] };
+    mockDataSources.queries.push(recordedQuery);
+    let rows = table === "health_records" ? [...(storage.records.length ? storage.records : mockDataSources.healthRows.map((row) => ({ user_id: "user-1", data_type: row.payload && typeof row.payload === "object" && "sleep" in row.payload ? "sleep" : "exercise", ...row })))] : [];
+    const sorts: Array<{ field: string; ascending: boolean }> = [];
+    const builder = {
+      select: () => builder,
+      eq: (field: string, value: unknown) => filter(field, "eq", value),
+      gte: (field: string, value: unknown) => filter(field, "gte", value),
+      lte: (field: string, value: unknown) => filter(field, "lte", value),
+      lt: (field: string, value: unknown) => filter(field, "lt", value),
+      is: (field: string, value: unknown) => filter(field, "is", value),
+      in: (field: string, value: unknown[]) => filter(field, "in", value),
+      order: (field: string, options: { ascending: boolean }) => { sorts.push({ field, ...options }); recordedQuery.orders.push({ column: field, ascending: options.ascending }); return builder; },
+      range: async (from: number, to: number) => {
+        storage.ranges.push(to - from + 1); recordedQuery.ranges.push([from, to]);
+        return { data: sortRows(rows, sorts).slice(from, to + 1), error: null };
+      },
+      maybeSingle: async () => ({ data: table === "profiles" ? { timezone: "Europe/Paris" } : null, error: null }),
+    };
+    const filter = (field: string, operator: "eq" | "gte" | "lte" | "lt" | "is" | "in", value: unknown) => {
+      recordedQuery.filters.push({ method: operator, column: field, value });
+      rows = rows.filter((row) => matches(row, { field, operator, value }));
+      return builder;
+    };
+    return builder;
+  } }) };
+});
+afterEach(() => { storage.records = []; storage.ranges = []; storage.useSupabaseAdapter = false; mockDataSources.healthRows = []; mockDataSources.queries = []; mockDataSources.mealCalls = []; });
 
 vi.mock("@/repositories/meals", () => ({
   findMeal: async () => null,
@@ -61,6 +66,7 @@ vi.mock("@/repositories/meals", () => ({
 }));
 
 vi.mock("@/services/meals", () => ({ loadConfirmedMealRecords: async () => [] }));
+
 
 const secret = "test-assistant-cursor-secret-123456";
 const baseHealthDay = (date: string, steps: number | null): HealthMetricDay => ({
@@ -83,13 +89,13 @@ const baseHealthDay = (date: string, steps: number | null): HealthMetricDay => (
 });
 
 function sources(input: {
-  health?: HealthMetricDay[]; scores?: ScoreDay[]; activities?: AssistantActivitySource[];
+  health?: HealthMetricDay[]; scores?: ScoreDay[]; activities?: Array<AssistantActivitySource | ExerciseSummary>;
   sleepSessions?: AssistantSleepSessionSource[]; meals?: Meal[];
 } = {}) {
   return {
     profile: async () => ({ timezone: "Europe/Zurich", importedAt: "2026-09-21T09:00:00.000Z" }),
     health: async () => input.health ?? [], scores: async () => input.scores ?? [], nutrition: async () => [],
-    activities: async () => input.activities ?? [], sleepSessions: async () => input.sleepSessions ?? [], meals: async () => input.meals ?? [],
+    activities: async () => (input.activities ?? []).map((source) => "activity" in source ? source : ({ activity: source, provider: null, startTime: source.startTime ?? null, endTime: null, importedAt: null })), sleepSessions: async () => input.sleepSessions ?? [], meals: async () => input.meals ?? [],
   };
 }
 
@@ -124,6 +130,17 @@ function mealFixture(date: string): Meal {
   };
 }
 
+function activity(id: string, date: string, type: string): ExerciseSummary {
+  return {
+    id, date, type, name: type, durationMinutes: 45, activeMinutes: 40, calories: 300, distanceKm: null,
+    averageHeartRate: 145, maximumHeartRate: 180, zoneMinutes: 30, averageSpeedKph: null,
+    averagePaceSecondsPerKm: null, elevationGainMeters: null, steps: null, runVo2Max: null,
+    swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null,
+    verticalOscillationMillimeters: null, verticalRatio: null,
+
+  };
+}
+
 describe("assistant semantic data queries", () => {
   it("preserves explicit zero and missing as different states", async () => {
     const result = await queryAssistantData("user-1", {
@@ -147,6 +164,49 @@ describe("assistant semantic data queries", () => {
     });
   });
 
+  it("returns clock and boolean health metrics in their native types", async () => {
+    const day = { ...baseHealthDay("2026-09-21", 0), bedtime: "2026-09-20T22:40:00.000Z", active_day: false };
+    const result = await queryAssistantData("user-1", {
+      dataset: "daily_health", period: { from: "2026-09-21", to: "2026-09-21" }, metrics: ["bedtime", "active_day"], pagination: { limit: 100, cursor: null, order: "asc" },
+    }, { sources: sources({ health: [day] }), cursorSecret: secret });
+
+    expect(result.items[0]).toMatchObject({ observations: [
+      { metric: "bedtime", value: "2026-09-20T22:40:00.000Z", availability: "observed", unit: "local time" },
+      { metric: "active_day", value: false, availability: "observed", unit: "yes/no" },
+    ] });
+  });
+
+  it("filters more than 500 activities by period and French activity alias before reporting totals and pages", async () => {
+    const activities = [
+      ...Array.from({ length: 520 }, (_, index) => activity(`run-${index.toString().padStart(4, "0")}`, "2026-09-10", "RUNNING")),
+      ...Array.from({ length: 8 }, (_, index) => activity(`boxing-${index.toString().padStart(2, "0")}`, "2026-09-10", "BOXING")),
+      activity("boxing-outside-period", "2026-08-26", "BOXING"),
+    ];
+    const first = await queryAssistantData("user-1", {
+      dataset: "activities", period: { from: "2026-08-27", to: "2026-09-26" }, activityTypes: ["boxe"], pagination: { limit: 5, cursor: null, order: "desc" },
+    }, { sources: sources({ activities }), cursorSecret: secret });
+
+    expect(first.manifest).toMatchObject({ totalItems: 8, returnedItems: 5, hasMore: true });
+    expect(first.items.every((item) => item.type === "activity" && item.activity.type === "BOXING")).toBe(true);
+
+    const second = await queryAssistantData("user-1", {
+      dataset: "activities", period: { from: "2026-08-27", to: "2026-09-26" }, activityTypes: ["boxe"], pagination: { limit: 5, cursor: first.manifest.nextCursor, order: "desc" },
+    }, { sources: sources({ activities }), cursorSecret: secret });
+    expect(second.manifest).toMatchObject({ totalItems: 8, returnedItems: 3, hasMore: false, complete: true });
+  });
+
+  it("allows the full health metric catalog as a targeted query", async () => {
+    const result = await queryAssistantData("user-1", {
+      dataset: "daily_health", period: { from: "2026-09-21", to: "2026-09-21" },
+      metrics: assistantHealthMetricCatalog.map((metric) => metric.key), pagination: { limit: 10, cursor: null, order: "asc" },
+    }, { sources: sources({ health: [baseHealthDay("2026-09-21", 42)] }), cursorSecret: secret });
+
+    expect(result.items[0]?.type === "daily" ? result.items[0].observations : []).toHaveLength(assistantHealthMetricCatalog.length);
+    const observations = result.items[0]?.type === "daily" ? result.items[0].observations : [];
+    expect(observations.find((observation) => observation.metric === "steps")).toMatchObject({ value: 42, availability: "observed" });
+    expect(observations.find((observation) => observation.metric === "bedtime")).toMatchObject({ value: null, availability: "missing" });
+  });
+
   it("paginates without silent truncation and reports completeness", async () => {
     const health = [baseHealthDay("2026-09-19", 1), baseHealthDay("2026-09-20", 2), baseHealthDay("2026-09-21", 3)];
     const first = await queryAssistantData("user-1", {
@@ -159,6 +219,23 @@ describe("assistant semantic data queries", () => {
     }, { sources: sources({ health }), cursorSecret: secret });
     expect(second.items).toHaveLength(1);
     expect(second.manifest).toMatchObject({ hasMore: false, complete: true });
+  });
+
+  it("uses a signed storage cursor and reports unknown totals without inventing a count", async () => {
+    const source = sources();
+    const health = vi.fn(async (_userId: string, _period: { from: string; to: string }, _metrics: string[], page: AssistantPageRequest) => page.position === null
+      ? { items: [baseHealthDay("2026-09-20", 1)], hasMore: true, nextPosition: "2026-09-20", totalItems: null }
+      : { items: [baseHealthDay("2026-09-21", 2)], hasMore: false, nextPosition: null, totalItems: null });
+    const first = await queryAssistantData("user-1", {
+      dataset: "daily_health", period: { from: "2026-09-20", to: "2026-09-21" }, metrics: ["steps"], pagination: { limit: 1, cursor: null, order: "asc" },
+    }, { sources: { ...source, health }, cursorSecret: secret });
+    expect(first.manifest).toMatchObject({ totalItems: null, totalKnown: false, hasMore: true, complete: false });
+
+    const second = await queryAssistantData("user-1", {
+      dataset: "daily_health", period: { from: "2026-09-20", to: "2026-09-21" }, metrics: ["steps"], pagination: { limit: 1, cursor: first.manifest.nextCursor, order: "asc" },
+    }, { sources: { ...source, health }, cursorSecret: secret });
+    expect(health.mock.calls[1]?.[3]).toMatchObject({ limit: 1, position: "2026-09-20", order: "asc" });
+    expect(second.manifest).toMatchObject({ totalItems: null, totalKnown: false, returnedItems: 1, hasMore: false, complete: true });
   });
 
   it("retrieves a four-month history across pages without losing days", async () => {
@@ -193,6 +270,17 @@ describe("assistant semantic data queries", () => {
 
     await expect(queryAssistantData("user-1", {
       dataset: "daily_health", period: { from: "2026-09-19", to: "2026-09-21" }, metrics: ["steps"], pagination: { limit: 1, cursor: first.manifest.nextCursor, order: "asc" },
+    }, { sources: sources({ health }), cursorSecret: secret })).rejects.toThrow(/does not match/);
+  });
+
+  it("binds pagination cursors to the authenticated user", async () => {
+    const health = [baseHealthDay("2026-09-20", 1), baseHealthDay("2026-09-21", 2)];
+    const first = await queryAssistantData("user-1", {
+      dataset: "daily_health", period: { from: "2026-09-20", to: "2026-09-21" }, metrics: ["steps"], pagination: { limit: 1, cursor: null, order: "asc" },
+    }, { sources: sources({ health }), cursorSecret: secret });
+
+    await expect(queryAssistantData("user-2", {
+      dataset: "daily_health", period: { from: "2026-09-20", to: "2026-09-21" }, metrics: ["steps"], pagination: { limit: 1, cursor: first.manifest.nextCursor, order: "asc" },
     }, { sources: sources({ health }), cursorSecret: secret })).rejects.toThrow(/does not match/);
   });
 
@@ -265,8 +353,8 @@ describe("assistant semantic data queries", () => {
     for (const query of activityQueries) {
       expect(query.filters).toContainEqual({ method: "eq", column: "user_id", value: "user-1" });
       expect(query.filters).toContainEqual({ method: "eq", column: "data_type", value: "exercise" });
-      expect(query.ranges).toEqual([[0, 499]]);
-      expect(query.orders.map(({ column }) => column)).toEqual(["civil_date", "end_time", "provider", "source_record_id"]);
+      expect(query.ranges).toEqual([[0, 100]]);
+      expect(query.orders.map(({ column }) => column)).toEqual(query.filters.some(({ method, column }) => method === "is" && column === "civil_date") ? ["start_time", "source_record_id", "provider"] : ["civil_date", "start_time", "source_record_id", "provider"]);
     }
     expect(activityQueries[0].filters).toContainEqual({ method: "gte", column: "civil_date", value: "2026-09-24" });
     expect(activityQueries[0].filters).toContainEqual({ method: "lte", column: "civil_date", value: "2026-09-24" });
@@ -283,7 +371,7 @@ describe("assistant semantic data queries", () => {
     for (const query of sleepQueries) {
       expect(query.filters).toContainEqual({ method: "eq", column: "user_id", value: "user-1" });
       expect(query.filters).toContainEqual({ method: "eq", column: "data_type", value: "sleep" });
-      expect(query.ranges).toEqual([[0, 499]]);
+      expect(query.ranges).toEqual([[0, 999]]);
       expect(query.orders.map(({ column }) => column)).toEqual(["civil_date", "end_time", "provider", "source_record_id"]);
     }
     expect(sleepQueries[1].filters).toContainEqual({ method: "gte", column: "end_time", value: "2026-09-23T00:00:00.000Z" });
@@ -367,4 +455,91 @@ describe("assistant semantic data queries", () => {
       if (item.type === "meal") expect(item.observations.every((observation) => observation.availability === "not_calculable" && observation.value === null)).toBe(true);
     }
   });
+});
+
+describe("default activity storage pagination", () => {
+  it.each(["asc", "desc"] as const)("consumes storage prefixes with null times and equal keys (%s)", async (order) => {
+    const row = (id: string, civilDate: string | null, time: string | null, provider = "google_health") => ({
+      user_id: "user-1", data_type: "exercise", provider, source_record_id: id,
+      civil_date: civilDate, start_time: time, end_time: null,
+      payload: { exercise: { exerciseType: "RUNNING" } },
+    });
+    storage.records = [
+      row("A", "2026-09-26", "2026-09-26T10:00:00Z"),
+      row("B", "2026-09-26", null),
+      row("C", null, "2026-09-26T05:00:00Z"),
+      row("Z", "2026-09-26", "2026-09-26T10:00:00Z"),
+      row("a", "2026-09-26", "2026-09-26T10:00:00Z"),
+      row("D", null, "2026-09-26T10:00:00Z"),
+      row("outside", "2026-09-25", "2026-09-25T10:00:00Z"),
+      { ...row("other-user", "2026-09-26", null), user_id: "user-2" },
+    ];
+    const ids: string[] = [];
+    let cursor: string | null = null;
+    for (let index = 0; index < 10; index += 1) {
+      const result = await queryAssistantData("user-1", {
+        dataset: "activities", period: { from: "2026-09-26", to: "2026-09-26" },
+        activityTypes: ["running"], pagination: { limit: 2, cursor, order },
+      }, { cursorSecret: secret });
+      ids.push(...result.items.flatMap((item) => item.type === "activity" ? [item.activity.id] : []));
+      cursor = result.manifest.nextCursor;
+      if (!result.manifest.hasMore) { expect(result.manifest.complete).toBe(true); break; }
+    }
+    expect(cursor).toBeNull();
+    expect(ids).toEqual(order === "asc" ? ["C", "A", "Z", "a", "D", "B"] : ["B", "a", "Z", "A", "D", "C"]);
+    expect(storage.ranges.every((size) => size === 3)).toBe(true);
+  });
+});
+
+
+it.each(["asc", "desc"] as const)("paginates activities through the real Supabase adapter without collated duplicates (%s)", async (order) => {
+  storage.useSupabaseAdapter = true;
+  const ids = ["A", "Z", "a", "z", "é"];
+  storage.records = ids.map((id) => ({
+    user_id: "user-1", data_type: "exercise", provider: "google_health",
+    source_record_id: id, civil_date: "2026-09-26", start_time: null, end_time: null,
+    updated_at: "2026-09-26T12:00:00Z", payload: { exercise: { exerciseType: "RUNNING" } },
+  }));
+  const seen: string[] = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < 5; page += 1) {
+    const result = await queryAssistantData("user-1", {
+      dataset: "activities", period: { from: "2026-09-26", to: "2026-09-26" },
+      activityTypes: ["running"], pagination: { limit: 2, cursor, order },
+    }, { cursorSecret: secret });
+    seen.push(...result.items.flatMap((item) => item.type === "activity" ? [item.activity.id] : []));
+    cursor = result.manifest.nextCursor;
+    if (!result.manifest.hasMore) break;
+  }
+  expect(cursor).toBeNull();
+  expect(seen).toEqual(order === "asc" ? ids : [...ids].reverse());
+  expect(new Set(seen).size).toBe(ids.length);
+  expect(storage.ranges.every((limit) => limit === 3)).toBe(true);
+});
+
+
+it.each(["asc", "desc"] as const)("consumes widened time windows while preserving labeled activity dates (%s)", async (order) => {
+  storage.records = [
+    ["before", "2026-09-25T23:30:00+02:00"],
+    ["boundary", "2026-09-26T00:00:00+02:00"],
+    ["midday", "2026-09-26T12:00:00Z"],
+    ["after", "2026-09-27T00:00:00+02:00"],
+  ].map(([id, time]) => ({
+    user_id: "user-1", data_type: "exercise", provider: "google_health",
+    source_record_id: id, civil_date: null, start_time: time, end_time: null,
+    payload: { exercise: { exerciseType: "RUNNING" } },
+  }));
+  const seen: string[] = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < 10; page += 1) {
+    const result = await queryAssistantData("user-1", {
+      dataset: "activities", period: { from: "2026-09-26", to: "2026-09-26" },
+      pagination: { limit: 1, cursor, order },
+    }, { cursorSecret: secret });
+    seen.push(...result.items.flatMap((item) => item.type === "activity" ? [item.activity.id] : []));
+    cursor = result.manifest.nextCursor;
+    if (!result.manifest.hasMore) break;
+  }
+  expect(cursor).toBeNull();
+  expect(seen).toEqual(order === "asc" ? ["boundary", "midday"] : ["midday", "boundary"]);
 });

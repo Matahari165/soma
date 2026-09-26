@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { affectsLabMatrixRevision, assertJournalDayPersisted, buildCloudflareReadPlan, buildCloudflareUpdatePlan, createCloudflareAdminClient, labMatrixInputRevision, labMatrixRevisionTables, mergeJournalOmissions, stableIdentity } from "@/lib/cloudflare/db";
+import { SupabaseQueryBuilder } from "@/lib/cloudflare/db-supabase";
+import type { SupabaseRequest } from "@/lib/cloudflare/db-types";
 import { CloudflareQueryBuilder } from "@/lib/cloudflare/db-d1";
 import type { D1DatabaseLike } from "@/lib/cloudflare/db-types";
 
@@ -450,6 +452,73 @@ describe("Supabase storage pagination", () => {
   });
 });
 
+describe("Supabase logical-row JSON filters", () => {
+  it("projects selected logical fields instead of transferring the full JSON document", async () => {
+    const previousUrl = process.env.SUPABASE_URL;
+    const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      expect(url.searchParams.get("select")).toBe("table_name,row_key,user_id,metric_date:json_data->metric_date,steps:json_data->steps");
+      return new Response(JSON.stringify([{
+        table_name: "daily_health_metrics", row_key: "day-1", user_id: "user-1", metric_date: "2026-09-20", steps: 42,
+      }]), { status: 200, headers: { "content-type": "application/json" } });
+    });
+
+    process.env.SUPABASE_URL = "https://supabase.test";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const result = await createCloudflareAdminClient().from("daily_health_metrics")
+        .select("metric_date,steps").eq("user_id", "user-1")
+        .gte("metric_date", "2026-09-20").lte("metric_date", "2026-09-21")
+        .order("metric_date").range(0, 9);
+      expect(result.data).toEqual([{ metric_date: "2026-09-20", steps: 42 }]);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+      else process.env.SUPABASE_URL = previousUrl;
+      if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey;
+    }
+  });
+
+  it("pushes nested activity type filters to the storage query", async () => {
+    const previousUrl = process.env.SUPABASE_URL;
+    const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      expect(url.searchParams.get("json_data->payload->exercise->>exerciseType")).toBe("in.(BOXING,KICKBOXING)");
+      expect(url.searchParams.get("json_data->>civil_date")).toBe("gte.2026-08-27");
+      return new Response(JSON.stringify([]), { status: 200, headers: { "content-type": "application/json" } });
+    });
+
+    process.env.SUPABASE_URL = "https://supabase.test";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const result = await createCloudflareAdminClient().from("health_records")
+        .select("source_record_id,civil_date,start_time,end_time,payload")
+        .eq("user_id", "user-1").eq("data_type", "exercise")
+        .gte("civil_date", "2026-08-27").lte("civil_date", "2026-09-26")
+        .in("payload.exercise.exerciseType", ["BOXING", "KICKBOXING"])
+        .range(0, 499);
+
+      expect(result.error).toBeNull();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(new URL(String(fetchMock.mock.calls[0]?.[0])).searchParams.get("limit")).toBe("500");
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+      else process.env.SUPABASE_URL = previousUrl;
+      if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey;
+    }
+  });
+});
+
 describe("Cloudflare journal persistence verification", () => {
   it("updates omissions as a field patch until the complete validation snapshot", () => {
     expect(mergeJournalOmissions(["dinner", "reading"], [{ variable_id: "dinner", value: "22:30" }], false)).toEqual(["reading"]);
@@ -512,4 +581,96 @@ describe("Personal Lab matrix revision", () => {
     expect(affectsLabMatrixRevision("journal_entries")).toBe(true);
     expect(affectsLabMatrixRevision("meal_analyses")).toBe(true);
   });
+});
+
+
+it("advances summary checkpoint versions when the clock has not advanced", async () => {
+  const previousUrl = process.env.SUPABASE_URL;
+  const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const instant = "2020-01-01T00:00:00.000Z";
+  const clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse(instant));
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+    if (init?.method === "PATCH") return new Response(JSON.stringify([{}]), { status: 200 });
+    return new Response(JSON.stringify([{
+      table_name: "assistant_data_jobs", row_key: "test-job", user_id: "user-1",
+      json_data: { id: "job-1", user_id: "user-1", updated_at: instant, processed: 1 },
+    }]), { status: 200 });
+  });
+  process.env.SUPABASE_URL = "https://supabase.test";
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+  vi.stubGlobal("fetch", fetchMock);
+  try {
+    const result = await createCloudflareAdminClient().from("assistant_data_jobs")
+      .update({ processed: 2, updated_at: instant }).eq("user_id", "user-1")
+      .eq("id", "job-1").eq("updated_at", instant).select("id,updated_at");
+    expect(result.error).toBeNull();
+    expect(result.data?.[0].updated_at).toBe("2020-01-01T00:00:00.001Z");
+    const patch = fetchMock.mock.calls.find(([, init]) => init?.method === "PATCH");
+    expect(new URL(String(patch?.[0])).searchParams.get("json_data->>updated_at")).toBe(`eq.${instant}`);
+  } finally {
+    clock.mockRestore();
+    vi.unstubAllGlobals();
+    if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = previousUrl;
+    if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey;
+  }
+});
+
+
+describe("storage pagination preserves database collation", () => {
+  it.each(["asc", "desc"] as const)("keeps Supabase page order before advancing offsets (%s)", async (order) => {
+    const databaseIds = order === "asc" ? ["A", "Z", "a", "é", "z"] : ["z", "é", "a", "Z", "A"];
+    const request: SupabaseRequest = async <T>(path: string): Promise<T> => {
+      const query = new URL(path, "https://storage.test").searchParams;
+      const offset = Number(query.get("offset") ?? 0);
+      const limit = Number(query.get("limit"));
+      expect(limit).toBe(3);
+      expect(query.get("order")).toContain("source_record_id");
+      return databaseIds.slice(offset, offset + limit).map((id) => ({
+        table_name: "health_records", row_key: id, user_id: "user-1",
+        source_record_id: id, civil_date: "2026-09-26", start_time: null,
+        json_data: { source_record_id: id, civil_date: "2026-09-26", start_time: null },
+      })) as T;
+    };
+    const ids: string[] = [];
+    for (let offset = 0; offset < databaseIds.length; offset += 2) {
+      const result = await new SupabaseQueryBuilder(request, "health_records")
+        .select("source_record_id,civil_date,start_time")
+        .order("civil_date", { ascending: order === "asc" })
+        .order("source_record_id", { ascending: order === "asc" }).range(offset, offset + 2);
+      expect(result.error).toBeNull();
+      ids.push(...(result.data ?? []).slice(0, 2).map((row) => String(row.source_record_id)));
+    }
+    expect(ids).toEqual(databaseIds);
+    expect(new Set(ids).size).toBe(databaseIds.length);
+  });
+});
+
+it("advances D1 summary checkpoint CAS versions within the same millisecond", async () => {
+  const instant = "2020-01-01T00:00:00.000Z";
+  const clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse(instant));
+  const statements: Array<{ sql: string; values: unknown[] }> = [];
+  const db = {
+    prepare: (sql: string) => {
+      const statement = { sql, values: [] as unknown[] };
+      statements.push(statement);
+      const prepared = {
+        bind: (...values: unknown[]) => { statement.values = values; return prepared; },
+        all: async () => ({ success: true, results: [{ json_data: JSON.stringify({ id: "job-1", user_id: "user-1", updated_at: instant, processed: 1 }) }] }),
+      };
+      return prepared;
+    },
+    batch: async () => [{ success: true, meta: { changes: 1 } }],
+  } as unknown as D1DatabaseLike;
+  try {
+    const result = await new CloudflareQueryBuilder(db, "assistant_data_jobs")
+      .update({ processed: 2, updated_at: instant }).eq("user_id", "user-1")
+      .eq("id", "job-1").eq("updated_at", instant).select("id,updated_at");
+    expect(result.error).toBeNull();
+    expect(result.data?.[0].updated_at).toBe("2020-01-01T00:00:00.001Z");
+    const patch = statements.find(({ sql }) => sql.trimStart().startsWith("UPDATE"));
+    expect(patch?.sql).toContain("json_extract(json_data, '$.updated_at') = ?");
+    expect(patch?.values).toContain(instant);
+  } finally { clock.mockRestore(); }
 });

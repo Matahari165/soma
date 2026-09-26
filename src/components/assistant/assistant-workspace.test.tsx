@@ -117,6 +117,56 @@ it("edits a previous message inline and uses the existing edit request", async (
   await act(async () => root.unmount());
 });
 
+it("reuses the request id and restores the persisted turn after a lost response", async () => {
+  const question = "Question après une réponse réseau perdue";
+  const requests: Array<Record<string, unknown>> = [];
+  let persistedMessages: Array<Record<string, unknown>> = [];
+  let chatCalls = 0;
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/starter-prompts")) return Response.json({ calibrated: true, prompts: [] });
+    if (url.includes("conversationId=conversation-1")) return Response.json({ messages: persistedMessages });
+    if (url.endsWith("/chat")) {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      requests.push(body);
+      chatCalls += 1;
+      if (chatCalls === 1) {
+        persistedMessages = [
+          { id: "user-1", conversationId: "conversation-1", sequence: 1, role: "user", status: "completed", parts: [{ type: "text", text: question }] },
+          { id: "answer-1", conversationId: "conversation-1", sequence: 2, role: "assistant", status: "completed", parts: [{ type: "text", text: "Réponse enregistrée" }] },
+        ];
+        throw new TypeError("Network response was lost after persistence.");
+      }
+      return Response.json({ userMessage: persistedMessages[0], assistantMessage: persistedMessages[1], replayed: true });
+    }
+    return Response.json({ conversations: [{ id: "conversation-1", title: "Test" }] });
+  }));
+
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<AssistantWorkspace />));
+  const conversationButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "Test");
+  await act(async () => conversationButton?.click());
+
+  const composer = container.querySelector<HTMLTextAreaElement>("#assistant-message");
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+  setter?.call(composer, question);
+  await act(async () => composer?.dispatchEvent(new Event("input", { bubbles: true })));
+  const send = container.querySelector<HTMLButtonElement>("form button[type='submit']");
+  await act(async () => send?.click());
+  expect(container.textContent).toContain("Réponse enregistrée");
+  expect(requests).toHaveLength(1);
+
+  await act(async () => send?.click());
+
+  expect(requests).toHaveLength(2);
+  expect(requests[1]?.requestId).toBe(requests[0]?.requestId);
+  expect(container.querySelectorAll("[data-edit-message-id='user-1']")).toHaveLength(1);
+  expect(container.textContent?.match(/Réponse enregistrée/g)).toHaveLength(1);
+  await act(async () => root.unmount());
+});
+
 it("offers a retry when a conversation cannot be loaded", async () => {
   let loadAttempts = 0;
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
@@ -210,5 +260,37 @@ it("labels a failed new conversation request as a send error", async () => {
   await act(async () => starter?.click());
   expect(container.textContent).toContain("Envoi impossible");
   expect(container.textContent).not.toContain("Conversation indisponible");
+  await act(async () => root.unmount());
+});
+
+
+it("announces incomplete memory once and keeps analytical evidence distinct from health samples", async () => {
+  const question = "Résume les analyses";
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/starter-prompts")) return Response.json({ calibrated: true, prompts: [{ id: "one", text: question }, { id: "two", text: "Autre demande" }, { id: "three", text: "Dernière demande" }] });
+    if (url.endsWith("/conversations") && init?.method === "POST") return Response.json({ conversation: { id: "synthetic-conversation" } });
+    if (url.endsWith("/chat")) return Response.json({ memoryStatus: { state: "retry_pending" },
+      assistantMessage: { id: "synthetic-answer", sequence: 2, role: "assistant", status: "completed", parts: [
+        { type: "text", text: "Associations consultées." },
+        { type: "data-summary", label: "Analyses Soma consultées", period: null, coveredPeriod: null, itemCount: 0, domains: [],
+          toolStats: [{ toolName: "queryLabAnalyses", itemCount: 2, complete: false, periods: ["90", "all"] }] },
+      ] } });
+    return Response.json({ conversations: [] });
+  }));
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<AssistantWorkspace />));
+  const starter = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes(question));
+  await act(async () => starter?.click());
+  const statuses = [...container.querySelectorAll("[role=status]")].filter((element) => element.textContent?.includes("historique ancien"));
+  expect(statuses).toHaveLength(1);
+  expect(container.textContent).toContain("2 relations consultées · 90 jours, tout l’historique · analyse partielle");
+  expect(container.textContent).not.toContain("Aucune donnée sur cette période");
+  expect(container.textContent).not.toContain("0 élément");
+  const newConversation = [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Nouvelle conversation"));
+  await act(async () => newConversation?.click());
+  expect(container.textContent).not.toContain("historique ancien");
   await act(async () => root.unmount());
 });

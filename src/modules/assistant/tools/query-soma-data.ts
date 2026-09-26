@@ -8,7 +8,7 @@ import { executeAuditedAssistantTool } from "./audited-tool";
 
 export function createQuerySomaDataTool(context: { userId: string; runId: string }) {
   return tool({
-    description: "Interroge les données Soma canoniques (santé, scores, nutrition ou activités) sur une période explicite, sans transformer une absence en zéro.",
+    description: "Interroge les données Soma canoniques (santé, scores, nutrition, activités, sessions de sommeil ou repas) sur une période explicite, sans transformer une absence en zéro.",
     inputSchema: assistantSemanticQuerySchema,
     execute: async (input, options) => executeAuditedAssistantTool({
       context,

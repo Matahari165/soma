@@ -451,3 +451,5 @@
     pointer-events: auto;
   }
 }
+
+.memoryWarning { display: block; color: var(--lab-warning); border-top-color: var(--lab-warning); background: color-mix(in srgb, var(--lab-warning) 8%, var(--lab-canvas)); }

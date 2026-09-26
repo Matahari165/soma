@@ -107,3 +107,28 @@ describe("bounded Google Health session heart-rate fetch", () => {
     expect(GOOGLE_HEALTH_SESSION_ZONE_MAX_PAGES).toBe(2);
   });
 });
+
+
+it("persists each Google page before continuing and resumes its token", async () => {
+  const progress = vi.fn();
+  const readPage = vi.fn().mockResolvedValueOnce({ dataPoints: [{ name: "page-two" }], nextPageToken: "page-three" })
+    .mockResolvedValueOnce({ dataPoints: [{ name: "page-three" }] });
+  const signal = new AbortController().signal;
+  const result = await fetchGoogleHealthSessionHeartRate({ accessToken: "synthetic", start: new Date("2020-01-01T10:00:00Z"), end: new Date("2020-01-01T11:00:00Z"),
+    pageToken: "page-two", signal, onPage: progress }, readPage);
+  expect(readPage.mock.calls[0][0]).toMatchObject({ pageToken: "page-two", signal });
+  expect(progress.mock.calls).toEqual([[ [{ name: "page-two" }], "page-three" ], [ [{ name: "page-three" }], null ]]);
+  expect(result.pageCount).toBe(2);
+});
+
+it("cancels an in-flight Google page and does not advance the saved token", async () => {
+  const controller = new AbortController();
+  const progress = vi.fn();
+  const readPage = vi.fn(() => new Promise<never>(() => {}));
+  const pending = fetchGoogleHealthSessionHeartRate({ accessToken: "synthetic", start: new Date("2020-01-01T10:00:00Z"), end: new Date("2020-01-01T11:00:00Z"),
+    signal: controller.signal, onPage: progress }, readPage);
+  controller.abort(new Error("synthetic budget exceeded"));
+  await expect(pending).rejects.toThrow("synthetic budget exceeded");
+  expect(progress).not.toHaveBeenCalled();
+  expect(readPage).toHaveBeenCalledTimes(1);
+});

@@ -81,9 +81,22 @@ export async function appendAssistantMessage(input: {
 }
 
 export async function listAssistantMessages(userId: string, conversationId: string, afterSequence = 0) {
-  const sequenceFilter = afterSequence > 0 ? `&sequence=gt.${Math.trunc(afterSequence)}` : "";
+  const rows: MessageRow[] = [];
+  let cursor = Math.max(0, Math.trunc(afterSequence));
+  while (true) {
+    const page = await listAssistantMessagePage(userId, conversationId, cursor, 500);
+    rows.push(...page);
+    if (page.length < 500) return rows;
+    cursor = page.at(-1)!.sequence;
+  }
+}
+
+export async function listAssistantMessagePage(userId: string, conversationId: string, afterSequence = 0, limit = 100) {
+  const safeAfter = Math.max(0, Math.trunc(afterSequence));
+  const safeLimit = Math.max(1, Math.min(500, Math.trunc(limit)));
+  const sequenceFilter = safeAfter > 0 ? `&sequence=gt.${safeAfter}` : "";
   return assistantDatabaseRequest<MessageRow[]>(
-    `assistant_messages?user_id=eq.${assistantFilter(userId)}&conversation_id=eq.${assistantFilter(conversationId)}${sequenceFilter}&select=*&order=sequence.asc`,
+    `assistant_messages?user_id=eq.${assistantFilter(userId)}&conversation_id=eq.${assistantFilter(conversationId)}${sequenceFilter}&select=*&order=sequence.asc&limit=${safeLimit}`,
   );
 }
 
@@ -191,6 +204,50 @@ export async function findAssistantAttachment(userId: string, attachmentId: stri
   return rows[0] ?? null;
 }
 
+export async function findAssistantAttachmentInConversation(userId: string, conversationId: string, attachmentId: string) {
+  const [attachment, references] = await Promise.all([
+    findAssistantAttachment(userId, attachmentId),
+    assistantDatabaseRequest<Array<{ id: string; sequence: number }>>(
+      `assistant_messages?user_id=eq.${assistantFilter(userId)}&conversation_id=eq.${assistantFilter(conversationId)}&parts=cs.${assistantFilter(JSON.stringify([{ type: "attachment", attachmentId }]))}&select=id,sequence&limit=1`,
+    ),
+  ]);
+  if (!attachment || attachment.status !== "available") return null;
+  const reference = references[0];
+  if (!reference) return null;
+  if (attachment.conversation_id === conversationId) {
+    if (attachment.message_id !== null && attachment.message_id !== reference.id) return null;
+    return attachment;
+  }
+
+  // Forked conversations keep the original image reference. Accept it only when the
+  // source message is still owned by this user and itself contains that exact id.
+  if (!attachment.message_id) return null;
+  const source = await findAssistantMessage(userId, attachment.message_id);
+  if (!source || source.conversation_id !== attachment.conversation_id
+    || !source.parts.some((part) => part.type === "attachment" && part.attachmentId === attachmentId)) return null;
+  return attachment;
+}
+
+export async function findAssistantRunByOutputMessage(userId: string, outputMessageId: string) {
+  const rows = await assistantDatabaseRequest<Array<{ id: string; output_message_id: string }>>(
+    `assistant_runs?user_id=eq.${assistantFilter(userId)}&output_message_id=eq.${assistantFilter(outputMessageId)}&select=id,output_message_id&limit=1`,
+  );
+  return rows[0] ?? null;
+}
+
+export async function listAssistantToolCalls(userId: string, runId: string) {
+  return assistantDatabaseRequest<Array<{
+    id: string;
+    tool_name: string;
+    operation_class: string;
+    status: string;
+    result_manifest: unknown;
+    created_at: string;
+  }>>(
+    `assistant_tool_calls?user_id=eq.${assistantFilter(userId)}&run_id=eq.${assistantFilter(runId)}&select=id,tool_name,operation_class,status,result_manifest,created_at&order=created_at.asc,id.asc&limit=500`,
+  );
+}
+
 export async function attachAssistantAttachmentToMessage(userId: string, conversationId: string, attachmentId: string, messageId: string) {
   const existing = await findAssistantAttachment(userId, attachmentId);
   if (existing?.conversation_id !== conversationId || (existing.message_id !== null && existing.message_id !== messageId)) {
@@ -230,6 +287,24 @@ export async function createAssistantRun(input: {
 export async function findAssistantRunByRequestId(userId: string, requestId: string) {
   const rows = await assistantDatabaseRequest<RunRow[]>(
     `assistant_runs?user_id=eq.${assistantFilter(userId)}&request_id=eq.${assistantFilter(requestId)}&select=*&limit=1`,
+  );
+  return rows[0] ?? null;
+}
+
+export async function claimAssistantRun(input: {
+  userId: string;
+  runId: string;
+  expectedStatus: "queued" | "failed";
+  provider: string;
+  startedAt: string;
+}) {
+  const rows = await assistantDatabaseRequest<RunRow[]>(
+    `assistant_runs?user_id=eq.${assistantFilter(input.userId)}&id=eq.${assistantFilter(input.runId)}&status=eq.${input.expectedStatus}`,
+    {
+      method: "PATCH",
+      prefer: "return=representation",
+      body: { status: "running", provider: input.provider, started_at: input.startedAt, completed_at: null, finish_reason: null, error_code: null },
+    },
   );
   return rows[0] ?? null;
 }
