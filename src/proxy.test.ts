@@ -20,7 +20,7 @@ describe("remote demo preview", () => {
     expect(response.status).toBe(403);
   });
 
-  it.each(["/api/cron/sync", "/auth/google", "/auth/callback"])("blocks integration access to %s", async (path) => {
+  it.each(["/api/cron/sync", "/api/cron/active-hours", "/auth/google", "/auth/callback"])("blocks integration access to %s", async (path) => {
     const response = await proxy(new NextRequest(`https://preview.example${path}`));
     expect(response.status).toBe(403);
   });
@@ -38,6 +38,13 @@ describe("unauthenticated auth routes", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("passes the active-hours cron to its own bearer authentication without a browser session", async () => {
+    const response = await proxy(new NextRequest("https://soma.example/api/cron/active-hours"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(response.headers.get("location")).toBeNull();
   });
 
   it("allows the Web Apple Health sync token without a browser cookie", async () => {
