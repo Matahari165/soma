@@ -34,7 +34,7 @@ export function HomeSomaEntry({ visible }: { visible: boolean }) {
           setInsight(value);
         }
       } catch {
-        if (active) setInsight((current) => current ?? { text: "Vos observations récentes sont disponibles. Vous pouvez poser une question à Soma.", source: "Observations du jour", moment: "day" });
+        if (active) setInsight((current) => current ?? { text: "Le résumé du jour est indisponible pour le moment. Vous pouvez quand même poser votre question à Soma.", source: "Résumé indisponible", moment: "day" });
       } finally {
         if (active) setLoading(false);
       }
@@ -45,8 +45,6 @@ export function HomeSomaEntry({ visible }: { visible: boolean }) {
     const interval = window.setInterval(() => void refresh(), 15 * 60_000);
     return () => { active = false; document.removeEventListener("visibilitychange", onVisible); window.clearInterval(interval); };
   }, [visible]);
-
-  if (!visible) return null;
 
   function discuss(line: string) {
     setText(`Peux-tu m’expliquer cette observation : ${line}`);
@@ -68,14 +66,14 @@ export function HomeSomaEntry({ visible }: { visible: boolean }) {
 
   const lines = insight?.text.split("\n").filter(Boolean) ?? [];
   return <section className={styles.entry} aria-label="Aperçu Soma">
-    <div className={styles.header}><span>Soma</span><span>{insight?.moment === "morning" ? "Ce matin" : insight?.moment === "activity" ? "Après l’activité" : insight?.moment === "evening" ? "Ce soir" : "Aujourd’hui"}</span></div>
-    {loading && !insight ? <p className={styles.loading} role="status">Lecture des observations…</p> : <div className={styles.observations}>
+    <div className={styles.header}><span>Soma</span>{visible && <span>{insight?.moment === "morning" ? "Ce matin" : insight?.moment === "activity" ? "Après l’activité" : insight?.moment === "evening" ? "Ce soir" : "Aujourd’hui"}</span>}</div>
+    {visible && (loading && !insight ? <p className={styles.loading} role="status">Lecture des observations…</p> : <div className={styles.observations}>
       {lines.map((line, index) => <button className={styles.observation} type="button" key={`${index}-${line}`} onClick={() => discuss(line)} title="Demander à Soma d’expliquer cette observation"><span aria-hidden="true">↗</span><span>{line}</span></button>)}
-    </div>}
-    {insight && <p className={styles.source}>{insight.source}{insight.pending ? " · Mise à jour en cours" : ""}</p>}
+    </div>)}
+    {visible && insight && <p className={styles.source}>{insight.source}{insight.pending ? " · Mise à jour en cours" : ""}</p>}
     <form className={`${styles.composer} ${expanded || text ? styles.expanded : ""}`} onSubmit={submit}>
       <label className={styles.srOnly} htmlFor="home-soma-message">Parler à Soma</label>
-      <textarea id="home-soma-message" ref={textarea} rows={expanded || text ? 3 : 1} maxLength={4_000} placeholder="Parler à Soma…" value={text} onChange={(event) => setText(event.target.value)} onFocus={() => setExpanded(true)} onBlur={() => { if (!text.trim()) setExpanded(false); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
+      <textarea id="home-soma-message" ref={textarea} rows={expanded || text ? 3 : 1} maxLength={4_000} placeholder="Parler à Soma…" value={text} onChange={(event) => setText(event.target.value)} onFocus={() => setExpanded(true)} onBlur={() => { if (!text.trim()) setExpanded(false); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
       <span className={styles.actions}>
         <button type="button" className={styles.voice} aria-label="Ouvrir Soma pour parler" onClick={() => router.push("/assistant")}><Mic size={18} aria-hidden="true" /></button>
         <button type="submit" className={styles.send} aria-label="Envoyer à Soma" disabled={!text.trim()}><ArrowUp size={18} aria-hidden="true" /></button>
