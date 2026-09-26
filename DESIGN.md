@@ -202,6 +202,7 @@ Conserver erreurs, chargements, absences, provenance, incertitude, confirmations
 
 - interaction simple : 150–180 ms ;
 - transition de composition : jusqu’à 240 ms ;
+- ouverture des pages : fondu commun de 420 ms, titres compris, sans déplacement ni découpage des mots ; un seul conteneur porte ce fondu ;
 - révélation exceptionnelle de scène : 650–950 ms maximum ;
 - easing : `cubic-bezier(.2, .8, .2, 1)` ou `cubic-bezier(.16, 1, .3, 1)` ;
 - faible amplitude pour les contrôles ;

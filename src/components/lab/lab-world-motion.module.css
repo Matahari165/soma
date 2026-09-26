@@ -4,10 +4,6 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .observatoryScroll :global(.arrival-heading h1) {
-    animation: observatory-title-uncover 860ms var(--observatory-motion-ease) 80ms both;
-  }
-
   @supports (animation-timeline: scroll(root)) {
     .observatoryScroll :global(.lab-intro .arrival-art) {
       animation: observatory-art-recede linear both;
@@ -137,11 +133,6 @@
     opacity: 1;
     transform: none;
   }
-}
-
-@keyframes observatory-title-uncover {
-  from { clip-path: inset(0 0 100% 0); transform: translateY(12px); }
-  to { clip-path: inset(0); transform: translateY(0); }
 }
 
 @keyframes observatory-art-recede {

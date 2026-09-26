@@ -51,7 +51,7 @@ function mockGenerationFlow() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.useFakeTimers();
+  vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-09-25T08:00:00Z"));
   getCurrentUser.mockResolvedValue({ id: "test-user" });
   isLocalPreviewMode.mockReturnValue(false);

@@ -5,8 +5,8 @@
   --soma-ease-state: cubic-bezier(.2, .8, .2, 1);
   --soma-motion-feedback: 165ms;
   --soma-motion-state: 240ms;
-  --soma-motion-enter: 680ms;
-  --soma-motion-distance: 10px;
+  --soma-motion-enter: 420ms;
+  --soma-motion-distance: 4px;
 
   /* Radars enter as one calm, shared sequence on every health surface. */
   --soma-radar-fill-name: soma-radar-fill;
@@ -21,33 +21,25 @@
   --soma-radar-stagger: 90ms;
 }
 
-/* CSS entrance runs without changing server-rendered attributes during hydration. */
+/* Every route enters with one calm fade, including its title.
+   Content is visible by default; only the finite CSS animation fades it. */
 @keyframes soma-page-enter {
-  from { opacity: 0; transform: translate3d(0, var(--soma-motion-distance), 0); }
-  to { opacity: 1; transform: translate3d(0, 0, 0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-:is(.meals-page, .health-observatory-content, .settings-page) > :is(header, section, div) {
-  animation: soma-page-enter var(--soma-motion-enter) var(--soma-ease-enter) both;
+#main-page-content {
+  animation: soma-page-enter var(--soma-motion-enter) var(--soma-ease-state) both;
 }
 
-/* One restrained authored entrance for the landing scene. */
-.lab-continuous .arrival-masthead,
-.lab-continuous .arrival-heading,
-.lab-continuous .arrival-journal-progress,
-.lab-continuous .arrival-artwork {
-  animation-timing-function: var(--soma-ease-enter) !important;
-  animation-fill-mode: both !important;
-}
-
-.lab-continuous .arrival-masthead { animation-duration: 620ms !important; }
-.lab-continuous .arrival-heading { animation-duration: 760ms !important; animation-delay: 60ms; }
-.lab-continuous .arrival-journal-progress { animation: soma-scene-enter 720ms var(--soma-ease-enter) 120ms both; }
-.lab-continuous .arrival-artwork { animation-duration: 860ms !important; animation-delay: 170ms; }
-
-@keyframes soma-scene-enter {
-  from { opacity: 0; transform: translate3d(0, 8px, 0); }
-  to { opacity: 1; transform: translate3d(0, 0, 0); }
+/* The route owns the entrance; remove nested title masks and scene staggers
+   so text cannot jump, unfold or fade twice during hydration. */
+.lab-continuous :is(.arrival-masthead, .arrival-heading, .arrival-journal-progress, .arrival-artwork),
+.lab-continuous .arrival-title-line > span {
+  animation: none !important;
+  opacity: 1;
+  transform: none;
+  clip-path: none;
 }
 
 /* A radar is a measured shape: let it grow from the centre, draw its trace,
@@ -122,14 +114,14 @@ details > summary {
 
 @media (max-width: 700px) {
   :root {
-    --soma-motion-enter: 620ms;
-    --soma-motion-distance: 8px;
+    --soma-motion-enter: 420ms;
+    --soma-motion-distance: 4px;
   }
 
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :is(.meals-page, .health-observatory-content, .settings-page) > :is(header, section, div) { animation: none !important; }
+  #main-page-content { animation: none !important; opacity: 1; }
 
   .lab-continuous .arrival-masthead,
   .lab-continuous .arrival-heading,

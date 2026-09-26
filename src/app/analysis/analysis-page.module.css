@@ -36,19 +36,6 @@
   border-bottom: 1px solid var(--lab-border-strong);
 }
 
-.page :global(.strongest-effects-panel:not([aria-busy="true"]) > .effects-summary) {
-  animation: analysis-content-arrive 900ms cubic-bezier(.16, 1, .3, 1) both;
-}
-
-.page :global(.strongest-effects-panel:not([aria-busy="true"]) > .strongest-effects) {
-  animation: analysis-content-arrive 1100ms cubic-bezier(.16, 1, .3, 1) 120ms both;
-}
-
-@keyframes analysis-content-arrive {
-  from { opacity: .2; transform: translateY(8px); }
-  to { opacity: 1; transform: none; }
-}
-
 .page :global(.effects-summary ol) { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
 .page :global(.effects-summary li) { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 12px; align-items: start; }
 .page :global(.effects-summary__arrow) { color: var(--lab-signal); font: 400 18px/24px var(--font-soma-ui), system-ui, sans-serif; }

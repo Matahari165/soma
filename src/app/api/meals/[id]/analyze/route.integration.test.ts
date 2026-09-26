@@ -194,7 +194,7 @@ const state = vi.hoisted(() => {
       return row ? { ...row } : null;
     }),
     listQueuedMealAnalyses: vi.fn(async () => rows.filter((row) => row.status === "queued").map((row) => ({ ...row }))),
-    listFailedMealAnalyses: vi.fn(async () => rows.filter((row) => row.status === "failed").map((row) => ({ ...row }))),
+    listRetryableFailedMealAnalyses: vi.fn(async () => rows.filter((row) => row.status === "failed").map((row) => ({ ...row }))),
     insertMealAnalysis: vi.fn(async (row: Record<string, unknown>) => {
       const persisted = { ...row, updated_at: row.updated_at ?? row.created_at };
       rows.push(persisted);
@@ -246,7 +246,7 @@ vi.mock("@/repositories/meals", async (importOriginal) => ({
   findActiveMealAnalysis: state.findActiveMealAnalysis,
   findQueuedMealAnalysis: state.findQueuedMealAnalysis,
   listQueuedMealAnalyses: state.listQueuedMealAnalyses,
-  listFailedMealAnalyses: state.listFailedMealAnalyses,
+  listRetryableFailedMealAnalyses: state.listRetryableFailedMealAnalyses,
   insertMealAnalysis: state.insertMealAnalysis,
   updateMealAnalysis: state.updateMealAnalysis,
   updateMeal: state.updateMeal,

@@ -18,6 +18,7 @@ import {
   queryError,
   shapeQueryResult,
   sortRows,
+  topLevelColumns,
 } from "./db-query";
 import type {
   ManyResult,
@@ -51,7 +52,7 @@ function supabaseConfig() {
 }
 
 export function createSupabaseRequest(): SupabaseRequest {
-  return async function supabaseRequest<T>(path: string, init: RequestInit = {}, timeoutMs = SUPABASE_REQUEST_TIMEOUT_MS): Promise<T> {
+  async function performRequest<T>(path: string, init: RequestInit = {}, timeoutMs = SUPABASE_REQUEST_TIMEOUT_MS): Promise<{ data: T; count: number | null }> {
     const { url, key } = supabaseConfig();
     const headers = new Headers(init.headers);
     headers.set("apikey", key);
@@ -77,9 +78,15 @@ export function createSupabaseRequest(): SupabaseRequest {
         const message = typeof parsed === "object" && parsed && "message" in parsed
           ? String((parsed as { message: unknown }).message)
           : `Supabase request failed (${response.status}).`;
-        throw new Error(message);
+        const error = new Error(message) as Error & { code?: string };
+        if (typeof parsed === "object" && parsed && "code" in parsed && typeof (parsed as { code: unknown }).code === "string") {
+          error.code = (parsed as { code: string }).code;
+        }
+        throw error;
       }
-      return parsed as T;
+      const rangeTotal = response.headers.get("content-range")?.split("/").at(-1);
+      const count = rangeTotal && /^\d+$/.test(rangeTotal) ? Number(rangeTotal) : null;
+      return { data: parsed as T, count };
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") throw new Error("Supabase request timed out.");
       throw error;
@@ -87,7 +94,14 @@ export function createSupabaseRequest(): SupabaseRequest {
       clearTimeout(timeoutId);
       upstreamSignal?.removeEventListener("abort", relayAbort);
     }
+  }
+  const request: SupabaseRequest = async <T>(path: string, init?: RequestInit, timeoutMs?: number) => (await performRequest<T>(path, init, timeoutMs)).data;
+  request.count = async (path, timeoutMs) => {
+    const result = await performRequest<null>(path, { method: "HEAD", headers: { Prefer: "count=exact" } }, timeoutMs);
+    if (result.count === null) throw new Error("Supabase did not return an exact count.");
+    return result.count;
   };
+  return request;
 }
 
 export function supabasePath(table: string, filters: Array<[string, string]>) {
@@ -137,10 +151,8 @@ async function bumpSupabaseLabMatrixRevisions(request: SupabaseRequest, userIds:
   }
 }
 
-function logicalRow(item: SupabaseStoredRow, projectedFields?: string[] | null) {
-  const projected = projectedFields?.length
-    ? Object.fromEntries(projectedFields.map((field) => [field, item[field] ?? null]))
-    : {};
+function logicalRow(item: SupabaseStoredRow) {
+  const projected = Object.fromEntries(Object.entries(item).filter(([key]) => key.startsWith("soma_field_")).map(([key, value]) => [key.slice("soma_field_".length), value]));
   const row = cleanRow(item.json_data ?? projected);
   if (row.user_id === undefined && item.user_id !== null) row.user_id = item.user_id;
   return row;
@@ -165,17 +177,6 @@ function canPushSupabaseSort(sort: Sort) {
   return Boolean(supabaseJsonField(sort.field));
 }
 
-function projectedLogicalFields(selector: string | undefined, filters: SupabaseFilter[], sorts: Sort[], orFilters: SupabaseOrTerm[][]) {
-  if (!selector || selector.trim() === "*") return null;
-  const selected = selector.split(",").map((field) => field.trim());
-  if (!selected.length || selected.some((field) => !/^[A-Za-z0-9_]+$/.test(field))) return null;
-  const fields = new Set(selected);
-  for (const filter of filters) if (filter.field !== "user_id") fields.add(filter.field.split(".")[0] as string);
-  for (const sort of sorts) fields.add(sort.field.split(".")[0] as string);
-  for (const terms of orFilters) for (const term of terms) if (term.field !== "user_id") fields.add(term.field.split(".")[0] as string);
-  return [...fields].filter((field) => field !== "user_id");
-}
-
 async function readSupabaseStorageRows(
   request: SupabaseRequest,
   table: string,
@@ -188,13 +189,21 @@ async function readSupabaseStorageRows(
   exactCount: boolean,
   requestTimeoutMs: number | undefined,
   selector: string | undefined,
+  head: boolean,
 ) {
-  const projectedFields = projectedLogicalFields(selector, filters, sorts, orFilters);
-  const storageSelect = projectedFields
-    ? ["table_name", "row_key", "user_id", ...projectedFields.map((field) => `${field}:json_data->${field}`)].join(",")
+  const selected = topLevelColumns(selector);
+  const required = selected ? [...new Set([...selected, ...filters.map((filter) => filter.field.split(".")[0]), ...sorts.map((sort) => sort.field.split(".")[0]), ...orFilters.flat().map((term) => term.field.split(".")[0])])] : null;
+  // JSON extraction cannot distinguish a missing key from explicit JSON null.
+  // Keep full rows when a local strict comparison needs that distinction.
+  const needsMissingKeys = filters.some((filter) =>
+    (filter.operator !== "is" && filter.value == null) ||
+    (filter.operator === "in" && Array.isArray(filter.value) && filter.value.some((value) => value == null))) ||
+    orFilters.flat().some((term) => term.operator !== "is" && term.value === null);
+  const projection = !needsMissingKeys && required?.every((field) => /^[A-Za-z0-9_]+$/.test(field))
+    ? ["user_id", ...required.filter((field) => field !== "user_id").map((field) => `soma_field_${field}:json_data->${field}`)].join(",")
     : "table_name,row_key,user_id,json_data,created_at,updated_at";
   const serverFilters: Array<[string, string]> = [
-    ["select", storageSelect],
+    ["select", projection],
     ["table_name", `eq.${table}`],
   ];
   let allFiltersPushed = true;
@@ -228,27 +237,31 @@ async function readSupabaseStorageRows(
     serverFilters.push(["or", `(${terms.join(",")})`]);
   }
 
-  const paginationPushed = allFiltersPushed && allSortsPushed && allOrFiltersPushed && !exactCount;
+  const filtersPushed = allFiltersPushed && allOrFiltersPushed;
+  const count = exactCount && filtersPushed && request.count
+    ? await request.count(supabasePath("soma_rows", [...serverFilters.filter(([key]) => key !== "select" && key !== "order"), ["select", "row_key"]]), requestTimeoutMs)
+    : undefined;
+  if (head && count !== undefined) return { rows: [], paginationPushed: true, count };
+  const paginationPushed = filtersPushed && allSortsPushed && (!exactCount || count !== undefined);
   const rangeSize = toIndex === undefined ? undefined : Math.max(0, toIndex - fromIndex + 1);
   const requestedLimit = rangeSize === undefined ? maxRows : maxRows === undefined ? rangeSize : Math.min(rangeSize, maxRows);
   const hasBoundedPage = paginationPushed && (requestedLimit !== undefined || fromIndex > 0);
 
-  if (hasBoundedPage && requestedLimit !== undefined) serverFilters.push(["limit", String(Math.max(0, requestedLimit))]);
-  if (hasBoundedPage && fromIndex > 0) serverFilters.push(["offset", String(Math.max(0, fromIndex))]);
-
   const storedRows: SupabaseStoredRow[] = [];
-  const pageFilters: Array<[string, string]> = hasBoundedPage
-    ? []
-    : [["limit", String(SUPABASE_STORAGE_PAGE_SIZE)], ["offset", "0"]];
+  const startOffset = hasBoundedPage ? Math.max(0, fromIndex) : 0;
   for (let offset = 0; ; offset += SUPABASE_STORAGE_PAGE_SIZE) {
+    const remaining = hasBoundedPage && requestedLimit !== undefined ? Math.max(0, requestedLimit - offset) : SUPABASE_STORAGE_PAGE_SIZE;
+    const pageSize = Math.min(SUPABASE_STORAGE_PAGE_SIZE, remaining);
+    if (pageSize === 0) break;
     const page = await request<SupabaseStoredRow[]>(supabasePath("soma_rows", [
       ...serverFilters,
-      ...pageFilters.map(([key, value]) => [key, key === "offset" ? String(offset) : value] as [string, string]),
+      ["limit", String(pageSize)],
+      ["offset", String(startOffset + offset)],
     ]), {}, requestTimeoutMs ?? SUPABASE_REQUEST_TIMEOUT_MS);
     storedRows.push(...page);
-    if (hasBoundedPage || page.length < SUPABASE_STORAGE_PAGE_SIZE) break;
+    if (page.length < pageSize || (hasBoundedPage && requestedLimit !== undefined && storedRows.length >= requestedLimit)) break;
   }
-  return { rows: storedRows.map((row) => logicalRow(row, projectedFields)), paginationPushed: hasBoundedPage };
+  return { rows: storedRows.map(logicalRow), paginationPushed: hasBoundedPage, count };
 }
 
 export class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
@@ -296,12 +309,17 @@ export class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
     return physicalTables.has(this.table);
   }
 
-  private async readRows(): Promise<{ rows: Row[]; paginationPushed: boolean }> {
+  private async readRows(): Promise<{ rows: Row[]; paginationPushed: boolean; count?: number }> {
     if (this.isPhysicalTable()) {
       const filters: Array<[string, string]> = [["select", this.selector?.trim() || "*"]];
       for (const filter of this.filters) filters.push([filter.field, supabaseFilterValue(filter)]);
+      const count = !this.mutation && this.selectOptions?.count === "exact" && this.request.count
+        ? await this.request.count(supabasePath(this.table, filters), this.requestTimeoutMs)
+        : undefined;
+      if (!this.mutation && this.selectOptions?.head && count !== undefined) return { rows: [], paginationPushed: true, count };
       const rows = await this.request<Row[]>(supabasePath(this.table, filters), {}, this.requestTimeoutMs ?? SUPABASE_REQUEST_TIMEOUT_MS);
-      return { rows, paginationPushed: false };
+      sortRows(rows, this.sorts);
+      return { rows, paginationPushed: false, count };
     }
 
     const storageResult = await readSupabaseStorageRows(
@@ -316,13 +334,14 @@ export class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
       this.selectOptions?.count === "exact",
       this.requestTimeoutMs,
       this.mutation ? "*" : this.selector,
+      !this.mutation && this.selectOptions?.head === true,
     );
     let rows = storageResult.rows;
     rows = rows.filter((row) => this.filters.every((filter) => matches(row, filter)));
     rows = rows.filter((row) => this.orFilters.every((expressions) => matchesOr(row, expressions)));
     // Keep database order once offsets were applied: JS collation can differ.
     if (!storageResult.paginationPushed) sortRows(rows, this.sorts);
-    return { rows, paginationPushed: storageResult.paginationPushed };
+    return { rows, paginationPushed: storageResult.paginationPushed, count: storageResult.count };
   }
 
   private async insertPhysical(rows: Row[], upsert: boolean, onConflict?: string, ignoreDuplicates = false) {
@@ -355,7 +374,7 @@ export class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
     if (!this.mutation) {
       const readResult = await this.readRows();
       const paged = readResult.paginationPushed ? readResult.rows : paginateRows(readResult.rows, this.fromIndex, this.toIndex, this.maxRows);
-      return shapeQueryResult(paged, this.selector, this.selectOptions, this.cardinality, readResult.rows.length);
+      return shapeQueryResult(paged, this.selector, this.selectOptions, this.cardinality, readResult.count ?? readResult.rows.length);
     }
 
     const mutation = this.mutation;
