@@ -12,65 +12,67 @@
   color: var(--lab-text-primary);
 }
 
-.visual { min-width: 0; width: min(100%, 330px); transition: transform var(--soma-motion-state, 240ms) var(--ring-spring); }
-.figure[data-expanded="true"] .visual { transform: translate(-8px, -10px); }
+.visual { min-width: 0; width: min(100%, 330px); transition: transform 240ms var(--ring-spring); }
+.figure[data-expanded="true"] .visual { transform: translateY(-12px) scale(.94); }
 .chart { display: block; width: 100%; height: auto; overflow: visible; }
-.control { cursor: pointer; outline: none; opacity: 1; filter: grayscale(0); transition: opacity var(--soma-motion-state, 240ms) cubic-bezier(.32, .05, .32, 1), filter var(--soma-motion-state, 240ms) cubic-bezier(.32, .05, .32, 1); }
-.control[data-dimmed="true"] { opacity: var(--lab-ring-dimmed-opacity); filter: grayscale(.9); }
+.control { cursor: pointer; outline: none; opacity: 1; filter: grayscale(0); transition: opacity 160ms cubic-bezier(.32, .05, .32, 1), filter 160ms cubic-bezier(.32, .05, .32, 1); }
+.control[data-dimmed="true"] { opacity: .48; filter: grayscale(.9); }
 .control[data-dimmed="true"] .ring { stroke-width: 25; }
 .control > :not(.hitArea), .ring { pointer-events: none; }
 .hitArea { fill: none; stroke: transparent; stroke-width: 29; pointer-events: stroke; }
-.ring { fill: none; stroke-width: 27; transition: stroke-width var(--soma-motion-state, 240ms) var(--ring-spring); }
+.ring { fill: none; stroke-width: 27; transition: stroke-width 160ms var(--ring-spring); }
 .control[data-active="true"] .ring { stroke-width: 32; }
-.control[data-active="true"] .ringNumber { font-size: 19px; fill-opacity: 1; }
-.focusRing { fill: none; stroke: var(--lab-text-primary); stroke-width: 1; stroke-dasharray: 2 4; opacity: 0; }
+.focusRing { fill: none; stroke: var(--lab-text-primary, #f1f1f1); stroke-width: 1; stroke-dasharray: 2 4; opacity: 0; }
 .control:focus-visible .focusRing { opacity: 1; }
 .track { stroke: var(--lab-ring-track-color); opacity: var(--lab-ring-track-opacity); }
-.progress { stroke: var(--ring-color); stroke-linecap: round; stroke-opacity: var(--lab-ring-progress-opacity); -webkit-backdrop-filter: blur(2px) saturate(1.15); backdrop-filter: blur(2px) saturate(1.15); animation: reveal 680ms cubic-bezier(.32, .05, .32, 1) var(--ring-delay) both; }
-.glassEdge, .glassEdgeInner { stroke: var(--ring-color); stroke-width: 1.25; stroke-linecap: round; stroke-opacity: .42; transition: r var(--soma-motion-state, 240ms) var(--ring-spring); }
-.control[data-active="true"] .glassEdge { r: calc(var(--ring-radius) + 14.5px); }
-.control[data-active="true"] .glassEdgeInner { r: calc(var(--ring-radius) - 14.5px); }
-.glassEdgeInner { stroke-opacity: .25; }
-.completedOverlap { stroke: var(--ring-color); stroke-linecap: round; }
-.overlap { stroke: var(--ring-color); stroke-linecap: round; stroke-opacity: .5; filter: drop-shadow(0 3px 3px var(--lab-ring-overlap-shadow)); }
-.lapEnd { fill: var(--ring-color); opacity: .52; filter: drop-shadow(0 3px 3px var(--lab-ring-end-shadow)); transition: r var(--soma-motion-state, 240ms) var(--ring-spring); }
+.progress { stroke: var(--ring-color); stroke-linecap: round; stroke-opacity: var(--lab-ring-progress-opacity); -webkit-backdrop-filter: blur(2px) saturate(1.15); backdrop-filter: blur(2px) saturate(1.15); animation: reveal 420ms cubic-bezier(.32, .05, .32, 1) var(--ring-delay) both; }
+.progress[data-complete="true"], .completedOverlap { stroke-linecap: butt; }
+.completedOverlap { stroke: var(--ring-color); stroke-opacity: min(var(--lab-ring-max-lap-opacity), calc(var(--lab-ring-lap-opacity) + var(--ring-extra-laps) * var(--lab-ring-lap-opacity-step))); }
+.overlapShadow { flood-opacity: var(--lab-ring-shadow-opacity); }
+.overlap { stroke: var(--ring-color); stroke-linecap: round; stroke-opacity: var(--lab-ring-overflow-opacity); }
+.lapEnd { fill: var(--ring-color); opacity: var(--lab-ring-overflow-opacity); transition: r 160ms var(--ring-spring); }
 .control[data-active="true"] .lapEnd { r: 16px; }
 .unknown { stroke: var(--lab-ring-unknown-color); opacity: .7; }
-.ringNumber { fill: var(--ring-label); fill-opacity: var(--lab-ring-label-opacity); stroke: var(--lab-ring-label-stroke); stroke-width: .8px; paint-order: stroke fill; font: 600 16px var(--font-soma-mono), monospace; font-variant-numeric: tabular-nums; transition: font-size var(--soma-motion-state, 240ms) var(--ring-spring), fill-opacity var(--soma-motion-state, 240ms) ease-out; }
+.ringNumber { fill: var(--ring-label); fill-opacity: 1; font: 500 16px var(--font-soma-mono), monospace; font-variant-numeric: tabular-nums; transition: font-size 160ms var(--ring-spring), fill-opacity 160ms ease-out; }
 
-.detail { display: grid; grid-template-rows: 0fr; width: min(100%, 360px); margin-top: 0; transition: grid-template-rows var(--soma-motion-state, 240ms) var(--ring-spring), margin-top var(--soma-motion-state, 240ms) var(--ring-spring); }
-.detailContent { min-height: 0; overflow: hidden; opacity: 0; transform: translateY(20px); transition: opacity var(--soma-motion-state, 240ms) cubic-bezier(.32, .05, .32, 1), transform var(--soma-motion-state, 240ms) var(--ring-spring); }
-.figure[data-expanded="true"] .detail { grid-template-rows: 1fr; margin-top: 12px; }
+.detail { display: grid; grid-template-rows: 0fr; width: min(100%, 360px); margin-top: 0; transition: grid-template-rows 180ms var(--ring-spring); }
+.detailContent { min-height: 0; overflow: hidden; opacity: 0; transform: translateY(6px); transition: opacity 180ms cubic-bezier(.32, .05, .32, 1), transform 160ms var(--ring-spring); }
+.figure[data-expanded="true"] .detail { grid-template-rows: 1fr; }
 .figure[data-expanded="true"] .detailContent { opacity: 1; transform: translateY(0); }
 .detailHeader h2:focus { outline: none; }
-.detailHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.detailHeader { padding-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .detailHeader h2 { margin: 0; font: 400 20px var(--font-soma-ui), sans-serif; }
 .close { display: grid; place-items: center; min-width: 44px; min-height: 44px; padding: 0; background: transparent; color: var(--lab-text-secondary); border: 0; cursor: pointer; }
 .close svg { width: 18px; height: 18px; }
-.close:hover { color: var(--lab-text-primary); }
-.close:focus-visible, .link:focus-visible { outline: 2px solid var(--lab-text-primary); outline-offset: 4px; }
+.close:hover { color: var(--lab-text-primary, #f1f1f1); }
+.close:focus-visible { outline: 2px solid var(--lab-text-primary, #f1f1f1); outline-offset: 4px; }
 .detailValue { margin: 8px 0 16px; font: 400 26px var(--font-soma-mono), monospace; font-variant-numeric: tabular-nums; }
 .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin: 0; }
 .facts div { display: grid; gap: 4px; }
 .facts dt { color: var(--lab-text-secondary); font: 400 13px var(--font-soma-ui), sans-serif; }
 .facts dd { margin: 0; font: 400 14px var(--font-soma-mono), monospace; }
-.description { margin: 20px 0 16px; color: var(--lab-text-secondary); font: 400 14px/1.55 var(--font-soma-ui), sans-serif; }
-.link { display: inline-flex; align-items: center; min-height: 44px; color: var(--lab-text-primary); font: 400 14px var(--font-soma-ui), sans-serif; text-decoration: underline; text-underline-offset: 4px; }
+.unavailable { color: var(--lab-text-secondary, #aaa); font: 400 16px/1.5 var(--font-soma-ui), sans-serif; }
 
 @keyframes reveal { from { stroke-dasharray: 0 100; } }
-
-@media (min-width: 701px) {
-  .detail { position: absolute; top: calc(50% + 145px); }
-  .figure[data-expanded="true"] .visual { transform: translate(-8px, -28px); }
-}
 
 @media (max-width: 700px) {
   .figure { height: auto; }
   .visual { width: min(100%, 250px); margin-inline: auto; }
 }
 
-@media (max-width: 700px) { .description, .link { font-size: 16px; } }
+@media (max-width: 700px) {
+  .facts dt { font-size: 16px; }
+  .figure[data-expanded="true"] {
+    position: fixed;
+    inset: 72px 24px 100px;
+    z-index: 5;
+    width: auto;
+    height: auto;
+    justify-content: center;
+  }
+  .figure[data-expanded="true"] .visual { width: min(250px, 34svh); transform: translateY(-8px) scale(.98); }
+}
 @media (prefers-reduced-motion: reduce) {
   .progress { animation: none; }
-  .visual, .control, .ring, .ringNumber, .glassEdge, .glassEdgeInner, .lapEnd, .detail, .detailContent { transition: none; }
+  .visual, .control, .ring, .ringNumber, .lapEnd, .detail, .detailContent { transition: none; }
 }

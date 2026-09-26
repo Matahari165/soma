@@ -77,23 +77,27 @@
   --lab-ring-track-color: var(--lab-text-primary);
   --lab-ring-unknown-color: var(--lab-text-muted);
   --lab-ring-label-stroke: rgba(var(--lab-canvas-rgb), .44);
-  --lab-ring-track-opacity: .08;
-  --lab-ring-progress-opacity: .50;
+  --lab-ring-track-opacity: .035;
+  --lab-ring-progress-opacity: .24;
+  --lab-ring-overflow-opacity: .22;
+  --lab-ring-lap-opacity: .10;
+  --lab-ring-lap-opacity-step: .03;
+  --lab-ring-max-lap-opacity: .20;
+  --lab-ring-shadow-opacity: .28;
   --lab-ring-label-opacity: 1;
   --lab-ring-dimmed-opacity: .95;
   --lab-ring-overlap-shadow: rgba(0, 0, 0, .03);
   --lab-ring-end-shadow: rgba(0, 0, 0, .03);
 
-  /* Keep each ring's established hue; labels need more ink than the
-     translucent progress strokes on a white canvas. */
-  --lab-ring-sleep: #3b82a6;
-  --lab-ring-sleep-label: #01060a;
-  --lab-ring-recovery: #4f8b6b;
-  --lab-ring-recovery-label: #040e08;
-  --lab-ring-effort: #a47b42;
-  --lab-ring-effort-label: #110b02;
-  --lab-ring-calories: #916aa8;
-  --lab-ring-calories-label: #0f0814;
+  /* A single family of slate tones lets the landscape show through. */
+  --lab-ring-sleep: #7f949e;
+  --lab-ring-sleep-label: #3a454b;
+  --lab-ring-recovery: #899ca2;
+  --lab-ring-recovery-label: #3a454b;
+  --lab-ring-effort: #95a4a8;
+  --lab-ring-effort-label: #3a454b;
+  --lab-ring-calories: #a2adb0;
+  --lab-ring-calories-label: #3a454b;
 
   /* Monochrome categories retain their ordering; even the palest bar stays
      visible at the existing .82 opacity on the subtle surface. */
@@ -167,20 +171,25 @@ html[data-color-scheme="dark"] {
   --lab-ring-unknown-color: #50585a;
   --lab-ring-label-stroke: rgba(9, 17, 20, .44);
   --lab-ring-track-opacity: .18;
-  --lab-ring-progress-opacity: .28;
+  --lab-ring-progress-opacity: .34;
+  --lab-ring-overflow-opacity: .42;
+  --lab-ring-lap-opacity: .22;
+  --lab-ring-lap-opacity-step: .10;
+  --lab-ring-max-lap-opacity: .50;
+  --lab-ring-shadow-opacity: .7;
   --lab-ring-label-opacity: .84;
   /* Keep inactive numerals readable rather than the original .48 dimming. */
   --lab-ring-dimmed-opacity: .95;
   --lab-ring-overlap-shadow: rgba(0, 0, 0, .55);
   --lab-ring-end-shadow: rgba(0, 0, 0, .60);
-  --lab-ring-sleep: #a9d8f2;
-  --lab-ring-sleep-label: #86bada;
-  --lab-ring-recovery: #a7e0c4;
-  --lab-ring-recovery-label: #83c4a4;
-  --lab-ring-effort: #f1c995;
-  --lab-ring-effort-label: #d0a46f;
-  --lab-ring-calories: #dfb9ef;
-  --lab-ring-calories-label: #b88cd1;
+  --lab-ring-sleep: #aebdcc;
+  --lab-ring-sleep-label: #e4e8ed;
+  --lab-ring-recovery: #b9c7bd;
+  --lab-ring-recovery-label: #e5eae6;
+  --lab-ring-effort: #c6baa7;
+  --lab-ring-effort-label: #ece7df;
+  --lab-ring-calories: #c4adb2;
+  --lab-ring-calories-label: #ece3e5;
 
   --lab-category-fruit: #f1f1f1;
   --lab-category-vegetable: #dddddd;
