@@ -287,7 +287,7 @@ describe("health route states", () => {
     expect(markup).toContain('data-open="false"');
   });
 
-  it("keeps partial recovery averages without a sample-count suffix", () => {
+  it("shows measured sample counts for partial recovery averages", () => {
     const markup = renderToStaticMarkup(createElement(RecoveryDetails, {
       data: analytics({
         days: [day({ hrv_ms: 54, resting_heart_rate: null, respiratory_rate: null, sleep_minutes: 480 })],
@@ -296,8 +296,8 @@ describe("health route states", () => {
     }));
 
     expect(markup).toContain("30-day avg · 54 ms");
+    expect(markup).toContain("30-day avg · 70% · n=1");
     expect(markup).toContain("30-day avg · —");
-    expect(markup).not.toContain("n=1");
     expect(markup).not.toContain("n=0");
   });
 
@@ -376,8 +376,27 @@ describe("health route states", () => {
       }),
     }));
 
-    expect(markup).toContain('30-day avg · <strong>85</strong><span> /100</span>');
+    expect(markup).toContain('30-day avg · <strong>85</strong><span> /100</span><small>n=2 nights</small>');
     expect(markup).not.toContain('30-day avg · <strong>73</strong><span> /100</span>');
+  });
+
+  it("compares sleep duration to estimated need and keeps excess sleep neutral", () => {
+    const markup = renderToStaticMarkup(createElement(SleepDetails, {
+      data: analytics({
+        days: [day({
+          sleep_minutes: 540,
+          sleep_need_minutes: 480,
+          sleep_efficiency: 92,
+          sleep_regularity: 84,
+          cumulative_sleep_debt_minutes: 0,
+        })],
+        scores: [{ score_date: "2026-09-10", kind: "sleep", score: 100, algorithm_version: "sleep-v0.2", drivers: {} }],
+      }),
+    }));
+
+    expect(markup).toContain("Estimated sleep need met");
+    expect(markup).toContain("Additional time beyond need does not increase the sleep score.");
+    expect(markup).toContain('data-tone="positive"');
   });
 
   it("keeps a recovery day when sleep and heart-rate values are absent", () => {

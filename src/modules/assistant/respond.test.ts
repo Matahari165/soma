@@ -81,7 +81,9 @@ function setup() {
     return { text: "Verdict utile", finishReason: "stop", totalUsage: { inputTokens: 12, outputTokens: 4 } };
   });
   const createAgent = vi.fn(() => ({ generate }));
-  return { calls, repository, createAgent, generate, user, assistant, messages, failNextCompletedUpdate: () => { failCompletedUpdate = true; } };
+  const loadProfileTimezone = vi.fn(async () => "Europe/Zurich");
+  const now = vi.fn(() => new Date("2026-09-24T16:25:30.000Z"));
+  return { calls, repository, createAgent, generate, loadProfileTimezone, now, user, assistant, messages, failNextCompletedUpdate: () => { failCompletedUpdate = true; } };
 }
 
 describe("respondToAssistant", () => {
@@ -114,6 +116,16 @@ describe("respondToAssistant", () => {
     expect(state.generate).toHaveBeenCalledWith(expect.objectContaining({
       messages: [{ role: "user", content: "Analyse ma semaine" }],
     }));
+    expect(state.createAgent).toHaveBeenCalledWith(expect.objectContaining({
+      temporalContext: {
+        instantUtc: "2026-09-24T16:25:30.000Z",
+        localDate: "2026-09-24",
+        localTime: "18:25:30",
+        weekday: "jeudi",
+        timezone: "Europe/Zurich",
+        timezoneSource: "profile",
+      },
+    }));
   });
 
   it("persists a structured data summary only when a canonical query was actually used", async () => {
@@ -132,7 +144,7 @@ describe("respondToAssistant", () => {
       role: "assistant",
       parts: [
         { type: "text", text: "La tendance est stable." },
-        { type: "data-summary", label: "Données Soma consultées", period: { from: "2026-09-01", to: "2026-09-07" }, itemCount: 7, domains: ["sleep"] },
+        { type: "data-summary", label: "Données Soma consultées", period: { from: "2026-09-01", to: "2026-09-07" }, coveredPeriod: { from: "2026-09-01", to: "2026-09-07" }, itemCount: 7, domains: ["sleep"] },
       ],
     }));
   });

@@ -1,8 +1,17 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { activityAverages, displayedActivities, exerciseIsInPeriod, exerciseMatchesFilter } from "./activity-history";
+import { ActivityHistory, activityAverages, displayedActivities, exerciseIsInPeriod, exerciseMatchesFilter } from "./activity-history";
 
 describe("activity history filters", () => {
+  it("removes closed period options from the accessibility tree", () => {
+    const markup = renderToStaticMarkup(createElement(ActivityHistory, { exercises: [], referenceDate: "2026-09-21" }));
+
+    expect(markup).toContain('aria-expanded="false" aria-controls="activity-period-options"');
+    expect(markup).toContain('aria-hidden="true" inert=""');
+  });
+
   it("groups imported jogging and trail running under Run", () => {
     expect(exerciseMatchesFilter("JOGGING", "run")).toBe(true);
     expect(exerciseMatchesFilter("TRAIL_RUNNING", "run")).toBe(true);

@@ -58,7 +58,7 @@ function meal(id: string, mealDate: string, status: "draft" | "confirmed") {
 }
 
 describe("MealsPage initial meal reads", () => {
-  it("shares the 28-day range and keeps only the requested date in the journal", async () => {
+  it("shares the 30-day range and keeps only the requested date in the journal", async () => {
     state.getCurrentUser.mockResolvedValue({ id: "user-1" });
     state.createAdmin.mockReturnValue({
       from: () => {
@@ -84,8 +84,8 @@ describe("MealsPage initial meal reads", () => {
     const renderContent = content.type as unknown as (props: typeof content.props) => Promise<ReactElement>;
     await renderContent(content.props);
 
-    expect(state.listMeals).toHaveBeenCalledWith("user-1", { from: "2026-08-19", to: "2026-09-15" });
-    expect(state.loadConfirmedMealRecords).toHaveBeenCalledWith("user-1", { from: "2026-08-19", to: "2026-09-15" });
+    expect(state.listMeals).toHaveBeenCalledWith("user-1", { from: "2026-08-17", to: "2026-09-15" });
+    expect(state.loadConfirmedMealRecords).toHaveBeenCalledWith("user-1", { from: "2026-08-17", to: "2026-09-15" });
     expect(state.mappedMeals).toEqual([
       { id: "current-draft", status: "draft" },
       { id: "current-confirmed", status: "confirmed" },

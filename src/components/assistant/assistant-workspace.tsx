@@ -24,6 +24,7 @@ type DataSummaryPart = {
   type: "data-summary";
   label: string;
   period: { from: string; to: string } | null;
+  coveredPeriod?: { from: string; to: string } | null;
   itemCount: number;
   domains: Array<"nutrition" | "sleep" | "recovery" | "effort">;
 };
@@ -90,7 +91,7 @@ function conversationDate(conversation: Conversation) {
   return new Intl.DateTimeFormat("fr-CH", { day: "2-digit", month: "short" }).format(date);
 }
 
-function analysisPeriod(period: DataSummaryPart["period"]) {
+function analysisPeriod(period: DataSummaryPart["period"] | undefined) {
   if (!period) return null;
   const format = new Intl.DateTimeFormat("fr-CH", { day: "numeric", month: "short", year: "numeric" });
   return `${format.format(new Date(`${period.from}T12:00:00`))} – ${format.format(new Date(`${period.to}T12:00:00`))}`;
@@ -98,12 +99,14 @@ function analysisPeriod(period: DataSummaryPart["period"]) {
 
 function AnalysisSummary({ part }: { part: DataSummaryPart }) {
   const period = analysisPeriod(part.period);
+  const coveredPeriod = analysisPeriod(part.coveredPeriod);
   const domains = part.domains.map((domain) => DOMAIN_LABELS[domain]).join(", ");
   return (
     <details className={styles.analysis}>
       <summary><strong>Analyse :</strong> {part.label}</summary>
       <dl>
-        {period && <><dt>Période</dt><dd>{period}</dd></>}
+        {period && <><dt>{part.coveredPeriod === undefined ? "Période" : "Recherche"}</dt><dd>{period}</dd></>}
+        {part.coveredPeriod !== undefined && <><dt>Trouvé</dt><dd>{coveredPeriod ?? "Aucune donnée sur cette période"}</dd></>}
         <dt>Données</dt><dd>{part.itemCount} élément{part.itemCount > 1 ? "s" : ""}</dd>
         {domains && <><dt>Domaines</dt><dd>{domains}</dd></>}
       </dl>
@@ -209,6 +212,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   const [editingDraft, setEditingDraft] = useState("");
   const [showLatest, setShowLatest] = useState(false);
   const [progressiveMessageId, setProgressiveMessageId] = useState<string | null>(null);
+  const [conversationLoadErrorId, setConversationLoadErrorId] = useState<string | null>(null);
   const [starterState, setStarterState] = useState<"loading" | "calibration" | "ready" | "unavailable">("loading");
   const [starterPrompts, setStarterPrompts] = useState<StarterPrompt[]>(fallbackPrompts);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -432,7 +436,9 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   }, [voicePresentation, voiceLatestMessage, scrollToLatest]);
   async function openConversation(id: string) {
     if (id === activeId && messages.length) return;
+    activeIdRef.current = id;
     setActiveId(id);
+    setConversationLoadErrorId(null);
     setEditingMessageId(null);
     setRevealedEditMessageId(null);
     preEditDraftRef.current = "";
@@ -447,18 +453,24 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     setShowLatest(false);
     try {
       const payload = await readJson(await fetch(`/api/assistant/conversations?conversationId=${encodeURIComponent(id)}`, { cache: "no-store" }));
-      setMessages(Array.isArray(payload?.messages) ? payload.messages : []);
+      if (activeIdRef.current === id) setMessages(Array.isArray(payload?.messages) ? payload.messages : []);
     } catch (loadError) {
-      setMessages([]);
-      setError(loadError instanceof Error ? loadError.message : "Cette conversation n’a pas pu être chargée.");
+      if (activeIdRef.current === id) {
+        setMessages([]);
+        setConversationLoadErrorId(id);
+        setError(loadError instanceof Error ? loadError.message : "Cette conversation n’a pas pu être chargée.");
+      }
     } finally {
-      setLoadingConversation(false);
+      if (activeIdRef.current === id) setLoadingConversation(false);
     }
   }
 
   function startConversation() {
     setStarterState("loading");
+    activeIdRef.current = null;
     setActiveId(null);
+    setLoadingConversation(false);
+    setConversationLoadErrorId(null);
     setMessages([]);
     setText("");
     setProgressiveMessageId(null);
@@ -827,7 +839,11 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
         {showLatest && !empty && <button type="button" className={styles.jumpToLatest} onClick={jumpToLatest}><ArrowDown size={16} aria-hidden="true" /> {voicePresentation ? "Dernier échange" : "Dernier message"}</button>}
 
         <div className={styles.composerRegion}>
-          {error && <div className={`${styles.error} ${notConfigured ? styles.configurationError : ""}`} role="alert"><strong>{notConfigured ? "Assistant non configuré" : "Envoi impossible"}</strong><span>{error}</span></div>}
+          {error && <div className={`${styles.error} ${notConfigured ? styles.configurationError : ""}`} role="alert">
+            <strong>{notConfigured ? "Assistant non configuré" : activeId && conversationLoadErrorId === activeId ? "Conversation indisponible" : "Envoi impossible"}</strong>
+            <span>{error}</span>
+            {activeId && conversationLoadErrorId === activeId && <button className={styles.retryConversation} type="button" onClick={() => void openConversation(activeId)}>Réessayer</button>}
+          </div>}
           <form className={styles.composer} onSubmit={(event) => void sendMessage(event)}>
             {photos.length > 0 && <ul className={styles.photoList} aria-label="Photos à joindre">{photos.map((photo) => (
               <li key={photo.id}>

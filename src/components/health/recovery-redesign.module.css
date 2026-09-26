@@ -235,6 +235,8 @@
   font: 400 12px/1.35 var(--font-soma-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
+.recoveryDimensionMetrics dd[data-comparison-tone="positive"] { color: var(--lab-signal, #d5e5da); }
+.recoveryDimensionMetrics dd[data-comparison-tone="negative"] { color: var(--lab-error, #e2b2aa); }
 
 .recoveryDimensionRole { grid-column: 1 / -1; }
 
@@ -337,6 +339,8 @@
   letter-spacing: -.03em;
   line-height: 1;
 }
+.summaryValue strong[data-comparison-tone="positive"] { color: var(--lab-signal, #d5e5da); }
+.summaryValue strong[data-comparison-tone="negative"] { color: var(--lab-error, #e2b2aa); }
 
 .summaryValue span,
 .summaryFacts dd span {
@@ -1107,7 +1111,8 @@
   .trendGrid :global(.metric-trend-card) :global(.health-chart-range),
   .trendGrid :global(.metric-trend-card) :global(.health-chart-average-label) { text-align: right; }
   .trendGrid :global(.metric-trend-card) :global(.chart-axis) { padding-inline-start: calc((100% - 64px) * .04); padding-inline-end: calc(64px + (100% - 64px) * .04); }
-  .page .heroScene { min-height: calc(100svh - 174px); align-content: start; }
+  .page { min-height: var(--soma-mobile-content-height, 100svh); }
+  .page .heroScene { min-height: calc(var(--soma-mobile-content-height, 100svh) - 84px); align-content: start; }
   .signalRows { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 12px; }
   .signalRow { width: 100%; }
   .signalRow:last-child:nth-child(odd) { grid-column: 1 / -1; width: calc((100% - 12px) / 2); justify-self: center; }

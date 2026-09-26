@@ -26,6 +26,7 @@ type SleepScoreOverviewProps = {
   dimensions: readonly SleepRadarDimension[];
   score: number | null;
   average: number | null;
+  averageMeasuredNights: number;
   breakdown: SleepScoreBreakdown | null;
 };
 
@@ -87,6 +88,7 @@ function DimensionDetail({ dimension }: { dimension: SleepRadarDimension | null 
     <dl className={styles.sleepDimensionMetrics}>
       <div><dt>Current value</dt><dd>{dimension.valueLabel?.trim() || "—"}</dd></div>
       <div><dt>30-day avg</dt><dd>{dimension.averageLabel?.trim() || "—"}</dd></div>
+      <div><dt>Measured nights</dt><dd>{dimension.averageMeasuredNights ?? "—"}</dd></div>
       {dimension.chartRangeLabel && <div><dt>Radar scale</dt><dd>{dimension.chartRangeLabel}</dd></div>}
       <div><dt>Reading</dt><dd>{dimension.readingDirection || "—"}</dd></div>
       <div className={styles.sleepDimensionRole}><dt>Role</dt><dd>{dimension.scoreRole || "Context metric · excluded from Sleep score"}</dd></div>
@@ -102,7 +104,7 @@ function DimensionDetail({ dimension }: { dimension: SleepRadarDimension | null 
   </>;
 }
 
-export function SleepScoreOverview({ dimensions, score, average, breakdown }: SleepScoreOverviewProps) {
+export function SleepScoreOverview({ dimensions, score, average, averageMeasuredNights, breakdown }: SleepScoreOverviewProps) {
   const [selectedDetail, setSelectedDetail] = useState<SelectedDetail | null>(null);
   const detailHeadingRef = useRef<HTMLHeadingElement>(null);
   const detailCloseButtonRef = useRef<HTMLButtonElement>(null);
@@ -197,7 +199,7 @@ export function SleepScoreOverview({ dimensions, score, average, breakdown }: Sl
       >
         <span>Sleep score</span>
         <strong className={styles.scoreValue}>{formatScore(score)}<small>/100</small></strong>
-        <p className={styles.scoreAverage}>30-day avg · <strong>{formatScore(average)}</strong><span> /100</span></p>
+        <p className={styles.scoreAverage}>30-day avg · <strong>{formatScore(average)}</strong><span> /100</span><small>{average === null ? "Unavailable" : `n=${averageMeasuredNights} nights`}</small></p>
       </button>
       <div className={styles.scoreInline} id="sleep-score-inline" data-open={scoreOpen} aria-hidden={!scoreOpen} inert={!scoreOpen} role="region" aria-label="Sleep score details">
         <div className={styles.scoreInlineInner}><ScoreBreakdownDetail breakdown={breakdown} /></div>
