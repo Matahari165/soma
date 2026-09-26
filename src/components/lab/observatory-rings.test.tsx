@@ -19,10 +19,10 @@ it("shows the four home measures with their current values", () => {
   expect(html).toMatch(/data-ring-value="sleep"[^>]*><textPath[^>]*>8h09<\/textPath><\/text>/);
   expect(html).toMatch(/data-ring-value="recovery"[^>]*><textPath[^>]*>59<\/textPath><\/text>/);
   expect(html).toMatch(/data-ring-value="effort"[^>]*><textPath[^>]*>4\.0<\/textPath><\/text>/);
-  expect(html).toMatch(/data-ring-value="calories"[^>]*>1200<\/text>/);
+  expect(html).toMatch(/data-ring-value="calories"[^>]*><textPath[^>]*>1200<\/textPath><\/text>/);
   expect(html).not.toContain("<figcaption");
   expect(html).not.toContain("OBJECTIFS");
-  expect((html.match(/startOffset="2%"/g) ?? []).length).toBe(3);
+  expect((html.match(/startOffset="8"/g) ?? []).length).toBe(4);
   expect((html.match(/d="M 160 /g) ?? []).length).toBe(4);
   expect((html.match(/rotate\(-90 160 160\)/g) ?? []).length).toBe(4);
 });

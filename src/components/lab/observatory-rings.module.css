@@ -25,16 +25,14 @@
 .focusRing { fill: none; stroke: var(--lab-text-primary, #f1f1f1); stroke-width: 1; stroke-dasharray: 2 4; opacity: 0; }
 .control:focus-visible .focusRing { opacity: 1; }
 .track { stroke: #20282c; opacity: .18; }
-.progress { stroke: var(--ring-color); stroke-linecap: round; stroke-opacity: .28; -webkit-backdrop-filter: blur(2px) saturate(1.15); backdrop-filter: blur(2px) saturate(1.15); animation: reveal 780ms cubic-bezier(.32, .05, .32, 1) var(--ring-delay) both; }
+.progress { stroke: var(--ring-color); stroke-linecap: round; stroke-opacity: .34; -webkit-backdrop-filter: blur(2px) saturate(1.15); backdrop-filter: blur(2px) saturate(1.15); animation: reveal 420ms cubic-bezier(.32, .05, .32, 1) var(--ring-delay) both; }
 .progress[data-complete="true"], .completedOverlap { stroke-linecap: butt; }
 .completedOverlap { stroke: var(--ring-color); }
 .overlap { stroke: var(--ring-color); stroke-linecap: round; stroke-opacity: .42; }
 .lapEnd { fill: var(--ring-color); opacity: .42; transition: r 160ms var(--ring-spring); }
 .control[data-active="true"] .lapEnd { r: 16px; }
 .unknown { stroke: #50585a; opacity: .7; }
-.ringNumber { fill: var(--ring-label); fill-opacity: 1; font: 600 16px var(--font-soma-mono), monospace; font-variant-numeric: tabular-nums; transition: font-size 160ms var(--ring-spring), fill-opacity 160ms ease-out; }
-
-.centerNumber { fill: #ead9f2; font: 500 14px var(--font-soma-mono), monospace; font-variant-numeric: tabular-nums; }
+.ringNumber { fill: var(--ring-label); fill-opacity: 1; font: 500 16px var(--font-soma-mono), monospace; font-variant-numeric: tabular-nums; transition: font-size 160ms var(--ring-spring), fill-opacity 160ms ease-out; }
 
 .detail { display: grid; grid-template-rows: 0fr; width: min(100%, 360px); margin-top: 0; transition: grid-template-rows 180ms var(--ring-spring); }
 .detailContent { min-height: 0; overflow: hidden; opacity: 0; transform: translateY(6px); transition: opacity 180ms cubic-bezier(.32, .05, .32, 1), transform 160ms var(--ring-spring); }

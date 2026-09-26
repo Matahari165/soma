@@ -72,10 +72,10 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
   }, [date, data.calorieTarget]);
 
   const rings = [
-    { id: "sleep", label: "Sommeil", value: data.sleepMinutes, target: 510, display: valid(data.sleepMinutes) ? duration(data.sleepMinutes) : "—", ringDisplay: valid(data.sleepMinutes) ? duration(data.sleepMinutes).replace(" ", "") : "—", goal: "8h 30", color: "#a9d8f2", labelColor: "#86bada" },
-    { id: "recovery", label: "Récupération", value: data.recoveryScore, target: 100, display: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", ringDisplay: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", goal: "100", color: "#a7e0c4", labelColor: "#83c4a4" },
-    { id: "effort", label: "Effort", value: data.effortScore, target: 100, display: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", ringDisplay: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", goal: "21", color: "#f1c995", labelColor: "#d0a46f" },
-    { id: "calories", label: "Calories", value: calories, target: calorieTarget, display: valid(calories) ? `${Math.round(calories).toLocaleString("fr-FR")} kcal` : "—", ringDisplay: valid(calories) ? String(Math.round(calories)) : "—", goal: valid(calorieTarget) && calorieTarget > 0 ? `${Math.round(calorieTarget).toLocaleString("fr-FR")} kcal` : "—", color: "#dfb9ef", labelColor: "#b88cd1" },
+    { id: "sleep", label: "Sommeil", value: data.sleepMinutes, target: 510, display: valid(data.sleepMinutes) ? duration(data.sleepMinutes) : "—", ringDisplay: valid(data.sleepMinutes) ? duration(data.sleepMinutes).replace(" ", "") : "—", goal: "8h 30", color: "#aebdcc", labelColor: "#e4e8ed" },
+    { id: "recovery", label: "Récupération", value: data.recoveryScore, target: 100, display: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", ringDisplay: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", goal: "100", color: "#b9c7bd", labelColor: "#e5eae6" },
+    { id: "effort", label: "Effort", value: data.effortScore, target: 100, display: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", ringDisplay: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", goal: "21", color: "#c6baa7", labelColor: "#ece7df" },
+    { id: "calories", label: "Calories", value: calories, target: calorieTarget, display: valid(calories) ? `${Math.round(calories).toLocaleString("fr-FR")} kcal` : "—", ringDisplay: valid(calories) ? String(Math.round(calories)) : "—", goal: valid(calorieTarget) && calorieTarget > 0 ? `${Math.round(calorieTarget).toLocaleString("fr-FR")} kcal` : "—", color: "#c4adb2", labelColor: "#ece3e5" },
   ] as const;
   const details = {
     sleep: { reference: "Repère de sommeil", description: "Durée de sommeil issue des mesures synchronisées. Le repère de cet anneau est de 8 h 30.", average: valid(data.averageSleepMinutes) ? duration(data.averageSleepMinutes) : null, href: "/sleep" },
@@ -112,7 +112,7 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
                 const next = event.key === "Home" ? 0 : event.key === "End" ? rings.length - 1 : (index + direction + rings.length) % rings.length;
                 figureRef.current?.querySelector<SVGGElement>(`[data-ring="${rings[next].id}"]`)?.focus();
               }
-            }} style={{ "--ring-color": ring.color, "--ring-label": ring.labelColor, "--ring-radius": `${radius}px`, "--ring-delay": `${index * 90}ms` } as CSSProperties}>
+            }} style={{ "--ring-color": ring.color, "--ring-label": ring.labelColor, "--ring-radius": `${radius}px`, "--ring-delay": `${index * 40}ms` } as CSSProperties}>
             <g className={styles.ring} transform={`rotate(${ringStartAngle} 160 160)`}>
               <circle className={styles.track} cx="160" cy="160" r={radius} />
               {ratio !== null && <circle className={styles.progress} data-complete={ratio >= 1} cx="160" cy="160" r={radius} pathLength="100" strokeDasharray={dash} />}
@@ -122,7 +122,7 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
             </g>
             {end && overflow === 0 && <circle className={styles.lapEnd} data-lap-end={ring.id} filter={`url(#${ringPathPrefix}-lap-shadow)`} cx={end.x} cy={end.y} r="13.5" />}
             <circle className={styles.focusRing} cx="160" cy="160" r={radius} />
-            <text className={ring.id === "calories" ? styles.centerNumber : styles.ringNumber} data-ring-value={ring.id} x={ring.id === "calories" ? 160 : undefined} y={ring.id === "calories" ? 160 : undefined} dy={ring.id === "calories" ? ".35em" : "6"} textAnchor={ring.id === "calories" ? "middle" : undefined} aria-hidden="true">{ring.id === "calories" ? ring.ringDisplay : <textPath href={`#${ringPathPrefix}-${ring.id}`} startOffset="2%">{ring.ringDisplay}</textPath>}</text>
+            <text className={styles.ringNumber} data-ring-value={ring.id} dy="6" aria-hidden="true"><textPath href={`#${ringPathPrefix}-${ring.id}`} startOffset="8">{ring.ringDisplay}</textPath></text>
             <circle className={styles.hitArea} cx="160" cy="160" r={radius} />
           </g>;
         })}
