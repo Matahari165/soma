@@ -278,8 +278,8 @@
   --nutrition-protein-soft: var(--moss-soft);
   --nutrition-fat-soft: var(--clay-soft);
   --nutrition-carbs-soft: var(--cobalt-soft);
-  --nutrition-fiber-soft: #e3e9df;
-  --nutrition-sugar-soft: #e9e1eb;
+  --nutrition-fiber-soft: var(--lab-nutrition-fiber-soft);
+  --nutrition-sugar-soft: var(--lab-nutrition-sugar-soft);
   --overlay: rgba(20, 23, 18, .62);
   --shadow: var(--lab-shadow-subtle);
   --sidebar-width: var(--lab-sidebar-width);
@@ -345,14 +345,14 @@
   --soma-shadow-sm: none;
   --soma-shadow-md: none;
   --soma-shadow-lg: var(--shadow);
-  --stage-deep: #354966;
-  --stage-rem: #647b96;
-  --stage-light: #9cabb8;
-  --stage-awake: #b17b47;
-  --zone-light: #8397a5;
-  --zone-moderate: #6f866a;
-  --zone-vigorous: #b28648;
-  --zone-peak: #a8563f;
+  --stage-deep: var(--lab-stage-deep);
+  --stage-rem: var(--lab-stage-rem);
+  --stage-light: var(--lab-stage-light);
+  --stage-awake: var(--lab-stage-awake);
+  --zone-light: var(--lab-zone-light);
+  --zone-moderate: var(--lab-zone-moderate);
+  --zone-vigorous: var(--lab-zone-vigorous);
+  --zone-peak: var(--lab-zone-peak);
   --font-soma-ui: var(--font-soma-sans), system-ui, sans-serif;
   /* Data keeps its own instrument voice, as documented in DESIGN.md. */
   --lab-type-page: 26px;

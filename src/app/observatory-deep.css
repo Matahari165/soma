@@ -477,6 +477,13 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-field
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-field-row--confirmed:is(:hover, :focus-within) {
   opacity: .82;
 }
+/* Compensate the row fade for useful metadata and enabled correction controls. */
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-field-row--confirmed .text-content-secondary {
+  color: color-mix(in srgb, var(--lab-text-primary) 80%, var(--lab-text-secondary));
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-field-row--confirmed button.text-content-secondary:is(:hover, :focus-visible) {
+  color: var(--lab-text-primary);
+}
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-period__header-row--morning {
   flex-wrap: wrap;
 }

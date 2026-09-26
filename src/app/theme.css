@@ -36,10 +36,40 @@
   --lab-backdrop-wash: .90;
   --lab-backdrop-wash-strong: .94;
 
+  /* Domain colors: compatibility consumers retain their original tones. */
+  --lab-stage-deep: #354966;
+  --lab-stage-rem: #647b96;
+  --lab-stage-light: #9cabb8;
+  --lab-stage-awake: #b17b47;
+  --lab-zone-light: #8397a5;
+  --lab-zone-moderate: #6f866a;
+  --lab-zone-vigorous: #b28648;
+  --lab-zone-peak: #a8563f;
+  --lab-nutrition-fiber-soft: #e3e9df;
+  --lab-nutrition-sugar-soft: #e9e1eb;
+  /* Observatory series and legends share the same domain color. */
+  --lab-observatory-stage-deep: #617997;
+  --lab-observatory-stage-rem: #8fa5bf;
+  --lab-observatory-stage-light: #b7c1c8;
+  --lab-observatory-stage-awake: #b99162;
+  --lab-observatory-zone-light: var(--lab-zone-light);
+  --lab-observatory-zone-moderate: #8aa382;
+  --lab-observatory-zone-vigorous: var(--lab-observatory-stage-awake);
+  --lab-observatory-zone-peak: #bf7667;
+
+  /* Preserve translucent strokes while separating progress from its track.
+     Opaque dark numerals remain readable through overflow layers. */
+  --lab-ring-track-opacity: .08;
+  --lab-ring-progress-opacity: .50;
+  --lab-ring-label-opacity: 1;
+  --lab-ring-dimmed-opacity: .95;
+  --lab-ring-overlap-shadow: rgba(0, 0, 0, .03);
+  --lab-ring-end-shadow: rgba(0, 0, 0, .03);
+
   /* Keep each ring's established hue; labels need more ink than the
      translucent progress strokes on a white canvas. */
   --lab-ring-sleep: #3b82a6;
-  --lab-ring-sleep-label: #020c12;
+  --lab-ring-sleep-label: #01060a;
   --lab-ring-recovery: #4f8b6b;
   --lab-ring-recovery-label: #040e08;
   --lab-ring-effort: #a47b42;

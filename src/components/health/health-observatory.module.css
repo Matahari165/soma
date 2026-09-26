@@ -573,13 +573,13 @@
 }
 :global(html[data-lab-theme="observatory"]) .observatory :global(.sleep-stage-segment) { border-radius: 0; opacity: .9; }
 :global(html[data-lab-theme="observatory"]) .observatory :global(.sleep-stage-segment--deep),
-:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-distribution__segment--deep) { background: #617997; }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-distribution__segment--deep) { background: var(--lab-observatory-stage-deep); }
 :global(html[data-lab-theme="observatory"]) .observatory :global(.sleep-stage-segment--rem),
-:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-distribution__segment--rem) { background: #8fa5bf; }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-distribution__segment--rem) { background: var(--lab-observatory-stage-rem); }
 :global(html[data-lab-theme="observatory"]) .observatory :global(.sleep-stage-segment--light),
-:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-distribution__segment--light) { background: #b7c1c8; }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-distribution__segment--light) { background: var(--lab-observatory-stage-light); }
 :global(html[data-lab-theme="observatory"]) .observatory :global(.sleep-stage-segment--awake),
-:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-distribution__segment--awake) { background: #b99162; }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-distribution__segment--awake) { background: var(--lab-observatory-stage-awake); }
 :global(html[data-lab-theme="observatory"]) .observatory :global(.stage-distribution) {
   height: 10px;
   border-radius: 0;
@@ -601,17 +601,20 @@
   border-radius: 0;
   background: var(--health-track);
 }
-:global(html[data-lab-theme="observatory"]) .observatory :global(.zone-distribution__segment--light) { background: #8397a5; }
-:global(html[data-lab-theme="observatory"]) .observatory :global(.zone-distribution__segment--moderate) { background: #8aa382; }
-:global(html[data-lab-theme="observatory"]) .observatory :global(.zone-distribution__segment--vigorous) { background: #b99162; }
-:global(html[data-lab-theme="observatory"]) .observatory :global(.zone-distribution__segment--peak) { background: #bf7667; }
-:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-dot--deep) { background: #617997; }
-:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-dot--rem) { background: #8fa5bf; }
-:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-dot--light) { background: #8397a5; }
-:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-dot--awake) { background: #b99162; }
-:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-dot--moderate) { background: #8aa382; }
-:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-dot--vigorous) { background: #b99162; }
-:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-dot--peak) { background: #bf7667; }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.zone-distribution__segment--light) { background: var(--lab-observatory-zone-light); }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.zone-distribution__segment--moderate) { background: var(--lab-observatory-zone-moderate); }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.zone-distribution__segment--vigorous) { background: var(--lab-observatory-zone-vigorous); }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.zone-distribution__segment--peak) { background: var(--lab-observatory-zone-peak); }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-dot--deep) { background: var(--lab-observatory-stage-deep); }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-dot--rem) { background: var(--lab-observatory-stage-rem); }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-dot--light) { background: var(--lab-observatory-stage-light); }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-dot--awake) { background: var(--lab-observatory-stage-awake); }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-dot--moderate) { background: var(--lab-observatory-zone-moderate); }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-dot--vigorous) { background: var(--lab-observatory-zone-vigorous); }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.stage-dot--peak) { background: var(--lab-observatory-zone-peak); }
+
+/* Light is also an effort-zone name; its legend follows the zone series. */
+:global(html[data-lab-theme="observatory"]) .observatory :global(.zone-distribution) + :global(.sr-only) + :global(.stage-legend) :global(.stage-dot--light) { background: var(--lab-observatory-zone-light); }
 
 /* Effort keeps its useful list/table content while sharing the same rail. */
 :global(html[data-lab-theme="observatory"]) .observatory :global(.health-key-readings) :global(dl) {
