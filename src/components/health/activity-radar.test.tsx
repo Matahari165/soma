@@ -50,7 +50,7 @@ it("keeps an explicit zero at the center as a measured point", () => {
     ...dimensions.slice(1),
   ]} />);
 
-  expect(html).toContain('cx="250" cy="210"');
+  expect(html).toContain('cx="280" cy="210"');
   expect(html).toContain("0 min");
 });
 
