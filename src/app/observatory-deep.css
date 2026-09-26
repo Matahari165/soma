@@ -1117,6 +1117,8 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-numbe
   .lab-global-nav a svg { display: none; }
 }
 
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading--personalized { animation:none!important; }
+
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art.arrival-art--conversation {
   display:flex;
   flex-direction:column;
