@@ -71,7 +71,7 @@ export const healthMetricRegistry: readonly LabMetricDefinition[] = [
   { id: "weekly_load", label: "Weekly load", unit: "pts", field: "weekly_load", defaultRole: "disabled", direction: "target", source: "Soma" },
   { id: "load_ratio", label: "Acute / chronic load", unit: "ratio", field: "acute_chronic_load_ratio", defaultRole: "disabled", direction: "target", source: "Soma" },
   { id: "recovery", label: "Recovery", unit: "pts", field: "recovery_score", defaultRole: "result", direction: "higher", source: "Soma" },
-  { id: "effort", label: "Effort", unit: "pts", field: "effort_score", defaultRole: "influence", direction: "target", source: "Soma" },
+  { id: "effort", label: "Strain", unit: "pts", field: "effort_score", defaultRole: "influence", direction: "target", source: "Soma" },
   { id: "meal_calories", label: "Meal calories", unit: "kcal", field: "meal_calories_kcal", defaultRole: "influence", direction: "target", source: "Soma" },
   { id: "meal_protein", label: "Meal protein", unit: "g", field: "meal_protein_g", defaultRole: "influence", direction: "higher", source: "Soma" },
   { id: "meal_carbs", label: "Meal carbohydrates", unit: "g", field: "meal_carbs_g", defaultRole: "influence", direction: "target", source: "Soma" },

@@ -11,7 +11,7 @@ const destinations = [
   { href: "/meals", label: "Nutrition", icon: Utensils },
   { href: "/sleep", label: "Sleep", icon: Moon },
   { href: "/recovery", label: "Recovery", icon: HeartPulse },
-  { href: "/activity", label: "Activity", icon: Activity },
+  { href: "/strain", label: "Strain", icon: Activity },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

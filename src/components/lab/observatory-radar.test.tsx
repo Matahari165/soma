@@ -165,7 +165,7 @@ it("keeps explicit zeroes measured and ignores invalid runtime numbers", () => {
   expect((html.match(/class="radar-point"/g) ?? []).length).toBe(4);
   expect(html).toContain("0h 00");
   expect(html).toContain("Récupération : 0");
-  expect(html).toContain("Effort : 0");
+  expect(html).toContain("Strain : 0");
   expect(html).not.toContain("NaN");
   expect(html).not.toContain("Infinity");
 });

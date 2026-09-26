@@ -36,9 +36,9 @@ export type ActivityRadarProps = {
   registerButton?: (id: string, node: SVGGElement | null) => void;
 };
 
-const VIEWBOX_WIDTH = 500;
+const VIEWBOX_WIDTH = 560;
 const VIEWBOX_HEIGHT = 420;
-const CENTER_X = 250;
+const CENTER_X = 280;
 const CENTER_Y = 210;
 const RADIUS = 132;
 const LABEL_RADIUS = RADIUS + 34;

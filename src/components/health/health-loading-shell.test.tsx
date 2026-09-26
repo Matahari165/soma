@@ -24,7 +24,7 @@ describe("HealthLoadingShell", () => {
   });
 
   it("conserve quatre emplacements d’indicateurs et deux tendances partagés", () => {
-    const html = renderToStaticMarkup(createElement(HealthLoadingShell, { kind: "activity", title: "Activity" }));
+    const html = renderToStaticMarkup(createElement(HealthLoadingShell, { kind: "activity", title: "Strain" }));
 
     expect(html.match(/data-testid="health-loading-signal-slot"/g)).toHaveLength(4);
     expect(html.match(/data-testid="health-loading-trend-slot"/g)).toHaveLength(2);

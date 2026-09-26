@@ -255,8 +255,8 @@ const influenceExplanations: Record<string, Omit<InfluenceExplanation, "sourceDe
     sourceDetail: "Collectée par ton appareil connecté puis importée via Google Health.",
   },
   effort: {
-    definition: "Estimation quotidienne par Soma de la charge d’activité réalisée.",
-    calculation: "Soma combine les minutes de zone disponibles, les minutes d’exercice, l’énergie active et les pas avec des rendements décroissants, puis normalise le résultat sur 0–100.",
+    definition: "Score quotidien d’atteinte des objectifs d’activité.",
+    calculation: "Soma pondère l’atteinte des objectifs de minutes en zone, durée d’exercice, calories actives et pas. Chaque composante est plafonnée à son objectif. Le score atteint 100 lorsque les quatre objectifs sont atteints et reste indisponible si une mesure manque.",
     source: "Soma",
     sourceDetail: "Calculée par Soma à partir des mesures d’activité disponibles importées via Google Health.",
   },

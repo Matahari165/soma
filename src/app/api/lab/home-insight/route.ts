@@ -107,7 +107,7 @@ function fallback(evidence: {
       : `, ${Math.abs(recoveryDifference)} points ${recoveryDifference > 0 ? "au-dessus" : "sous"} de votre moyenne récente (${evidence.recoveryBaseline.samples} jours)`
     : " aujourd’hui";
   const recovery = evidence.recoveryScore === null ? null : `Récupération Soma : ${Math.round(evidence.recoveryScore)}/100${recoveryComparison}.`;
-  const effort = evidence.effortScore === null ? null : `Effort Soma : ${evidence.effortScore.toLocaleString("fr-FR", { maximumFractionDigits: 1 })}/100 aujourd’hui${evidence.effortCoverage !== null && evidence.effortCoverage < 1 ? ", données partielles" : ""}.`;
+  const effort = evidence.effortScore === null ? null : `Score Strain : ${evidence.effortScore.toLocaleString("fr-FR", { maximumFractionDigits: 1 })}/100 aujourd’hui${evidence.effortCoverage !== null && evidence.effortCoverage < 1 ? ", données partielles" : ""}.`;
   for (const line of evidence.moment === "evening" ? [effort, sleep, recovery] : [sleep, recovery, effort]) {
     if (line && lines.length < 2 && [...lines, line].join("\n").length <= maxInsightLength) lines.push(line);
   }
@@ -176,7 +176,7 @@ export async function POST(request: Request) {
       } : null,
     };
     const sourceHash = createHash("sha256").update(JSON.stringify({ format: cacheFormat, evidence })).digest("hex");
-    const source = [activitySummary ? "Activité" : null, evidence.sleepMinutes !== null ? "Sommeil" : null, evidence.recoveryScore !== null ? "Récupération" : null, evidence.effortScore !== null ? "Effort" : null].filter(Boolean).join(" · ") || "Observations du jour";
+    const source = [activitySummary ? "Activité" : null, evidence.sleepMinutes !== null ? "Sommeil" : null, evidence.recoveryScore !== null ? "Récupération" : null, evidence.effortScore !== null ? "Strain" : null].filter(Boolean).join(" · ") || "Observations du jour";
     const defaultText = fallback(evidence);
     const responseTime = new Date().toISOString();
     if (isLocalPreviewMode()) return NextResponse.json({ text: defaultText, source, moment: slot, generatedAt: responseTime, stale: false, preview: true }, { headers });
