@@ -78,10 +78,10 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
     { id: "calories", label: "Calories", value: calories, target: calorieTarget, display: valid(calories) ? `${Math.round(calories).toLocaleString("fr-FR")} kcal` : "—", ringDisplay: valid(calories) ? String(Math.round(calories)) : "—", goal: valid(calorieTarget) && calorieTarget > 0 ? `${Math.round(calorieTarget).toLocaleString("fr-FR")} kcal` : "—", color: "#c4adb2", labelColor: "#ece3e5" },
   ] as const;
   const details = {
-    sleep: { reference: "Repère de sommeil", description: "Durée de sommeil issue des mesures synchronisées. Le repère de cet anneau est de 8 h 30.", average: valid(data.averageSleepMinutes) ? duration(data.averageSleepMinutes) : null, href: "/sleep" },
-    recovery: { reference: "Échelle du score", description: "Score calculé par Soma à partir des signaux de récupération disponibles. Plus il est élevé, meilleure est la récupération estimée.", average: valid(data.averageRecoveryScore) ? String(Math.round(data.averageRecoveryScore)) : null, href: "/recovery" },
-    effort: { reference: "Échelle de charge", description: "Charge quotidienne calculée par Soma, affichée sur 21. Une valeur plus élevée signifie davantage d’effort, pas une meilleure récupération.", average: valid(data.averageEffortScore) ? (data.averageEffortScore * .21).toFixed(1) : null, href: "/activity" },
-    calories: { reference: "Cible alimentaire", description: "Énergie des repas confirmés dans le journal. Le total est comparé à votre cible lorsqu’elle est renseignée.", average: valid(data.averageCaloriesKcal) ? `${Math.round(data.averageCaloriesKcal).toLocaleString("fr-FR")} kcal` : null, href: "/meals" },
+    sleep: { reference: "Repère de sommeil", average: valid(data.averageSleepMinutes) ? duration(data.averageSleepMinutes) : null },
+    recovery: { reference: "Échelle du score", average: valid(data.averageRecoveryScore) ? String(Math.round(data.averageRecoveryScore)) : null },
+    effort: { reference: "Échelle de charge", average: valid(data.averageEffortScore) ? (data.averageEffortScore * .21).toFixed(1) : null },
+    calories: { reference: "Cible alimentaire", average: valid(data.averageCaloriesKcal) ? `${Math.round(data.averageCaloriesKcal).toLocaleString("fr-FR")} kcal` : null },
   };
   const activeId = hoveredId ?? focusedId ?? selectedId;
   const selectedRing = rings.find(ring => ring.id === (selectedId ?? lastSelectedId));
@@ -132,14 +132,13 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
       {selectedRing && selectedDetail && <div className={styles.detailContent}>
         <div className={styles.detailHeader}><h2 ref={headingRef} tabIndex={-1} id={`${detailId}-title`}>{selectedRing.label}</h2><button type="button" className={styles.close} onClick={closeDetail} aria-label="Fermer le détail"><X size={18} aria-hidden="true" /></button></div>
         <p className={styles.detailValue}>{selectedRing.display}</p>
+        {!valid(selectedRing.value) && <p className={styles.unavailable}>Aucune mesure disponible pour ce jour.</p>}
         <dl className={styles.facts}>
           <div><dt>{selectedDetail.reference}</dt><dd>{selectedRing.goal === "—" ? "Non renseignée" : selectedRing.goal}</dd></div>
           <div><dt>Progression</dt><dd>{progress(selectedRing.value, selectedRing.target) === null ? "Indisponible" : `${Math.round(progress(selectedRing.value, selectedRing.target)! * 100)} %`}</dd></div>
           {selectedRing.id === "effort" && valid(selectedRing.value) && <div><dt>Score d’activité Soma</dt><dd>{Math.round(selectedRing.value)} / 100</dd></div>}
           {selectedDetail.average && <div><dt>Moyenne sur 30 jours</dt><dd>{selectedDetail.average}</dd></div>}
         </dl>
-        <p className={styles.description}>{valid(selectedRing.value) ? selectedDetail.description : "Aucune mesure disponible pour ce jour."}</p>
-        <a className={styles.link} href={`${selectedDetail.href}${date ? `?date=${encodeURIComponent(date)}` : ""}`}>Voir {selectedRing.id === "calories" ? "les repas" : selectedRing.id === "effort" ? "l’activité" : selectedRing.id === "sleep" ? "le sommeil" : "la récupération"}</a>
       </div>}
     </aside>
   </figure>;

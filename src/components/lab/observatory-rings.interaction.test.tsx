@@ -22,7 +22,8 @@ it("opens a metric with the keyboard, dims other rings and restores focus with E
   expect(ring("effort").getAttribute("aria-expanded")).toBe("true");
   expect(document.activeElement?.tagName).toBe("H2");
   expect(container.querySelector("aside")?.textContent).toContain("75 / 100");
-  expect(container.querySelector("aside a")?.getAttribute("href")).toBe("/activity?date=2026-09-25");
+  expect(container.querySelector("aside a")).toBeNull();
+  expect(container.querySelector("aside")?.textContent).not.toContain("Charge quotidienne calculée");
   await act(async () => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
   expect(container.querySelector("aside")?.getAttribute("aria-hidden")).toBe("true");
   expect(document.activeElement).toBe(ring("effort"));
