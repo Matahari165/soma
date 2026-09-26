@@ -3,7 +3,9 @@ import {
   type DataPointListResponse,
 } from "./client";
 
-export const GOOGLE_HEALTH_SESSION_HEART_RATE_MAX_PAGES = 3;
+// Heart-rate data pages contain up to 1,000 points. This limit covers a full
+// 24-hour window at one sample per second while keeping a hard bound on work.
+export const GOOGLE_HEALTH_SESSION_HEART_RATE_MAX_PAGES = 128;
 export const GOOGLE_HEALTH_SESSION_ZONE_MAX_PAGES = 2;
 
 type SessionDataType = "heart-rate" | "daily-heart-rate-zones";
@@ -30,7 +32,14 @@ async function listBoundedSessionData(input: {
   const dataPoints: Record<string, unknown>[] = [];
   let pageToken: string | undefined;
   let pageCount = 0;
+  const requestedPageTokens = new Set<string>();
   while (pageCount < input.maxPages) {
+    if (pageToken) {
+      if (requestedPageTokens.has(pageToken)) {
+        throw new Error("Google Health session pagination repeated a page token.");
+      }
+      requestedPageTokens.add(pageToken);
+    }
     const response = await readPage({
       accessToken: input.accessToken,
       dataType: input.dataType,
@@ -41,6 +50,9 @@ async function listBoundedSessionData(input: {
     dataPoints.push(...(response.dataPoints ?? []));
     pageCount += 1;
     pageToken = response.nextPageToken;
+    if (pageToken && requestedPageTokens.has(pageToken)) {
+      throw new Error("Google Health session pagination repeated a page token.");
+    }
     if (!pageToken) break;
   }
   return { dataPoints, pageCount, limited: Boolean(pageToken) };

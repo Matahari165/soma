@@ -25,11 +25,11 @@ type ActivityPeriod = 7 | 14 | 30 | 60 | 90 | 180;
 
 const filters: { id: ActivityFilter; label: string; types: readonly string[] }[] = [
   { id: "all", label: "All", types: [] },
-  { id: "run", label: "Running", types: ["RUNNING", "JOGGING", "TRAIL_RUNNING"] },
-  { id: "boxing", label: "Boxing", types: ["BOXING", "BOXE"] },
+  { id: "run", label: "Running", types: ["RUNNING", "JOGGING", "TRAIL_RUNNING", "TRAIL_RUN", "INCLINE_RUN", "TREADMILL"] },
+  { id: "boxing", label: "Boxing", types: ["BOXING", "BOXE", "KICKBOXING", "MUAY_THAI"] },
   { id: "hiking", label: "Hiking", types: ["HIKING"] },
   { id: "walking", label: "Walking", types: ["WALKING"] },
-  { id: "strength", label: "Strength", types: ["WEIGHT_TRAINING", "STRENGTH_TRAINING"] },
+  { id: "strength", label: "Strength", types: ["WEIGHT_TRAINING", "STRENGTH_TRAINING", "FUNCTIONAL_STRENGTH_TRAINING", "WEIGHTLIFTING", "WEIGHTS", "FREE_WEIGHTS", "WEIGHT_MACHINES", "POWERLIFTING"] },
 ];
 
 const periods: { days: ActivityPeriod; label: string }[] = [
@@ -105,7 +105,6 @@ function SessionHeartRate({ samples }: { samples: SessionTelemetry["heartRateSam
 }
 
 function ActivitySession({ exercise }: { exercise: ExerciseSummary }) {
-  const rowRef = useRef<HTMLLIElement>(null);
   const detailId = useId();
   const [open, setOpen] = useState(false);
   const [telemetry, setTelemetry] = useState<SessionTelemetry | null>(null);
@@ -114,22 +113,18 @@ function ActivitySession({ exercise }: { exercise: ExerciseSummary }) {
   const [estimatedSplits, setEstimatedSplits] = useState<EstimatedSplit[]>([]);
   const [paceState, setPaceState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   useEffect(() => {
-    if (!exercise.startTime || !exercise.endTime || !rowRef.current) return;
+    if (!open || !exercise.startTime || !exercise.endTime) return;
     const controller = new AbortController();
-    const observer = new IntersectionObserver((entries) => {
-      if (!entries.some((entry) => entry.isIntersecting)) return;
-      observer.disconnect();
-      setTelemetryState("loading");
-      fetch(`/api/health/activity-session?record=${encodeURIComponent(exercise.id)}`, { signal: controller.signal, cache: "no-store" })
-        .then((response) => { if (!response.ok) throw new Error("Session telemetry unavailable"); return response.json() as Promise<SessionTelemetry>; })
-        .then((result) => { setTelemetry(result); setTelemetryState("ready"); })
-        .catch(() => { if (!controller.signal.aborted) setTelemetryState("error"); });
-    }, { rootMargin: "300px 0px" });
-    observer.observe(rowRef.current);
-    return () => { observer.disconnect(); controller.abort(); };
-  }, [exercise.id, exercise.startTime, exercise.endTime, retryCount]);
+    fetch(`/api/health/activity-session?record=${encodeURIComponent(exercise.id)}`, { signal: controller.signal, cache: "no-store" })
+      .then((response) => { if (!response.ok) throw new Error("Session telemetry unavailable"); return response.json() as Promise<SessionTelemetry>; })
+      .then((result) => { if (!controller.signal.aborted) { setTelemetry(result); setTelemetryState("ready"); } })
+      .catch(() => { if (!controller.signal.aborted) setTelemetryState("error"); });
+    return () => controller.abort();
+  }, [open, exercise.id, exercise.startTime, exercise.endTime, retryCount]);
+  const retryTelemetry = () => { setTelemetryState("loading"); setRetryCount((count) => count + 1); };
+  const hasPace = !exerciseMatchesFilter(exercise.type, "boxing") && !exerciseMatchesFilter(exercise.type, "strength");
   const loadPace = () => {
-    if (exercise.splits?.length || !exercise.startTime || !exercise.endTime || paceState !== "idle") return;
+    if (!hasPace || exercise.splits?.length || !exercise.startTime || !exercise.endTime || paceState !== "idle") return;
     setPaceState("loading");
     fetch(`/api/health/activity-session-pace?record=${encodeURIComponent(exercise.id)}`, { cache: "no-store" })
       .then((response) => { if (!response.ok) throw new Error("Session pace unavailable"); return response.json() as Promise<{ splits: EstimatedSplit[] }>; })
@@ -144,30 +139,32 @@ function ActivitySession({ exercise }: { exercise: ExerciseSummary }) {
     : calculatedZones ? [calculatedZones.seconds.light, calculatedZones.seconds.moderate, calculatedZones.seconds.vigorous, calculatedZones.seconds.peak] : null;
   const maxHeartRate = telemetry?.maxHeartRateBpm ?? exercise.maximumHeartRate ?? null;
   const maxHeartRateText = maxHeartRate === null && telemetryState === "loading" ? "Loading…" : `${telemetry?.heartRateFetchLimited && telemetry.maxHeartRateSource !== "google_health_rollup" && maxHeartRate !== null ? "≥" : ""}${metric(maxHeartRate, "bpm")}`;
-  return <li ref={rowRef} className={styles.activitySession}>
+  return <li className={styles.activitySession}>
       <div className={styles.activityHistoryRow}>
-        <div className={styles.activityHistoryIdentity}><button type="button" aria-expanded={open} aria-controls={detailId} onClick={() => { if (!open) loadPace(); setOpen((value) => !value); }} onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}><strong>{exercise.name}</strong><span className={styles.activityDetailPrompt}>Workout details <ChevronDown size={14} aria-hidden="true" /></span></button><span>{exercise.date} · {activityLabel(exercise.type)}</span></div>
+        <div className={styles.activityHistoryIdentity}><button type="button" aria-expanded={open} aria-controls={detailId} onClick={() => { if (!open) { loadPace(); if (exercise.startTime && exercise.endTime) setTelemetryState("loading"); } setOpen((value) => !value); }} onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}><strong>{exercise.name}</strong><span className={styles.activityDetailPrompt}>Workout details <ChevronDown size={14} aria-hidden="true" /></span></button><span>{exercise.date} · {activityLabel(exercise.type)}</span></div>
         <dl className={styles.activityHistoryMetrics}>
-          <div><dt>Distance</dt><dd>{metric(exercise.distanceKm, "km", 2)}</dd></div>
+          {hasPace && <div><dt>Distance</dt><dd>{metric(exercise.distanceKm, "km", 2)}</dd></div>}
           <div><dt>Duration</dt><dd>{sessionDuration(exercise.durationMinutes)}</dd></div>
-          <div><dt>Pace</dt><dd>{pace(exercise)}</dd></div>
+          {hasPace && <div><dt>Pace</dt><dd>{pace(exercise)}</dd></div>}
           <div><dt>Avg HR</dt><dd>{metric(exercise.averageHeartRate, "bpm")}</dd></div>
           <div><dt>Max HR</dt><dd>{maxHeartRateText}</dd></div>
           <div><dt>Estimated calories</dt><dd>{metric(exercise.calories, "kcal")}</dd></div>
         </dl>
       </div>
-      <div id={detailId} className={styles.activitySessionDetails} hidden={!open}>
-        <div className={styles.activityDetailSection}>
+      <div id={detailId} className={styles.activitySessionDetails} hidden={!open} aria-busy={telemetryState === "loading"}>
+        {hasPace && <div className={styles.activityDetailSection}>
           <h3>Pace by split</h3>
           {exercise.splits?.length ? <ol className={styles.activitySplits}>{exercise.splits.map((split, index) => <li key={`${split.startTime ?? index}-${index}`}><span>{split.distanceKm !== null && Math.abs(split.distanceKm - 1) < 0.05 ? `Kilometer ${index + 1}` : `Split ${index + 1}`}</span><span>{metric(split.distanceKm, "km", 2)}</span><strong>{paceValue(split.averagePaceSecondsPerKm)}</strong></li>)}</ol> : estimatedSplits.length ? <><ol className={styles.activitySplits}>{estimatedSplits.map((split) => <li key={split.index}><span>{split.partial ? `Final segment` : `Kilometer ${split.index}`}</span><span>{metric(split.distanceKm, "km", 2)}</span><strong>{paceValue(split.paceSecondsPerKm)}</strong></li>)}</ol><p>Estimated by Soma from recorded distance intervals.</p></> : <p>{paceState === "loading" ? "Checking recorded distance…" : paceState === "error" ? "Distance intervals could not be loaded." : "Per-kilometer pace is unavailable for this workout."}</p>}
-        </div>
+        </div>}
         <div className={styles.activityDetailSection}>
           <h3>Heart-rate zones</h3>
           {zones ? <><ol className={styles.activityZones}>{["Light", "Moderate", "Vigorous", "Peak"].map((label, index) => <li key={label}><span>{label}</span><strong>{minutes(zones[index])}</strong></li>)}</ol><p>{hasReportedZones ? "Recorded by Google Health" : `Calculated by Soma from recorded heart rate and Google Health zone limits · ${telemetry?.coverage.percent === null ? "coverage unknown" : `${Math.round(telemetry?.coverage.percent ?? 0)}% of active time measured`}${calculatedZones?.complete ? "" : " · some readings could not be classified"}`}</p></> : <p>{telemetryState === "loading" ? "Checking heart-rate readings…" : "Zone durations are unavailable: this workout has no recorded zone summary or usable daily limits."}</p>}
         </div>
-        <div className={styles.activityDetailSection}>
+        <div className={styles.activityDetailSection} aria-live="polite">
           <h3>Heart rate during workout</h3>
-          {telemetry?.heartRateSampleCount ? <><SessionHeartRate samples={telemetry.heartRateSamples} /><p>{telemetry.heartRateSampleCount.toLocaleString("en-US")} readings · {telemetry.coverage.percent === null ? "Coverage unavailable" : `${Math.round(telemetry.coverage.percent)}% measured coverage`}{telemetry.heartRateSamplesDownsampled ? " · chart simplified" : ""}{telemetry.heartRateFetchLimited ? " · API sample limit reached" : ""}. {telemetry.maxHeartRateSource === "google_health_rollup" ? "Maximum from Google Health for the full workout." : "Maximum calculated from available readings."}</p></> : telemetryState === "error" ? <p>Readings could not be loaded. <button type="button" onClick={() => setRetryCount((count) => count + 1)}>Retry</button></p> : <p>{telemetryState === "loading" ? "Loading readings…" : telemetry?.heartRateFetchStatus === "failed" ? "Google Health readings could not be retrieved." : "No heart-rate readings are available for this workout."}{telemetry?.maxHeartRateSource === "google_health_rollup" ? " Workout maximum was retrieved from Google Health." : ""}</p>}
+          {telemetry?.heartRateSampleCount ? <><SessionHeartRate samples={telemetry.heartRateSamples} /><p>{telemetry.heartRateSampleCount.toLocaleString("en-US")} readings · {telemetry.coverage.percent === null ? "Coverage unavailable" : `${Math.round(telemetry.coverage.percent)}% measured coverage`}{telemetry.heartRateSamplesDownsampled ? " · chart simplified" : ""}{telemetry.heartRateFetchLimited ? " · API sample limit reached" : ""}. {telemetry.maxHeartRateSource === "google_health_rollup" ? "Maximum from Google Health for the full workout." : "Maximum calculated from available readings."}</p></> : telemetryState === "error" ? <p>Readings could not be loaded. <button type="button" onClick={retryTelemetry}>Retry</button></p> : <p>{telemetryState === "loading" ? "Loading readings…" : telemetry?.heartRateFetchStatus === "failed" ? "Google Health readings could not be retrieved." : "No heart-rate readings are available for this workout."}{telemetry?.maxHeartRateSource === "google_health_rollup" ? " Workout maximum was retrieved from Google Health." : ""}</p>}
+          {telemetry?.heartRateSampleCount && (telemetryState === "error" || telemetry.heartRateFetchStatus === "failed") ? <p>Some readings could not be refreshed. Available measurements are shown. <button type="button" onClick={retryTelemetry}>Retry</button></p> : null}
+          {!telemetry?.heartRateSampleCount && telemetryState !== "error" && telemetry?.heartRateFetchStatus === "failed" && <p><button type="button" onClick={retryTelemetry}>Retry</button></p>}
         </div>
       </div>
   </li>;
@@ -254,9 +251,9 @@ export function ActivityHistory({ exercises, referenceDate }: { exercises: Exerc
       <div className={`${styles.activityHistoryRow} ${styles.activityAverageRow}`} role="group" aria-label="Average for displayed workouts">
         <div className={styles.activityHistoryIdentity}><strong>Average</strong><span>{filtersWereUsed ? `${periodLabel} · current filters` : displayed.length}</span></div>
         <dl className={styles.activityHistoryMetrics}>
-          <div><dt>Distance</dt><dd>{metric(averages.distanceKm, "km", 2)}</dd></div>
+          {filter !== "boxing" && filter !== "strength" && <div><dt>Distance</dt><dd>{metric(averages.distanceKm, "km", 2)}</dd></div>}
           <div><dt>Duration</dt><dd>{sessionDuration(averages.durationMinutes)}</dd></div>
-          <div><dt>Pace</dt><dd>{paceValue(averages.averagePaceSecondsPerKm)}</dd></div>
+          {filter !== "boxing" && filter !== "strength" && <div><dt>Pace</dt><dd>{paceValue(averages.averagePaceSecondsPerKm)}</dd></div>}
           <div><dt>Avg HR</dt><dd>{metric(averages.averageHeartRate, "bpm")}</dd></div>
           <div><dt>Max HR</dt><dd>{metric(averages.maximumHeartRate, "bpm")}</dd></div>
           <div><dt>Estimated calories</dt><dd>{metric(averages.calories, "kcal")}</dd></div>

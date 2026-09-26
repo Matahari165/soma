@@ -281,7 +281,9 @@ export async function getActivitySessionTelemetry(
   let heartRateFetchLimited = false;
   let heartRateFetchStatus: ActivitySessionTelemetry["heartRateFetchStatus"] = telemetry.heartRateSampleCount ? "not_needed" : "unavailable";
   let accessToken: string | null = null;
-  if (!telemetry.heartRateSampleCount) {
+  // A partial daily import is not a complete workout trace. Ask Google for
+  // missing coverage too, while keeping every previously imported sample.
+  if (!telemetry.heartRateSampleCount || telemetry.coverage.gapCount > 0) {
     try {
       accessToken = await googleHealthAccessToken(userId);
       if (!accessToken) {
@@ -291,23 +293,27 @@ export async function getActivitySessionTelemetry(
         heartRateFetchLimited = fetched.limited;
         heartRateFetchStatus = fetched.records.length ? "fetched" : "empty";
         if (fetched.records.length) {
-        heartRateRecords = fetched.records.map((row) => ({
-          sourceRecordId: row.source_record_id,
-          measuredAt: row.measured_at ?? null,
-          civilDate: row.civil_date ?? null,
-          payload: row.payload,
-        }));
-        telemetry = calculateActivitySessionTelemetry({
-          startTime,
-          endTime,
-          date: range.date,
-          timeZone,
-          heartRateRecords,
-          dailyZoneRecords: [],
-          exercisePayloads,
-        });
-        heartRateSampleSource = telemetry.heartRateSampleCount ? "google_health_api" : "none";
-        if (!telemetry.heartRateSampleCount) heartRateFetchStatus = "empty";
+          const combined = deduplicateRows([
+            ...heartRateRecords.map((row) => ({
+              source_record_id: row.sourceRecordId,
+              measured_at: row.measuredAt,
+              civil_date: row.civilDate,
+              payload: row.payload,
+            })),
+            ...fetched.records,
+          ]);
+          heartRateRecords = combined.map((row) => ({
+            sourceRecordId: row.source_record_id,
+            measuredAt: row.measured_at ?? null,
+            civilDate: row.civil_date ?? null,
+            payload: row.payload,
+          }));
+          telemetry = calculateActivitySessionTelemetry({
+            startTime, endTime, date: range.date, timeZone,
+            heartRateRecords, dailyZoneRecords: [], exercisePayloads,
+          });
+          heartRateSampleSource = telemetry.heartRateSampleCount ? "google_health_api" : "none";
+          if (!telemetry.heartRateSampleCount) heartRateFetchStatus = "empty";
         }
       }
     } catch {
