@@ -57,12 +57,14 @@ it("bounds total payload volume and marks omitted fields instead of silently tru
 
 const rawStorage = vi.hoisted(() => ({
   records: [] as Record<string, unknown>[], manifests: [] as Record<string, unknown>[],
+  idOrder: "ordinal" as "ordinal" | "utf8" | "reverse",
   objects: new Map<string, Buffer>(), requests: [] as { table: string; limit: number | null; filters: Filter[] }[],
 }));
 vi.mock("@/lib/cloudflare/db", () => ({ createCloudflareAdminClient: () => ({ from: (table: string) => {
   const filters: Filter[] = [];
   const sorts: Sort[] = [];
   let maximum: number | null = null;
+  let offset = 0;
   const builder = {
     select: () => builder,
     eq: (field: string, value: unknown) => { filters.push({ field, operator: "eq", value }); return builder; },
@@ -72,12 +74,21 @@ vi.mock("@/lib/cloudflare/db", () => ({ createCloudflareAdminClient: () => ({ fr
     lt: (field: string, value: unknown) => { filters.push({ field, operator: "lt", value }); return builder; },
     order: (field: string) => { sorts.push({ field, ascending: true }); return builder; },
     limit: (limit: number) => { maximum = limit; return builder; },
+    range: (from: number, to: number) => { offset = from; maximum = to - from + 1; return builder; },
     then: (resolve: (result: { data: Row[]; error: null }) => unknown) => {
       rawStorage.requests.push({ table, limit: maximum, filters: [...filters] });
       const rows = (table === "health_records" ? rawStorage.records : rawStorage.manifests)
         .filter((row) => filters.every((filter) => matches(row, filter)));
-      sortRows(rows, sorts);
-      return Promise.resolve({ data: maximum === null ? rows : rows.slice(0, maximum), error: null }).then(resolve);
+      if (rawStorage.idOrder === "ordinal") sortRows(rows, sorts);
+      else for (const sort of [...sorts].reverse()) rows.sort((left, right) => {
+        if (sort.field !== "source_record_id") {
+          const a = String(left[sort.field]); const b = String(right[sort.field]);
+          return a < b ? -1 : a > b ? 1 : 0;
+        }
+        const compared = Buffer.compare(Buffer.from(String(left.source_record_id)), Buffer.from(String(right.source_record_id)));
+        return rawStorage.idOrder === "reverse" ? -compared : compared;
+      });
+      return Promise.resolve({ data: maximum === null ? rows : rows.slice(offset, offset + maximum), error: null }).then(resolve);
     },
   };
   return builder;
@@ -89,7 +100,7 @@ vi.mock("@/lib/r2", () => ({ getR2ArchiveObject: async (path: string) => {
 } }));
 
 beforeEach(() => {
-  rawStorage.records = []; rawStorage.manifests = []; rawStorage.objects.clear(); rawStorage.requests = [];
+  rawStorage.idOrder = "ordinal"; rawStorage.records = []; rawStorage.manifests = []; rawStorage.objects.clear(); rawStorage.requests = [];
 });
 
 function liveRecord(id: string, dataType: string, fields: Record<string, unknown> = {}) {
@@ -135,7 +146,8 @@ describe("raw health default storage reader", () => {
       expect(result.pages.at(-1)?.manifest.complete).toBe(true);
       const liveRequests = rawStorage.requests.filter((request) => request.table === "health_records");
       expect(liveRequests.length).toBeGreaterThan(0);
-      expect(liveRequests.every((request) => request.limit === 2)).toBe(true);
+      expect(liveRequests.every((request) => request.limit !== null && request.limit <= 200)).toBe(true);
+      expect(liveRequests.every((request) => !request.filters.some((filter) => filter.field === "source_record_id" && filter.operator === "gt"))).toBe(true);
       expect(liveRequests.every((request) => request.filters.some((filter) => filter.field === "user_id" && filter.value === "test-user"))).toBe(true);
     },
   );
@@ -186,4 +198,37 @@ it("paginates midnight ties across civil rollups and timestamped records", async
   const result = await collectDefault("steps");
   expect(result.ids).toEqual(["B", "a", "é"]);
   expect(result.pages).toHaveLength(3);
+});
+
+
+it.each(["utf8", "reverse"] as const)("paginates complete timestamp groups despite %s database ID order", async (idOrder) => {
+  rawStorage.idOrder = idOrder;
+  const ids = ["a", "B", "é", "Ω", "a|suffix", "Ä", "😀", "\ue000"];
+  const shared = liveRecord("archive-and-live", "heart-rate", { measured_at: "2020-01-01T12:00:00.000Z" });
+  await addArchive([shared, liveRecord("archive-only", "heart-rate", { measured_at: "2020-01-01T12:00:00.000Z" })]);
+  rawStorage.records = [...ids.map((id) => liveRecord(id, "heart-rate", { measured_at: "2020-01-01T12:00:00.000Z" })), shared,
+    liveRecord("later", "heart-rate", { measured_at: "2020-01-01T13:00:00.000Z" })];
+  const result = await collectDefault("heart-rate");
+  const expected = [...ids, "archive-and-live", "archive-only"].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+  expect(result.ids).toEqual([...expected, "later"]);
+  expect(result.pages).toHaveLength(expected.length + 1);
+  expect(rawStorage.requests.every((request) => !request.filters.some((filter) => filter.field === "source_record_id" && filter.operator === "gt"))).toBe(true);
+});
+
+it("completes a frontier tie spanning multiple bounded database pages", async () => {
+  rawStorage.idOrder = "reverse";
+  rawStorage.records = Array.from({ length: 205 }, (_, index) => liveRecord(`sample-${String(index).padStart(3, "0")}`, "heart-rate", { measured_at: "2020-01-01T12:00:00.000Z" }));
+  const first = await queryAssistantRawHealth("test-user", { ...query, limit: 2 }, { cursorSecret });
+  expect(first.items.map((item) => item.recordId)).toEqual(["sample-000", "sample-001"]);
+  const second = await queryAssistantRawHealth("test-user", { ...query, limit: 2, cursor: first.manifest.nextCursor }, { cursorSecret });
+  expect(second.items.map((item) => item.recordId)).toEqual(["sample-002", "sample-003"]);
+  expect(second.manifest.complete).toBe(false);
+  expect(rawStorage.requests.filter((request) => request.table === "health_records").every((request) => request.limit !== null && request.limit <= 200)).toBe(true);
+});
+
+it("rejects oversized timestamp groups instead of claiming exhaustive pagination", async () => {
+  rawStorage.idOrder = "reverse";
+  rawStorage.records = Array.from({ length: 2_001 }, (_, index) => liveRecord(`sample-${index}`, "heart-rate", { measured_at: "2020-01-01T12:00:00.000Z" }));
+  await expect(queryAssistantRawHealth("test-user", query, { cursorSecret })).rejects.toThrow(/timestamp group exceeds the safe pagination budget/);
+  expect(rawStorage.requests.filter((request) => request.table === "health_records").every((request) => request.limit !== null && request.limit <= 200)).toBe(true);
 });

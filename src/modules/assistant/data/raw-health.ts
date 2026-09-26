@@ -24,7 +24,7 @@ type ArchiveManifest = {
 type ReadDay = { rows: RawRow[]; hasMore: boolean; archivesIncluded: boolean };
 
 function timestamp(row: RawRow) { return row.measured_at ?? row.start_time ?? (row.civil_date ? `${row.civil_date}T00:00:00.000Z` : null); }
-// Match the ordinal string order used by the storage adapter, including opaque IDs.
+// Use one ordinal order locally; database ID collation must not decide which rows are eligible.
 function comparePositions(first: string, second: string) { return first < second ? -1 : first > second ? 1 : 0; }
 function position(row: RawRow) { return `${timestamp(row) ?? ""}|${row.source_record_id ?? ""}`; }
 
@@ -47,7 +47,6 @@ async function readRawDay(userId: string, dataType: string, from: string, to: st
   const fields = ["measured_at", "start_time", ...(hasCivilRecords ? ["civil_date"] : [])] as const;
   const separator = after?.indexOf("|") ?? -1;
   const afterTime = after && separator >= 0 ? after.slice(0, separator) : null;
-  const afterId = after && separator >= 0 ? after.slice(separator + 1) : null;
   const readStream = async (dateField: typeof fields[number]) => {
     const civil = dateField === "civil_date";
     const lower = civil ? from.slice(0, 10) : from;
@@ -65,13 +64,33 @@ async function readRawDay(userId: string, dataType: string, from: string, to: st
     // nothing left in this day's civil stream, even if hourly rows remain.
     if (civil && (Date.parse(civilTime) < Date.parse(from) || (afterTime && comparePositions(civilTime, afterTime) < 0))) return [];
     const bound = civil ? (afterTime && civilTime === afterTime ? lower : null) : afterTime;
+    // The prefix may stop inside a tie whose database order differs from our
+    // local order (case, accents, supplementary Unicode, etc.). Complete that
+    // timestamp group before sorting or applying an ID cursor locally.
+    const readTie = async (value: string) => {
+      const rows: RawRow[] = [];
+      const maximumTieRows = 2_000;
+      const pageSize = 200;
+      for (let offset = 0; offset <= maximumTieRows; offset += pageSize) {
+        const count = Math.min(pageSize, maximumTieRows - offset + 1);
+        const result = await base().eq(dateField, value).range(offset, offset + count - 1);
+        if (result.error) throw new Error("Raw health records could not be loaded.");
+        const page = (result.data ?? []) as RawRow[];
+        rows.push(...page);
+        if (rows.length > maximumTieRows) throw new Error("Raw health timestamp group exceeds the safe pagination budget.");
+        if (page.length < count) return rows;
+      }
+      throw new Error("Raw health timestamp group could not be completed.");
+    };
     const [later, tied] = await Promise.all([
       (bound ? base().gt(dateField, bound) : base()).limit(limit + 1),
-      bound ? base().eq(dateField, bound).gt("source_record_id", afterId).limit(limit + 1)
-        : Promise.resolve({ data: [], error: null }),
+      bound ? readTie(bound) : Promise.resolve([] as RawRow[]),
     ]);
-    if (later.error || tied.error) throw new Error("Raw health records could not be loaded.");
-    return [...(tied.data ?? []), ...(later.data ?? [])] as RawRow[];
+    if (later.error) throw new Error("Raw health records could not be loaded.");
+    const prefix = (later.data ?? []) as RawRow[];
+    const frontier = prefix.at(-1)?.[dateField as keyof RawRow];
+    const frontierRows = typeof frontier === "string" ? await readTie(frontier) : [];
+    return [...tied, ...prefix, ...frontierRows];
   };
   const [streams, archiveResult] = await Promise.all([
     Promise.all(fields.map(readStream)),
