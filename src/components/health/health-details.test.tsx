@@ -441,3 +441,20 @@ describe("health route states", () => {
     expect(markup).toContain("Strength");
   });
 });
+
+
+it("shows this week's running total and session count even without daily activity measurements", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-09-26T12:00:00Z"));
+  try {
+    const preview = buildPreviewAnalytics();
+    const base = preview.exercises[0];
+    const markup = renderToStaticMarkup(createElement(ActivityDetails, {data: {...preview, timezone: "UTC", days: [], exercises: [
+      {...base, id: "monday-run", date: "2026-09-21", startTime: "2026-09-21T08:00:00Z", type: "RUNNING", durationMinutes: 30},
+      {...base, id: "friday-run", date: "2026-09-25", startTime: "2026-09-25T08:00:00Z", type: "RUNNING", durationMinutes: 45},
+      {...base, id: "last-week", date: "2026-09-20", startTime: "2026-09-20T08:00:00Z", type: "RUNNING", durationMinutes: 90},
+    ]}}));
+    expect(markup).toContain("Running · this week");
+    expect(markup).toContain("<strong>75 min</strong><small>2 sessions</small>");
+  } finally { vi.useRealTimers(); }
+});

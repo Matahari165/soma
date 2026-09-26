@@ -118,3 +118,8 @@ Ces lignes décrivent les données et composants présents dans le dépôt au mo
 - `src/components/health/activity-benchmarks.tsx` et `activity-history.tsx` : indicateurs et preuve métier.
 - `src/components/health/metric-trend-card.tsx`, `health-charts.tsx`, `health-charts.module.css`, `health-observatory.module.css` : tendances, moyenne, axes, infobulles et animation.
 - `src/app/motion-system.css`, `src/app/observatory-deep.css`, `src/app/globals.css` : tokens et comportements de thème.
+
+
+### Course de la semaine dans Strain
+
+La bande comporte aussi `Running · this week` : somme des durées des séances de course depuis lundi à 00:00 dans le fuseau du profil, avec le nombre de séances en dessous. La grille passe à cinq colonnes sur grand écran, trois colonnes aux largeurs intermédiaires et deux colonnes sur mobile. Cet indicateur reste visible sans mesure quotidienne et ne contribue pas au score Strain. Une durée manquante est signalée ; le sous-total connu est précédé de `≥`.

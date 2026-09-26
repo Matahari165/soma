@@ -1,5 +1,7 @@
 import { Footprints } from "lucide-react";
 
+import { runningWeekSummary } from "@/domain/health/activity-sport-analytics";
+
 import { calculateSignalFreshness } from "@/domain/health/freshness";
 import { activityRegularity, completedActivityDays } from "@/domain/metrics/wellness";
 import { calculateEffortScoreFromAvailable, activityGoalProgress, activityLoadFromScoreRow, effortScoreTargets, type EffortScoreTargets } from "@/domain/scores/effort";
@@ -80,6 +82,13 @@ function comparison(value: number | null, average: number | null): ActivityRadar
 function comparisonLabel(average: number | null, unit: string) { return measured(average) ? `30-day avg · ${formatComponentValue(average, unit)}` : undefined; }
 export function ActivityDetails({ data }: { data: HealthAnalytics }) {
   const currentDate = new Intl.DateTimeFormat("en-CA", { timeZone: data.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const runningWeek = runningWeekSummary(data.exercises, currentDate, data.timezone);
+  const runningBenchmark = {
+    id: "weekly-running", label: "Running · this week",
+    value: runningWeek.minutes === null ? "—" : `${runningWeek.missingDurations ? "≥ " : ""}${number(runningWeek.missingDurations ? Math.floor(runningWeek.minutes) : runningWeek.minutes)} min`,
+    context: `${runningWeek.sessions} ${runningWeek.sessions === 1 ? "session" : "sessions"}${runningWeek.missingDurations ? " · duration incomplete" : ""}`,
+    explanation: `Running sessions recorded since Monday ${runningWeek.startDate}, in your timezone. Each session duration is counted once. ${runningWeek.missingDurations ? "Some durations are missing; minutes show the known subtotal." : "Separate from the daily Strain score."}`,
+  };
   const activityDays = completedActivityDays(data.days, currentDate);
   const latest = activityDays.findLast((day) => day.metric_date === currentDate);
   const effortTargets = data.effortTargets ?? effortScoreTargets();
@@ -124,6 +133,7 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
         {latest ? <>
           <section className={`${styles.heroScene} health-observatory-panel`} aria-labelledby="activity-score-summary-title"><div className={styles.radarRegion}><ActivityScoreOverview dimensions={radarDimensions} score={score} average={averages.effort} breakdown={scoreBreakdown} persistedScore={persistedScore} /></div></section>
           <section className={`${styles.section} health-observatory-panel`} aria-label="Strain benchmarks" data-scroll-reveal="measurements"><ActivityBenchmarks items={[
+            runningBenchmark,
             { id: "weekly-load", label: "Weekly load", value: number(latest.weekly_load), context: `30-day avg · ${formatAverage(averages.weeklyLoad, "number")}`, explanation: "Soma additionne les scores d’effort disponibles depuis le début de la semaine. La moyenne compare cette valeur aux jours mesurés des 30 derniers jours." },
             { id: "load-ratio", label: "Acute / chronic load ratio", value: measured(latest.acute_chronic_load_ratio) ? `${decimal(latest.acute_chronic_load_ratio, 2)}×` : "—", context: `30-day avg · ${decimal(averages.acuteChronicLoadRatio, 2)}×`, explanation: "Soma divise la somme des 7 derniers scores d’effort disponibles par la charge hebdomadaire habituelle calculée sur les 28 derniers scores disponibles. Il faut au moins 21 scores pour obtenir ce ratio." },
             { id: "consistency", label: "Consistency · 28d", value: regularity.consistencyScore === null ? "—" : `${regularity.consistencyScore}%`, explanation: "Soma compare la variation des scores d’effort à leur moyenne sur les jours observés des 28 derniers jours. Plus les scores se ressemblent, plus le pourcentage est élevé. Sans moyenne exploitable, le résultat reste indisponible." },
@@ -131,7 +141,7 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
           ]} /></section>
           <ActivityHistory exercises={data.exercises} referenceDate={currentDate} timezone={data.timezone} />
           <section className={`${styles.section} ${styles.trendsSection} health-observatory-panel`} aria-label="Strain trends" data-scroll-reveal="trends"><div className={styles.trendGrid}><MetricTrendCard label="Zone minutes" points={points(activityDays, "zone_minutes")} unit="min" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" /><MetricTrendCard label="Exercise duration" points={points(activityDays, "exercise_minutes")} unit="min" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" /><MetricTrendCard label="Active calories" points={points(activityDays, "active_energy_kcal")} unit="kcal" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" /><MetricTrendCard label="Steps" points={points(activityDays, "steps")} direction="higher_is_better" format={(value) => Math.round(value).toLocaleString("en-US")} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" /><MetricTrendCard label="Weekly load" points={points(activityDays, "weekly_load")} direction="context_only" format={(value) => Math.round(value).toLocaleString("en-US")} valueFormat="number" chartType="bar" barAggregation="week" compact averageInChart animateCurrent animationFormat="number" /><MetricTrendCard label="Activity consistency" points={points(activityDays, "activity_consistency_28d")} unit="%" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" /></div></section>
-        </> : <><section className={`${styles.empty} health-observatory-panel`} aria-labelledby="activity-empty-heading" data-scroll-reveal="empty"><Footprints size={24} aria-hidden="true" /><div><h2 id="activity-empty-heading">No activity measurement for today yet</h2><p>Activity for today will appear after Google Health sends new measurements. Older workouts remain available below.</p><p><a href="/settings">Check your health connection</a></p></div></section>{data.exercises.length > 0 && <ActivityHistory exercises={data.exercises} referenceDate={currentDate} timezone={data.timezone} />}</>}
+        </> : <><section className={`${styles.empty} health-observatory-panel`} aria-labelledby="activity-empty-heading" data-scroll-reveal="empty"><Footprints size={24} aria-hidden="true" /><div><h2 id="activity-empty-heading">No activity measurement for today yet</h2><p>Activity for today will appear after Google Health sends new measurements. Older workouts remain available below.</p><p><a href="/settings">Check your health connection</a></p></div></section><section className={`${styles.section} health-observatory-panel`} aria-label="Strain benchmarks"><ActivityBenchmarks items={[runningBenchmark]} /></section>{data.exercises.length > 0 && <ActivityHistory exercises={data.exercises} referenceDate={currentDate} timezone={data.timezone} />}</>}
       </section>
     </HealthPageShell>
   </div>;

@@ -10,7 +10,7 @@ type Benchmark = { id: string; label: string; value: string; context?: string; e
 export function ActivityBenchmarks({ items }: { items: readonly Benchmark[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
 
-  return <dl className={styles.readingsGrid}>{items.map((item) => {
+  return <dl className={`${styles.readingsGrid}${items.length > 4 ? ` ${styles.readingsGridExtended}` : ""}`}>{items.map((item) => {
     const open = openId === item.id;
     return <div className={styles.benchmark} key={item.id}>
       <dt>{item.label}</dt>
