@@ -48,6 +48,7 @@
 /* The greeting and measured values are readable as soon as HTML arrives.
    Keep the authored entrance on secondary artwork rather than hiding text. */
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading,
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-journal-progress,
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-title-line > span {
   animation: none !important;
   opacity: 1;
