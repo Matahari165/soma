@@ -321,7 +321,7 @@
 .scoreSummary :global(.health-score-trigger):hover .summaryValue strong,
 .scoreSummary :global(.health-score-trigger):focus-visible .summaryValue strong,
 .scoreSummary :global(.health-score-trigger)[aria-expanded="true"] .summaryValue strong {
-  transform: scale(1.035);
+  transform: none;
 }
 
 .scoreSummary :global(.health-score-trigger):focus-visible {
@@ -1182,7 +1182,7 @@
   .summaryRail span { transition: none; }
 
   .page :global(*) {
-    animation-duration: 0ms !important;
+    animation: none !important;
     scroll-behavior: auto !important;
     transition-duration: 0ms !important;
   }

@@ -5,6 +5,7 @@
  * Data loading and mutation orchestration stay in `meal-journal.tsx`.
  */
 
+import { useMotionUpdate } from "@/components/motion/use-motion-update";
 import {
   AlertCircle,
   ArrowRight,
@@ -417,6 +418,8 @@ export function MealCard({ meal, slot, saving, processingFiles, mutationBusy, di
   const [correctionMode, setCorrectionMode] = useState(false);
   const [ratingSaveState, setRatingSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [analysisChoice, setAnalysisChoice] = useState<{ status: string; open: boolean } | null>(null);
+  const stateRef = useRef<HTMLElement>(null);
+  useMotionUpdate(stateRef, status);
   const previousFeedback = useRef({ status, analysis: meal?.analysis ?? null, completed });
   const analysisArrivalRef = useRef<HTMLDivElement | null>(null);
   const confirmationRef = useRef<SVGSVGElement | null>(null);
@@ -499,7 +502,7 @@ export function MealCard({ meal, slot, saving, processingFiles, mutationBusy, di
     previousFeedback.current = { status, analysis: meal?.analysis ?? null, completed };
   }, [completed, meal?.analysis, meal?.error, status]);
 
-  return <article className={`${styles.mealCard} ${!meal ? styles.mealCardEmpty : ""} ${completed ? styles.mealCardConfirmed : ""} ${priority ? styles.mealCardPriority : ""}`} aria-labelledby={headingId} aria-busy={saving || processingFiles || status === "accepted" || status === "analyzing"}>
+  return <article ref={stateRef} className={`${styles.mealCard} ${!meal ? styles.mealCardEmpty : ""} ${completed ? styles.mealCardConfirmed : ""} ${priority ? styles.mealCardPriority : ""}`} aria-labelledby={headingId} aria-busy={saving || processingFiles || status === "accepted" || status === "analyzing"}>
     <header className={styles.mealHeader}>
       <div className={styles.mealTitle}><h3 id={headingId} tabIndex={-1}>{SLOT_LABELS[slot]}</h3></div>
       {labCompact ? <div className={styles.labHeaderActions}>
@@ -559,14 +562,16 @@ export function MealCard({ meal, slot, saving, processingFiles, mutationBusy, di
         </div>
         {status === "review" && saving && !meal.error && <p className={styles.confirmationPending} role="status" aria-live="polite">Saving meal…</p>}
         {labCompact && status === "review" && <div className={styles.labAnalysisRow}><MealAnalysisTrigger open={analysisOpen} controlsId={analysisContentId} triggerRef={analysisTriggerRef} onToggle={() => setAnalysisOpen((open) => !open)} /></div>}
-        {labCompact && analysisOpen && <div id={analysisContentId} className={styles.labAnalysisContent} onKeyDown={(event) => {
+        {labCompact && <div id={analysisContentId} className="soma-motion-disclosure" data-motion-open={analysisOpen} inert={!analysisOpen} aria-hidden={!analysisOpen || undefined} onKeyDown={(event) => {
           if (event.key === "Escape") {
             event.stopPropagation();
             setAnalysisOpen(false);
             analysisTriggerRef.current?.focus();
           }
         }}>
+          <div className="soma-motion-disclosure__content"><div className={styles.labAnalysisContent}>
           <MealAnalysisContent meal={meal} status={status} showExplanation correctionMode={correctionMode} ratingSaveState={ratingSaveState} onRating={handleRating} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />
+          </div></div>
         </div>}
         {!labCompact && <>
           <MealAnalysisDisclosure meal={meal} status={status} correctionMode={correctionMode} ratingSaveState={ratingSaveState} onRating={handleRating} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />

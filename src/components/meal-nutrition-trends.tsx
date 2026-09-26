@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+
+import { useMotionUpdate } from "@/components/motion/use-motion-update";
 
 import { BarTrendChart } from "@/components/health/health-charts";
 import type { MetricPoint } from "@/domain/metrics/trends";
@@ -89,7 +91,7 @@ function NutritionMetricChart({ metric, period }: { metric: MealNutritionTrendMe
       </div>
     </header>
     <div className={styles.chartFrame}>
-      {available.length ? <BarTrendChart points={chartPoints} label={copy.label + ", " + periodLabels[period] + ". " + coverage} unit={copy.unit} valueFormat="number" average={average} /> : <p className={styles.emptyInline}>Aucune mesure sur cette période.</p>}
+      {available.length ? <BarTrendChart animateUpdates={false} points={chartPoints} label={copy.label + ", " + periodLabels[period] + ". " + coverage} unit={copy.unit} valueFormat="number" average={average} /> : <p className={styles.emptyInline}>Aucune mesure sur cette période.</p>}
       <div className={styles.chartAxis} aria-hidden="true"><span>{firstDate ? formatShortDate(firstDate) : ""}</span><span>{lastDate ? formatShortDate(lastDate) : ""}</span></div>
       <p id={summaryId} className={styles.srOnly}>{points.map((point) => metricPointDescription(point, copy.unit)).join(". ")}. Les jours sans estimation restent vides. Moyenne calculée uniquement sur les jours mesurés.</p>
     </div>
@@ -110,6 +112,8 @@ export function MealNutritionTrends({
   illustrative?: boolean;
 }) {
   const [period, setPeriod] = useState<MealTrendPeriod>(30);
+  const trendsRef = useRef<HTMLDivElement>(null);
+  useMotionUpdate(trendsRef, period);
   const selectedFoodGroups = limitMealTrendPoints(foodGroups, period);
   const selectedScoreTrend = limitMealTrendPoints(scoreTrend, period);
   const hasAnySeries = metrics.length > 0 || foodGroups.length > 0 || scoreTrend.length > 0;
@@ -128,10 +132,10 @@ export function MealNutritionTrends({
         <li><span className={styles.averageKey} aria-hidden="true" />Measured average</li>
       </ul>
     </div>
-    {hasAnySeries ? <div className={styles.chartGrid}>
+    {hasAnySeries ? <div ref={trendsRef} className={styles.chartGrid}>
       {metrics.map((metric) => <NutritionMetricChart key={metric.id} metric={metric} period={period} />)}
       {foodGroups.length > 0 && <MealFoodCategoryTrends points={selectedFoodGroups} illustrative={illustrative} />}
-      {scoreTrend.length > 0 && <MealScoreHistoryPanel trend={selectedScoreTrend} />}
+      {scoreTrend.length > 0 && <MealScoreHistoryPanel animateUpdates={false} trend={selectedScoreTrend} />}
     </div> : <p className={styles.emptyState} role="status">Aucune série nutritionnelle disponible.</p>}
   </section>;
 }

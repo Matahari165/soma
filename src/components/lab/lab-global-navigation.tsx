@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useMotionPresence } from "@/components/motion/use-motion-presence";
 import { usePathname } from "next/navigation";
 import { type MouseEvent, useEffect, useId, useRef, useState } from "react";
 import { Activity, Ellipsis, FlaskConical, HeartPulse, House, MessageCircle, Moon, Settings, Utensils } from "lucide-react";
@@ -24,6 +25,7 @@ function isCurrentPage(pathname: string, href: string) {
 
 function MobileMoreNavigation({ pathname }: { pathname: string }) {
   const [open, setOpen] = useState(false);
+  const present = useMotionPresence(open);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelId = useId();
@@ -58,7 +60,7 @@ function MobileMoreNavigation({ pathname }: { pathname: string }) {
     <button ref={buttonRef} type="button" className="lab-global-nav__more-button" aria-expanded={open} aria-controls={panelId} aria-label={currentPage ? `Plus de pages, page actuelle : ${currentPage.label}` : "Plus de pages"} data-active={Boolean(currentPage)} onClick={() => setOpen((value) => !value)}>
       <Ellipsis aria-hidden="true" /><span>Plus</span>
     </button>
-    <div id={panelId} className="lab-global-nav__more-panel" role="group" aria-label="Autres pages" hidden={!open}>
+    <div id={panelId} className="lab-global-nav__more-panel" role="group" aria-label="Autres pages" hidden={!present} data-motion-open={open} inert={!open} aria-hidden={!open}>
       {destinations.slice(4).map(({ href, label, icon: Icon }) => {
         const link = <Link key={href} href={href} prefetch={false} aria-current={isCurrentPage(pathname, href) ? "page" : undefined} onClick={() => setOpen(false)}><Icon aria-hidden="true" /><span>{label}</span></Link>;
         return href === "/settings" ? <div key={href} className={themeStyles.mobileSettingsSlot}><ThemeToggle mobile />{link}</div> : link;

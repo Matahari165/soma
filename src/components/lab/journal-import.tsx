@@ -91,10 +91,10 @@ export function JournalImportPage() {
             <button className="primary-button" type="button" disabled={!sourceText.trim() || Boolean(busy)} onClick={() => void submit("preview")}>{busy === "preview" ? <><LoaderCircle className="spin" aria-hidden="true" />Analyse…</> : "Prévisualiser"}</button>
             <button className="secondary-button" type="button" disabled={!canCommit} onClick={() => void submit("commit")}>{busy === "commit" ? <><LoaderCircle className="spin" aria-hidden="true" />Import…</> : "Importer l’historique"}</button>
           </div>
-          {message && <p className={`settings-message settings-message--${message.tone}`} role={message.tone === "error" ? "alert" : "status"}>{message.text}</p>}
+          {message && <p className={`settings-message settings-message--${message.tone} soma-motion-state`} role={message.tone === "error" ? "alert" : "status"}>{message.text}</p>}
         </section>
 
-        {preview && <section className="settings-card" aria-labelledby="journal-import-preview-title">
+        {preview && <section className="settings-card soma-motion-state" aria-labelledby="journal-import-preview-title">
           <div>
             <h2 id="journal-import-preview-title">Aperçu</h2>
             <p>{preview.dateRange.from ?? "—"} → {preview.dateRange.to ?? "—"} · {preview.stats.sourceRows} lignes · {preview.stats.sourceCells} valeurs renseignées</p>

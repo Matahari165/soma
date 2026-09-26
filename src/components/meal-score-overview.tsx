@@ -256,7 +256,7 @@ function DimensionDetail({ dimension, open, trend, headingRef, onClose }: Dimens
     ? trend.map((point) => ({ date: point.date, score: point.dimensionAdjustedScores?.[dimension.keyName] ?? point.dimensionScores?.[dimension.keyName] ?? null }))
     : [];
   const observedHistory = history.filter((point) => point.score !== null);
-  return <aside aria-hidden={!open} aria-labelledby="meal-score-dimension-detail-title" className={styles.dimensionDetail} data-open={open} id={RADAR_DETAIL_ID}>
+  return <aside aria-hidden={!open} aria-labelledby="meal-score-dimension-detail-title" className={styles.dimensionDetail} inert={!open} data-open={open} id={RADAR_DETAIL_ID}>
     <div className={styles.dimensionDetailHeader}>
       <h3 id="meal-score-dimension-detail-title" ref={headingRef} tabIndex={-1}>{label}</h3>
       {open && <button type="button" className={styles.detailClose} onClick={onClose} aria-label="Close detail panel">Close</button>}
@@ -287,7 +287,7 @@ function DimensionDetail({ dimension, open, trend, headingRef, onClose }: Dimens
 }
 
 
-export function MealScoreHistoryPanel({ trend }: { trend: readonly MealScoreTrendPoint[] }) {
+export function MealScoreHistoryPanel({ trend, animateUpdates = true }: { trend: readonly MealScoreTrendPoint[]; animateUpdates?: boolean }) {
   const observedTrend = trend.filter((point) => point.score !== null && Number.isFinite(point.score));
   const latest = observedTrend.at(-1)?.score ?? null;
   const average = observedTrend.length
@@ -313,7 +313,7 @@ export function MealScoreHistoryPanel({ trend }: { trend: readonly MealScoreTren
         </div>
       </header>
       <div className={styles.trendChartFrame} data-testid="meal-score-bar-chart">
-        {observedTrend.length ? <BarTrendChart points={chartPoints} label="Nutrition score trend" unit="pts" valueFormat="number" average={average} domain={{ min: 0, max: 100 }} /> : <p className={styles.emptyInline}>No score history available.</p>}
+        {observedTrend.length ? <BarTrendChart animateUpdates={animateUpdates} points={chartPoints} label="Nutrition score trend" unit="pts" valueFormat="number" average={average} domain={{ min: 0, max: 100 }} /> : <p className={styles.emptyInline}>No score history available.</p>}
         <div className={styles.trendAxis} aria-hidden="true"><span>{firstDate ? formatDate(firstDate) : ""}</span><span>{lastDate ? formatDate(lastDate) : ""}</span></div>
         <p id={descriptionId} className={styles.srOnly}>{chartDescription} Missing days stay empty and are not counted as a zero score.</p>
       </div>
@@ -426,7 +426,7 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className, date,
           <dt>{fact.label}</dt>
           <dd><button type="button" className={styles.factToggle} aria-expanded={openFact === index} aria-controls={`nutrition-fact-${index}`} onClick={() => setOpenFact((current) => current === index ? null : index)}>{fact.value}<small>{fact.suffix}</small><span className={styles.factChevron} aria-hidden="true">⌄</span></button></dd>
           <p>{fact.context}</p>
-          <div className={styles.factExplanation} id={`nutrition-fact-${index}`} hidden={openFact !== index}>{fact.explanation}</div>
+          <div className="soma-motion-disclosure" id={`nutrition-fact-${index}`} data-motion-open={openFact === index} aria-hidden={openFact !== index} inert={openFact !== index}><div className="soma-motion-disclosure__content"><div className={styles.factExplanation}>{fact.explanation}</div></div></div>
         </div>)}
       </dl>
 
