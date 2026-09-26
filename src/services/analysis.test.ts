@@ -36,7 +36,7 @@ vi.mock("@/domain/metrics/wellness", () => ({
 vi.mock("@/domain/scores/effort", () => ({
   calculateEffortScoreFromAvailable: (_input: unknown, options: unknown) => {
     testState.effortOptionsCalls.push(options);
-    return { score: 50, status: "steady", coverage: 1, algorithmVersion: "test" };
+    return { score: 50, loadScore: 50, status: "steady", coverage: 1, algorithmVersion: "test" };
   },
 }));
 vi.mock("./nutrition-targets", () => ({

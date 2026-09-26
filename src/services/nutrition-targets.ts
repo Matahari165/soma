@@ -1,3 +1,4 @@
+import { activityLoadFromScoreRow } from "@/domain/scores/effort";
 import "server-only";
 
 import {
@@ -11,7 +12,7 @@ import {
 import { createCloudflareAdminClient, hasSupabaseRuntime, stableIdentity } from "@/lib/cloudflare/db";
 import { createSupabaseRequest } from "@/lib/cloudflare/db-supabase";
 import { isLocalPreviewMode } from "@/lib/env";
-import { previewScoreHistory } from "@/lib/local-preview";
+import { previewScoreHistory, previewActivityLoadHistory } from "@/lib/local-preview";
 
 type TargetRow = {
   user_id: string;
@@ -85,9 +86,9 @@ function contextFromEffortRows(rows: readonly EffortScoreRow[], date: string): E
   const effortRows = rows.filter((row) => row.kind === undefined || row.kind === "effort");
   const current = effortRows.find((row) => row.score_date === date);
   const recent = effortRows.filter((row) => row.score_date >= addDays(date, -29) && row.score_date <= date);
-  const scores = recent.map((row) => nullableNumber(row.score)).filter((value): value is number => value !== null);
+  const scores = recent.map(activityLoadFromScoreRow).filter((value): value is number => value !== null);
   return {
-    effortScore: nullableNumber(current?.score),
+    effortScore: activityLoadFromScoreRow(current),
     effortCoverage: coverageFromRow(current),
     averageEffortScore: scores.length ? scores.reduce((sum, value) => sum + value, 0) / scores.length : null,
   };
@@ -98,7 +99,7 @@ function previewEffortRows(date: string): EffortScoreRow[] {
     score_date: addDays(date, index - previewScoreHistory.effort.length + 1),
     kind: "effort",
     score,
-    drivers: { coverage: 1 },
+    drivers: { coverage: 1, activityLoadScore: previewActivityLoadHistory[index] },
   }));
 }
 

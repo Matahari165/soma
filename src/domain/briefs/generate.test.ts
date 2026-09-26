@@ -10,6 +10,6 @@ describe("deterministic briefs", () => {
 
   it("compares evening effort with its target", () => {
     expect(generateEveningBrief({ sleepScore: 82, recoveryScore: 74, effortScore: 61, bedtime: "22:45", insightTitles: [] }))
-      .toContain("accomplished load is 61/100");
+      .toContain("activity goal score is 61/100");
   });
 });

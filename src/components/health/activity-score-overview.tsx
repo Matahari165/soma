@@ -66,14 +66,15 @@ function BreakdownDetail({ breakdown, persistedScore }: { breakdown: ActivitySco
   const missing = breakdown.components.filter((component) => component.normalizedValue === null).map((component) => component.label);
   const scoreMismatch = measured(persistedScore) && measured(breakdown.score) && persistedScore !== breakdown.score;
   return <>
-    {scoreMismatch && <p className={styles.detailFootnote}>Recorded score: {formatScore(persistedScore)} /100 · v3 recomputed from inputs: {formatScore(breakdown.score)} /100.</p>}
+    {scoreMismatch && <p className={styles.detailFootnote}>Recorded score: {formatScore(persistedScore)} /100 · goal score recomputed from inputs: {formatScore(breakdown.score)} /100.</p>}
+    <p className={styles.detailFootnote}>100 /100 = all four daily goals reached. Exceeding one goal cannot compensate for another.</p>
     <dl className={styles.breakdownList}>
       {breakdown.components.map((component) => <div className={styles.breakdownRow} key={component.id}>
         <dt>{component.label}</dt>
         <dd><span><span className="sr-only">Mesuré / repère : </span>{formatMeasuredAgainstTarget(component.sourceValueLabel, component.targetLabel)}</span><span><span className="sr-only">Contribution : </span>{formatContribution(component.contribution)}</span><span><span className="sr-only">Pondération : </span>{component.weight} %</span></dd>
       </div>)}
     </dl>
-    {missing.length > 0 && <p className={styles.detailFootnote}>Données absentes : {missing.join(", ")}. Le score utilise les mesures disponibles.</p>}
+    {missing.length > 0 && <p className={styles.detailFootnote}>Données absentes : {missing.join(", ")}. Le score nécessite les quatre mesures quotidiennes.</p>}
     {breakdown.coverage < 1 && missing.length === 0 && <p className={styles.detailFootnote}>Couverture du score : {Math.round(breakdown.coverage * 100)} %.</p>}
   </>;
 }

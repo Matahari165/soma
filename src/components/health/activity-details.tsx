@@ -2,7 +2,7 @@ import { Footprints } from "lucide-react";
 
 import { calculateSignalFreshness } from "@/domain/health/freshness";
 import { activityRegularity, completedActivityDays } from "@/domain/metrics/wellness";
-import { calculateEffortScoreFromAvailable, diminishingLoad, effortScoreTargets, type EffortScoreTargets } from "@/domain/scores/effort";
+import { calculateEffortScoreFromAvailable, activityGoalProgress, activityLoadFromScoreRow, effortScoreTargets, type EffortScoreTargets } from "@/domain/scores/effort";
 import type { HealthAnalytics, HealthMetricDay, ScoreDay } from "@/services/health-analytics";
 
 import { ActivityScoreOverview, type ActivityScoreBreakdown } from "./activity-score-overview";
@@ -26,10 +26,10 @@ type EffortTargetSource = "nutrition_targets" | "fallback";
 
 export function effortComponentDefinitions(targets: EffortScoreTargets, targetSource: EffortTargetSource): readonly EffortComponentDefinition[] {
   return [
-    { id: "zoneMinutes", label: "Zone minutes", target: targets.zoneMinutes, targetLabel: `${targets.zoneMinutes} min`, weight: 50, unit: "min", key: "zone_minutes", formula: `diminishing returns · baseline ${targets.zoneMinutes} min` },
-    { id: "exerciseMinutes", label: "Exercise duration", target: targets.exerciseMinutes, targetLabel: `${targets.exerciseMinutes} min`, weight: 25, unit: "min", key: "exercise_minutes", formula: `diminishing returns · baseline ${targets.exerciseMinutes} min` },
-    { id: "activeEnergyKcal", label: "Active calories", target: targets.activeEnergyKcal, targetLabel: `${targets.activeEnergyKcal.toLocaleString("en-US")} kcal`, weight: 15, unit: "kcal", key: "active_energy_kcal", formula: targetSource === "nutrition_targets" ? "diminishing returns · app calorie target" : `diminishing returns · default target ${targets.activeEnergyKcal.toLocaleString("en-US")} kcal (no target set)` },
-    { id: "steps", label: "Steps", target: targets.steps, targetLabel: `${targets.steps.toLocaleString("en-US")} steps`, weight: 10, unit: "steps", key: "steps", formula: `diminishing returns · baseline ${targets.steps.toLocaleString("en-US")} steps` },
+    { id: "zoneMinutes", label: "Zone minutes", target: targets.zoneMinutes, targetLabel: `${targets.zoneMinutes} min`, weight: 50, unit: "min", key: "zone_minutes", formula: `goal completion · target ${targets.zoneMinutes} min` },
+    { id: "exerciseMinutes", label: "Exercise duration", target: targets.exerciseMinutes, targetLabel: `${targets.exerciseMinutes} min`, weight: 25, unit: "min", key: "exercise_minutes", formula: `goal completion · target ${targets.exerciseMinutes} min` },
+    { id: "activeEnergyKcal", label: "Active calories", target: targets.activeEnergyKcal, targetLabel: `${targets.activeEnergyKcal.toLocaleString("en-US")} kcal`, weight: 15, unit: "kcal", key: "active_energy_kcal", formula: targetSource === "nutrition_targets" ? "goal completion · app calorie target" : `goal completion · default target ${targets.activeEnergyKcal.toLocaleString("en-US")} kcal (no target set)` },
+    { id: "steps", label: "Steps", target: targets.steps, targetLabel: `${targets.steps.toLocaleString("en-US")} steps`, weight: 10, unit: "steps", key: "steps", formula: `goal completion · target ${targets.steps.toLocaleString("en-US")} steps` },
   ];
 }
 
@@ -53,15 +53,14 @@ function activityScoreBreakdown(latest: HealthMetricDay | undefined, targets: Ef
   if (!latest) return null;
   const values = definitions.map((component) => ({ ...component, value: latest[component.key] as number | null }));
   const result = calculateEffortScoreFromAvailable({ zoneMinutes: latest.zone_minutes, activeEnergyKcal: latest.active_energy_kcal, exerciseMinutes: latest.exercise_minutes, steps: latest.steps }, { activeEnergyKcalTarget: targets.activeEnergyKcal });
-  const availableWeight = values.filter((component) => measured(component.value)).reduce((sum, component) => sum + component.weight, 0);
   const components = values.map((component) => {
     const normalizedValue = normalizeEffortTargetValue(component.value, component.target);
-    const scoreNormalizedValue = measured(component.value) ? Math.min(1, Math.max(0, diminishingLoad(component.value, component.target))) : null;
+    const scoreNormalizedValue = measured(component.value) ? Math.min(1, Math.max(0, activityGoalProgress(component.value, component.target))) : null;
     return {
       id: component.id, label: component.label, weight: component.weight, sourceValueLabel: formatComponentValue(component.value, component.unit), targetLabel: component.targetLabel, normalizedValue,
       scoreNormalizedValue,
-      contribution: scoreNormalizedValue === null || availableWeight === 0 ? null : scoreNormalizedValue * component.weight / availableWeight * 100,
-      formula: component.formula, normalization: `visual gauge ${normalizedValue === null ? "unavailable" : `${Math.round(normalizedValue * 100)} /100`} · diminishing sub-score ${scoreNormalizedValue === null ? "unavailable" : `${Math.round(scoreNormalizedValue * 100)} /100`}`,
+      contribution: scoreNormalizedValue === null ? null : scoreNormalizedValue * component.weight,
+      formula: component.formula, normalization: `visual gauge ${normalizedValue === null ? "unavailable" : `${Math.round(normalizedValue * 100)} /100`} · goal completion ${scoreNormalizedValue === null ? "unavailable" : `${Math.round(scoreNormalizedValue * 100)} /100`}`,
     };
   });
   return { score: result.score, algorithmVersion: result.algorithmVersion, coverage: result.coverage, components };
@@ -131,7 +130,7 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
   };
   const weeklyLoadWindow = latest ? finiteValuesInWindow(activityDays, "weekly_load", latest.metric_date) : [];
   const weeklyLoadNormalized = latest ? normalizeEffortContextValue(latest.weekly_load, weeklyLoadWindow) : null;
-  const regularity = activityRegularity(activityDays.slice(-28).map((day) => ({ steps: day.steps, activeZoneMinutes: day.zone_minutes, activeMinutes: day.active_minutes, effortScore: effortScores.findLast((item) => item.score_date === day.metric_date)?.score ?? null })));
+  const regularity = activityRegularity(activityDays.slice(-28).map((day) => ({ steps: day.steps, activeZoneMinutes: day.zone_minutes, activeMinutes: day.active_minutes, effortScore: activityLoadFromScoreRow(effortScores.findLast((item) => item.score_date === day.metric_date)) })));
   const scoreCoverage = score === null ? null : scoreBreakdown?.coverage ?? null;
   const freshness = calculateSignalFreshness({ measuredAt: latestSourceMeasuredAt(latest), importedAt: data.importedAt, coverage: scoreCoverage ?? 0 });
   const sourceLabel = healthSourceLabel(latest);
@@ -142,7 +141,7 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
     return {
       id: component.id, label: component.label, normalizedValue: breakdown?.normalizedValue ?? null, valueLabel: formatComponentValue(value, component.unit), averageLabel: comparisonLabel(average, component.unit),
       definition: component.id === "zoneMinutes" ? "Cumulative time in measured intensity zones." : component.id === "exerciseMinutes" ? "Exercise duration recorded by health source." : component.id === "activeEnergyKcal" ? "Active energy estimated by health source." : "Number of steps recorded during the day.",
-      readingDirection: "Higher = more load achieved", scoreRole: `Activity score component · ${component.weight}%`, scoreWeight: component.weight, scoreFormula: component.formula, scoreNormalization: "diminishing returns, then weighting", scoreContribution: breakdown?.contribution ?? null, comparison: comparison(value, average), comparisonLabel: comparisonLabel(average, component.unit), comparisonTone: metricTone(value, average, "higher_is_better"),
+      readingDirection: "100% = daily goal reached", scoreRole: `Activity score component · ${component.weight}%`, scoreWeight: component.weight, scoreFormula: component.formula, scoreNormalization: "goal completion capped at 100%, then weighting", scoreContribution: breakdown?.contribution ?? null, comparison: comparison(value, average), comparisonLabel: comparisonLabel(average, component.unit), comparisonTone: metricTone(value, average, "higher_is_better"),
       sourceLabel,
     };
   }), {

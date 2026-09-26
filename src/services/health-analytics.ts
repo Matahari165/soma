@@ -256,7 +256,7 @@ export function buildPreviewAnalytics(): HealthAnalytics {
           score_date: day.metric_date,
           kind: "effort" as const,
           score: effort.score,
-          drivers: { coverage: effort.coverage },
+          drivers: { coverage: effort.coverage, activityLoadScore: effort.loadScore },
           algorithm_version: effort.algorithmVersion,
         };
       })(),

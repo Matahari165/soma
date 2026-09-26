@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  activityLoadFromScoreRow,
   calculateEffortScore,
   calculateEffortScoreFromAvailable,
   DEFAULT_EFFORT_ACTIVE_ENERGY_KCAL_TARGET,
-  diminishingLoad,
+  activityGoalProgress,
   effortScoreTargets,
   EFFORT_STEPS_TARGET,
   resolveActiveEnergyKcalTarget,
@@ -86,10 +87,10 @@ describe("score engines", () => {
     expect(result.score).toBeGreaterThan(70);
   });
 
-  it("calculates accomplished load without a prescriptive target", () => {
+  it("calculates daily goal completion", () => {
     const effort = calculateEffortScore({ zoneMinutes: 45, activeEnergyKcal: 400, exerciseMinutes: 50, steps: 8000 });
     expect(effort.score).toBeGreaterThan(0);
-    expect(effort.algorithmVersion).toBe("effort-v3");
+    expect(effort.algorithmVersion).toBe("effort-v4");
   });
 
   it("increases the daily score as cumulative activity rises with stable coverage", () => {
@@ -110,9 +111,9 @@ describe("score engines", () => {
 
   it("uses an explicit active-energy target in both score modes", () => {
     const measurements = { zoneMinutes: 75, activeEnergyKcal: 1_000, exerciseMinutes: 60, steps: 10_000 };
-    expect(calculateEffortScore(measurements, { activeEnergyKcalTarget: 1_000 }).score).toBe(50);
-    expect(calculateEffortScoreFromAvailable(measurements, { activeEnergyKcalTarget: 1_000 })).toMatchObject({ score: 50, coverage: 1 });
-    expect(calculateEffortScore(measurements).score).toBeGreaterThan(50);
+    expect(calculateEffortScore(measurements, { activeEnergyKcalTarget: 1_000 }).score).toBe(100);
+    expect(calculateEffortScoreFromAvailable(measurements, { activeEnergyKcalTarget: 1_000 })).toMatchObject({ score: 100, coverage: 1 });
+    expect(calculateEffortScore(measurements, { activeEnergyKcalTarget: 2_000 }).score).toBeLessThan(100);
   });
 
   it("does not convert missing activity into a zero effort score", () => {
@@ -127,17 +128,39 @@ describe("score engines", () => {
     expect(calculateEffortScoreFromAvailable({ zoneMinutes: null, activeEnergyKcal: null, exerciseMinutes: null, steps: 4_000 }).score).toBeNull();
   });
 
-  it("normalizes a sufficiently covered score without turning absent components into zero", () => {
-    expect(calculateEffortScoreFromAvailable({ zoneMinutes: 75, activeEnergyKcal: null, exerciseMinutes: null, steps: EFFORT_STEPS_TARGET })).toMatchObject({ score: 50, coverage: 0.5 });
+  it("withholds an achievement score when any goal is unobserved", () => {
+    expect(calculateEffortScoreFromAvailable({ zoneMinutes: 75, activeEnergyKcal: null, exerciseMinutes: null, steps: EFFORT_STEPS_TARGET })).toMatchObject({ score: null, coverage: 0.5 });
   });
 
-  it("keeps adding accomplished load above each reference with diminishing returns", () => {
-    expect(diminishingLoad(EFFORT_STEPS_TARGET, EFFORT_STEPS_TARGET)).toBeCloseTo(.5);
-    expect(diminishingLoad(20_000, EFFORT_STEPS_TARGET)).toBeCloseTo(.75);
-    expect(diminishingLoad(30_000, EFFORT_STEPS_TARGET)).toBeCloseTo(.875);
-    const reference = calculateEffortScore({ zoneMinutes: 75, activeEnergyKcal: 700, exerciseMinutes: 60, steps: EFFORT_STEPS_TARGET });
-    const doubled = calculateEffortScore({ zoneMinutes: 150, activeEnergyKcal: 1_400, exerciseMinutes: 120, steps: 20_000 });
-    expect(reference).toMatchObject({ score: 50, algorithmVersion: "effort-v3" });
-    expect(doubled.score).toBe(75);
+  it("awards 100 at the goals and caps each component independently", () => {
+    expect(activityGoalProgress(EFFORT_STEPS_TARGET, EFFORT_STEPS_TARGET)).toBe(1);
+    expect(activityGoalProgress(20_000, EFFORT_STEPS_TARGET)).toBe(1);
+    expect(activityGoalProgress(5_000, EFFORT_STEPS_TARGET)).toBe(.5);
+    const reference = { zoneMinutes: 75, activeEnergyKcal: 700, exerciseMinutes: 60, steps: EFFORT_STEPS_TARGET };
+    expect(calculateEffortScore(reference)).toMatchObject({ score: 100, algorithmVersion: "effort-v4" });
+    expect(calculateEffortScore({ zoneMinutes: 150, activeEnergyKcal: 1_400, exerciseMinutes: 120, steps: 20_000 }).score).toBe(100);
+    expect(calculateEffortScore({ ...reference, steps: 5_000 }).score).toBe(95);
+    expect(calculateEffortScore({ ...reference, zoneMinutes: 150, steps: 5_000 }).score).toBe(95);
+    expect(calculateEffortScore({ zoneMinutes: 37.5, activeEnergyKcal: 350, exerciseMinutes: 30, steps: 5_000 }).score).toBe(50);
   });
+
+  it("never rounds an unfinished goal up to 100", () => {
+    const reference = { zoneMinutes: 75, activeEnergyKcal: 700, exerciseMinutes: 60, steps: 10_000 };
+    for (const key of Object.keys(reference) as (keyof typeof reference)[]) {
+      const unfinished = { ...reference, [key]: reference[key] - .01 };
+      expect(calculateEffortScore(unfinished).score).toBe(99);
+      expect(calculateEffortScoreFromAvailable(unfinished).score).toBe(99);
+      expect(calculateEffortScoreFromAvailable({ ...reference, [key]: null })).toMatchObject({ score: null, coverage: .75 });
+    }
+  });
+  it("keeps activity load on its original scale independently of goal completion", () => {
+    const goals = { zoneMinutes: 75, exerciseMinutes: 60, activeEnergyKcal: 700, steps: 10_000 };
+    expect(calculateEffortScoreFromAvailable(goals)).toMatchObject({ score: 100, loadScore: 50 });
+    expect(calculateEffortScoreFromAvailable({ zoneMinutes: 150, exerciseMinutes: 120, activeEnergyKcal: 1_400, steps: 20_000 })).toMatchObject({ score: 100, loadScore: 75 });
+    expect(calculateEffortScoreFromAvailable({ ...goals, steps: null })).toMatchObject({ score: null, loadScore: 50, coverage: .75 });
+    expect(activityLoadFromScoreRow({ score: 100, drivers: { activityLoadScore: 50 } })).toBe(50);
+    expect(activityLoadFromScoreRow({ score: 29, drivers: { coverage: 1 } })).toBe(29);
+    expect(activityLoadFromScoreRow({ score: 100, drivers: { activityLoadScore: null } })).toBeNull();
+  });
+
 });
