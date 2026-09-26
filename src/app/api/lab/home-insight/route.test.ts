@@ -18,6 +18,8 @@ const request = () => new Request("https://soma.example/api/lab/home-insight", {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-09-25T08:00:00Z"));
   getCurrentUser.mockResolvedValue({ id: "test-user" });
   isLocalPreviewMode.mockReturnValue(false);
   createPersonalLabStream.mockReturnValue({ overview: Promise.resolve({ todayDate: "2026-09-25", timeZone: "Europe/Paris", today: { sleepMinutes: 460, recoveryScore: 65, effortScore: null, energy: null, activity: null } }) });
