@@ -230,10 +230,6 @@ export function mergePersonalLabMetricRefresh(values: PersonalLabMetricValues, n
   };
 }
 
-function strainScore(value: number | null) {
-  return value === null ? null : value * 0.21;
-}
-
 function metricDuration(value: number | null) {
   if (value === null) return "—";
   return `${Math.floor(value / 60)}h ${Math.round(value % 60).toString().padStart(2, "0")}`;
@@ -248,8 +244,7 @@ function metricCalories(value: number | null) {
 }
 
 function metricStrain(value: number | null) {
-  const score = strainScore(value);
-  return score === null ? "—" : `${score.toFixed(1)} / 21.0`;
+  return value === null ? "—" : `${Math.round(value)} / 100`;
 }
 
 function metricValue(key: PersonalLabMetricKey, value: number | null) {
@@ -265,9 +260,8 @@ function accessibleHistoryDate(date: string) {
 
 function visibleMetricValue(key: PersonalLabMetricKey, value: number | null) {
   if (key !== "strain") return metricValue(key, value);
-  const score = strainScore(value);
-  if (score === null) return "—";
-  return <><span>{score.toFixed(1)}</span><small className="personal-lab-metric__denominator" aria-hidden="true">/21</small></>;
+  if (value === null) return "—";
+  return <><span>{Math.round(value)}</span><small className="personal-lab-metric__denominator" aria-hidden="true">/100</small></>;
 }
 
 function signedDelta(key: PersonalLabMetricKey, value: number | null, averageValue: number | null, calorieTarget?: number | null) {
@@ -275,7 +269,7 @@ function signedDelta(key: PersonalLabMetricKey, value: number | null, averageVal
   if (value === null || averageValue === null) return `${targetLabel}30d avg —`;
   const delta = value - averageValue;
   if (key === "sleep") return `30d avg ${metricDuration(averageValue)} · ${delta >= 0 ? "+" : "−"}${metricDuration(Math.abs(delta))}`;
-  if (key === "strain") return `30d avg ${metricStrain(averageValue)} · ${delta >= 0 ? "+" : "−"}${Math.abs(delta * 0.21).toFixed(1)}`;
+  if (key === "strain") return `30d avg ${metricStrain(averageValue)} · ${delta >= 0 ? "+" : "−"}${Math.round(Math.abs(delta))}`;
   if (key === "energy") return `${targetLabel}30d avg ${metricCalories(averageValue)} · ${delta >= 0 ? "+" : "−"}${metricCalories(Math.abs(delta))}`;
   return `30d avg ${metricNumber(averageValue)} · ${delta >= 0 ? "+" : "−"}${Math.round(Math.abs(delta))}`;
 }

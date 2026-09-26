@@ -92,6 +92,14 @@ describe("score engines", () => {
     expect(effort.algorithmVersion).toBe("effort-v3");
   });
 
+  it("increases the daily score as cumulative activity rises with stable coverage", () => {
+    const morning = calculateEffortScoreFromAvailable({ zoneMinutes: 4, exerciseMinutes: 0, activeEnergyKcal: 80, steps: 1_200 });
+    const evening = calculateEffortScoreFromAvailable({ zoneMinutes: 28, exerciseMinutes: 35, activeEnergyKcal: 420, steps: 7_800 });
+    expect(morning.coverage).toBe(1);
+    expect(evening.coverage).toBe(1);
+    expect(evening.score).toBeGreaterThan(morning.score!);
+  });
+
   it("exposes the 10,000-step target and keeps the documented active-energy fallback", () => {
     expect(EFFORT_STEPS_TARGET).toBe(10_000);
     expect(effortScoreTargets()).toMatchObject({ steps: 10_000, activeEnergyKcal: DEFAULT_EFFORT_ACTIVE_ENERGY_KCAL_TARGET });
