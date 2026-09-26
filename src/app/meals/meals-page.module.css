@@ -100,7 +100,7 @@
 @media (max-width: 700px) {
   /* Keep the complete radar and score in the opening view. The next section
      begins just below it, without adding a full extra screen of whitespace. */
-  .flow > :first-child { min-height: calc(100svh - 96px); }
+  .page { min-height: var(--soma-mobile-content-height, 100svh); }
   .flow > .journal { margin-inline: -8px; }
 }
 
