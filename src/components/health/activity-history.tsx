@@ -212,8 +212,28 @@ export function ActivityHistory({ exercises, referenceDate }: { exercises: Exerc
   const [period, setPeriod] = useState<ActivityPeriod>(30);
   const [periodOpen, setPeriodOpen] = useState(false);
   const [filtersWereUsed, setFiltersWereUsed] = useState(false);
+  const [history, setHistory] = useState<{ referenceDate: string; exercises: ExerciseSummary[] } | null>(null);
+  const [historyError, setHistoryError] = useState(false);
+  const [historyRetry, setHistoryRetry] = useState(0);
+  const loadedHistory = history?.referenceDate === referenceDate ? history.exercises : null;
+  const historyLoading = filtersWereUsed && loadedHistory === null && !historyError;
+  useEffect(() => {
+    if (!filtersWereUsed || loadedHistory !== null) return;
+    const controller = new AbortController();
+    const from = new Date(`${referenceDate}T12:00:00Z`);
+    from.setUTCDate(from.getUTCDate() - 179);
+    const params = new URLSearchParams({ from: from.toISOString().slice(0, 10), to: referenceDate });
+    void fetch(`/api/health/activity-history?${params}`, { signal: controller.signal, cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Exercise history unavailable");
+        return response.json() as Promise<{ exercises: ExerciseSummary[] }>;
+      }).then((value) => {
+        if (!controller.signal.aborted) { setHistory({ referenceDate, exercises: value.exercises }); setHistoryError(false); }
+      }).catch(() => { if (!controller.signal.aborted) setHistoryError(true); });
+    return () => controller.abort();
+  }, [filtersWereUsed, referenceDate, loadedHistory, historyRetry]);
   const periodPickerRef = useRef<HTMLDivElement>(null);
-  const visible = exercises.filter((exercise) => exerciseMatchesFilter(exercise.type, filter) && exerciseIsInPeriod(exercise.date, referenceDate, period));
+  const visible = (filtersWereUsed ? loadedHistory ?? [] : exercises).filter((exercise) => exerciseMatchesFilter(exercise.type, filter) && exerciseIsInPeriod(exercise.date, referenceDate, period));
   const displayed = displayedActivities(visible, filtersWereUsed);
   const averages = useMemo(() => activityAverages(displayed), [displayed]);
   const periodLabel = periods.find((item) => item.days === period)?.label ?? "Period";
@@ -248,7 +268,7 @@ export function ActivityHistory({ exercises, referenceDate }: { exercises: Exerc
         </div>
       </div>
     </div>
-    {displayed.length ? <>
+    {historyLoading ? <p className={styles.activityHistoryEmpty} role="status">Loading workout history…</p> : historyError ? <div className={styles.activityHistoryEmpty} role="alert"><p>Workout history could not be loaded.</p><button type="button" className="secondary-button" onClick={() => { setHistoryError(false); setHistoryRetry((value) => value + 1); }}>Retry</button></div> : displayed.length ? <>
       <div className={`${styles.activityHistoryRow} ${styles.activityAverageRow}`} role="group" aria-label="Average for displayed workouts">
         <div className={styles.activityHistoryIdentity}><strong>Average</strong><span>{filtersWereUsed ? `${periodLabel} · current filters` : displayed.length}</span></div>
         <dl className={styles.activityHistoryMetrics}>

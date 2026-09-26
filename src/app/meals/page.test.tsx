@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 
 const state = vi.hoisted(() => ({
   getCurrentUser: vi.fn(),
+  listMealRecipes: vi.fn().mockResolvedValue([]),
   createAdmin: vi.fn(),
   listMeals: vi.fn(),
   loadConfirmedMealRecords: vi.fn(),
@@ -15,7 +16,7 @@ vi.mock("@/lib/cloudflare/db", () => ({ createCloudflareAdminClient: state.creat
 vi.mock("@/services/meals", () => ({ listMeals: state.listMeals, loadConfirmedMealRecords: state.loadConfirmedMealRecords }));
 vi.mock("@/services/meal-api", () => ({ mealToApi: (meal: unknown) => meal }));
 vi.mock("@/services/meal-recipes", () => ({
-  listMealRecipes: vi.fn().mockResolvedValue([]),
+  listMealRecipes: state.listMealRecipes,
   MealRecipeServiceError: class MealRecipeServiceError extends Error {},
 }));
 vi.mock("@/services/nutrition-targets", () => ({ loadDailyNutritionTargetsForUser: vi.fn().mockResolvedValue({ targets: {}, effectiveTargets: {} }) }));
@@ -78,6 +79,8 @@ describe("MealsPage initial meal reads", () => {
     ]);
     state.loadConfirmedMealRecords.mockResolvedValue([]);
     state.mappedMeals = [];
+    // A pending recipe read must not prevent journal + score from rendering.
+    state.listMealRecipes.mockReturnValue(new Promise(() => {}));
 
     const page = await MealsPage({ searchParams: Promise.resolve({ date: "2026-09-15" }) });
     const content = (page as ReactElement<{ children: ReactElement }>).props.children;

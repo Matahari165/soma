@@ -33,7 +33,7 @@ vi.mock("./nutrition-targets", () => ({
   loadNutritionTargetsStateForUser: () => Promise.resolve(null),
 }));
 
-import { exerciseSummaryFromRecord, getActivityAnalytics, getRecoveryAnalytics, getSleepAnalytics, heartRateWindowForCivilDate } from "./health-analytics";
+import { exerciseSummaryFromRecord, allImportedExercises, getActivityAnalytics, getRecoveryAnalytics, getSleepAnalytics, heartRateWindowForCivilDate } from "./health-analytics";
 
 function resultFor(query: QueryCall): QueryResult {
   if (testState.errorTables.has(query.table)) return { data: null, error: { message: "temporary failure" } };
@@ -46,7 +46,7 @@ function resultFor(query: QueryCall): QueryResult {
 
   const dataType = query.filters.find((filter) => filter.method === "eq" && filter.column === "data_type")?.value;
   if (dataType === "sleep") return { data: testState.sleeps, error: null };
-  if (dataType === "exercise") return { data: query.range ? testState.exercises.slice(query.range[0], query.range[1] + 1) : testState.exercises, error: null };
+  if (dataType === "exercise") return { data: query.range ? testState.exercises.slice(query.range[0], query.range[1] + 1) : testState.exercises.slice(0, query.limits.at(-1)), error: null };
   if (dataType === "heart-rate") return { data: testState.heartRates, error: null };
   return { data: [], error: null };
 }
@@ -61,6 +61,7 @@ function createQuery(table: string) {
   chain.select = vi.fn(() => chain);
   chain.eq = vi.fn((column: string, value: unknown) => chain("eq", column, value));
   chain.gte = vi.fn((column: string, value: unknown) => chain("gte", column, value));
+  chain.lte = vi.fn((column: string, value: unknown) => chain("lte", column, value));
   chain.lt = vi.fn((column: string, value: unknown) => chain("lt", column, value));
   chain.order = vi.fn((column: string, options: unknown) => {
     void column;
@@ -163,17 +164,33 @@ describe("health analytics first-screen loading", () => {
     expect(heartRateWindowForCivilDate("not-a-date", "Europe/Paris")).toBeNull();
   });
 
-  it("keeps daily metrics bounded but loads the complete exercise history", async () => {
+  it("loads only three latest workouts at opening, without a discarded or full-history query", async () => {
     testState.exercises = Array.from({ length: 501 }, (_, index) => ({ source_record_id: `exercise-${index}`, civil_date: "2026-09-10", start_time: null, end_time: null, payload: { exercise: { exerciseType: "RUNNING" } } }));
     const analytics = await getActivityAnalytics();
-
     expect(queriesFor("daily_health_metrics")[0]?.limits).toEqual([30]);
     expect(queriesFor("daily_scores")[0]?.limits).toEqual([30]);
-    const exerciseQuery = queriesFor("health_records").find((query) => query.filters.some((filter) => filter.column === "data_type" && filter.value === "exercise"));
-    expect(exerciseQuery?.limits).toEqual([20]);
-    expect(analytics.exercises).toHaveLength(501);
-    expect(queriesFor("health_records").filter((query) => query.range).map((query) => query.range)).toEqual([[0, 499], [500, 999]]);
-    expect(queriesFor("health_records").some((query) => query.filters.some((filter) => filter.value === "heart-rate"))).toBe(false);
+    const exerciseQueries = queriesFor("health_records").filter((query) => query.filters.some((filter) => filter.column === "data_type" && filter.value === "exercise"));
+    expect(exerciseQueries).toHaveLength(1);
+    expect(exerciseQueries[0].limits).toEqual([3]);
+    expect(analytics.exercises).toHaveLength(3);
+    expect(exerciseQueries[0].range).toBeUndefined();
+  });
+
+  it("retains the latest workout when it predates the filter windows", async () => {
+    testState.exercises = [{ source_record_id: "old-exercise", civil_date: "2025-01-01", start_time: null, end_time: null, payload: {} }];
+    expect((await getActivityAnalytics()).exercises[0].date).toBe("2025-01-01");
+  });
+
+  it("paginates filtered history without truncating periods with more than 500 workouts", async () => {
+    testState.exercises = Array.from({ length: 501 }, (_, index) => ({ source_record_id: `exercise-${index}`, civil_date: "2026-09-10", start_time: null, end_time: null, payload: {} }));
+    expect(await allImportedExercises("user-1", { from: "2026-03-30", to: "2026-09-25" })).toHaveLength(501);
+    const queries = queriesFor("health_records");
+    expect(queries.map((query) => query.range)).toEqual([[0, 499], [500, 999]]);
+    for (const query of queries) expect(query.filters).toEqual(expect.arrayContaining([
+      { method: "eq", column: "user_id", value: "user-1" },
+      { method: "gte", column: "civil_date", value: "2026-03-30" },
+      { method: "lte", column: "civil_date", value: "2026-09-25" },
+    ]));
   });
 
   it("preserves measured maximum heart rate and leaves it unavailable when absent", () => {
