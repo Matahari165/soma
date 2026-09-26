@@ -522,7 +522,7 @@
   .trendGrid :global(.health-chart-average-label) { text-align: right; }
   .trendGrid :global(.chart-axis) { padding-inline-start: calc((100% - 64px) * .04); padding-inline-end: calc(64px + (100% - 64px) * .04); }
   .root :global(.health-detail-page--sleep) { gap: 24px; padding: 24px 16px 48px; overflow-x: clip; }
-  .overviewSection { min-height: calc(100svh - 174px); align-items: start; }
+  .overviewSection { min-height: calc(var(--soma-mobile-content-height, 100svh) - 84px); align-items: start; }
   .readingsGrid { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 12px; }
   .reading { width: 100%; }
   .reading summary { width: 100%; min-height: 110px; }
