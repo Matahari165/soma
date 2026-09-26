@@ -284,6 +284,8 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   const initialDataPropRef = useRef(initialData);
   const initialDateRef = useRef(initialDate);
   const activeMealDateRef = useRef(selectedDate);
+  const selectedDateRef = useRef(selectedDate);
+  selectedDateRef.current = selectedDate;
   const transitionLoadStartedRef = useRef<string | null>(null);
   const loadRequestId = useRef(0);
   // Les mutations sont suivies par créneau : une analyse sur un repas ne bloque
@@ -301,7 +303,29 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
 
   const stashLocalDrafts = useCallback((dateKey: string, meals: MealJournalData["meals"]) => {
     const drafts = localMealDraftsForStash(meals);
+    const cached = draftCache.current.get(dateKey);
+    for (const slot of MEAL_SLOTS) {
+      const meal = meals[slot];
+      if (meal && inFlightSlots.current.has(slot) && cached?.[slot]?.id === meal.id) drafts[slot] = cached[slot];
+    }
     if (Object.values(drafts).some((meal) => meal !== null)) draftCache.current.set(dateKey, drafts);
+    else draftCache.current.delete(dateKey);
+  }, []);
+
+  const updateCachedMealForDate = useCallback((dateKey: string, slot: MealSlot, fallback: MealRecord, update: (meal: MealRecord) => MealRecord) => {
+    const meals = draftCache.current.get(dateKey) ?? (dataRef.current?.date === dateKey ? dataRef.current.meals : emptyData(dateKey).meals);
+    const nextMeal = update(meals[slot] ?? fallback);
+    const drafts = localMealDraftsForStash({ ...meals, [slot]: nextMeal });
+    if ((nextMeal.status === "draft" || nextMeal.status === "error") && (nextMeal.note.trim() || nextMeal.photos.length)) drafts[slot] = nextMeal;
+    if (Object.values(drafts).some((meal) => meal !== null)) draftCache.current.set(dateKey, drafts);
+    else draftCache.current.delete(dateKey);
+  }, []);
+
+  const clearCachedMealForDate = useCallback((dateKey: string, slot: MealSlot, mealIds: readonly string[]) => {
+    const meals = draftCache.current.get(dateKey);
+    if (!meals || !meals[slot] || !mealIds.includes(meals[slot]!.id)) return;
+    const nextMeals = { ...meals, [slot]: null };
+    if (Object.values(nextMeals).some((meal) => meal !== null)) draftCache.current.set(dateKey, nextMeals);
     else draftCache.current.delete(dateKey);
   }, []);
 
@@ -764,8 +788,18 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     });
   }, [selectedDate]);
 
+  const updateMealOnDate = useCallback((dateKey: string, slot: MealSlot, update: (meal: MealRecord) => MealRecord) => {
+    if (selectedDateRef.current !== dateKey) return;
+    setData((current) => {
+      if (!current || current.date !== dateKey) return current;
+      const meal = current.meals[slot] ?? emptyMeal(dateKey, slot);
+      return { ...current, meals: { ...current.meals, [slot]: update(meal) } };
+    });
+  }, []);
+
   const changeEntryState = async (slot: MealSlot, entryState: MealEntryState) => {
     if (inFlightSlots.current.has(slot)) return;
+    const operationDate = selectedDate;
     const current = dataRef.current?.meals[slot] ?? emptyMeal(selectedDate, slot);
     const previous = current;
     inFlightSlots.current.add(slot);
@@ -780,15 +814,20 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       const saved = await (api?.setEntryState
         ? api.setEntryState({ ...current, entryState }, entryState)
         : defaultSetEntryState({ ...current, entryState }, entryState));
-      const nextMeal = normalizeMeal({ ...current, ...saved, entryState }, selectedDate, slot);
-      setData((loaded) => loaded ? { ...loaded, meals: { ...loaded.meals, [slot]: nextMeal } } : loaded);
-      setStatusMessage(entryState === "skipped"
-        ? `${SLOT_LABELS[slot]} marked as "skipped". This slot will not trigger analysis.`
-        : `${SLOT_LABELS[slot]} restored. You can now log details.`);
+      clearCachedMealForDate(operationDate, slot, [current.id, saved.id]);
+      if (selectedDateRef.current === operationDate) {
+        const nextMeal = normalizeMeal({ ...current, ...saved, entryState }, operationDate, slot);
+        setData((loaded) => loaded?.date === operationDate ? { ...loaded, meals: { ...loaded.meals, [slot]: nextMeal } } : loaded);
+        setStatusMessage(entryState === "skipped"
+          ? `${SLOT_LABELS[slot]} marked as "skipped". This slot will not trigger analysis.`
+          : `${SLOT_LABELS[slot]} restored. You can now log details.`);
+      }
       return true;
     } catch (error) {
-      setData((loaded) => loaded ? { ...loaded, meals: { ...loaded.meals, [slot]: previous } } : loaded);
-      setConfirmError((errors) => ({ ...errors, [slot]: error instanceof Error ? error.message : "The slot status could not be saved." }));
+      if (selectedDateRef.current === operationDate) {
+        setData((loaded) => loaded?.date === operationDate ? { ...loaded, meals: { ...loaded.meals, [slot]: previous } } : loaded);
+        setConfirmError((errors) => ({ ...errors, [slot]: error instanceof Error ? error.message : "The slot status could not be saved." }));
+      }
       return false;
     } finally {
       inFlightSlots.current.delete(slot);
@@ -823,6 +862,8 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
 
   const addFiles = async (slot: MealSlot, incoming: File[]) => {
     if (!incoming.length || inFlightSlots.current.has(slot)) return;
+    const operationDate = selectedDate;
+    const startingData = dataRef.current?.date === operationDate ? dataRef.current : emptyData(operationDate);
     inFlightSlots.current.add(slot);
     setProcessingFiles(true);
     setFileError(null);
@@ -838,16 +879,19 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       console.info("[meal-analysis] stage", { stage: "normalization", durationMs: Date.now() - normalizationStartedAt });
     } catch (error) {
       console.warn("[meal-analysis] stage failed", { stage: "normalization", durationMs: Date.now() - normalizationStartedAt });
-      setFileError(error instanceof Error ? error.message : "This photo could not be prepared. Please retake it in JPEG or PNG format.");
+      if (selectedDateRef.current === operationDate) setFileError(error instanceof Error ? error.message : "This photo could not be prepared. Please retake it in JPEG or PNG format.");
       setProcessingFiles(false);
       inFlightSlots.current.delete(slot);
       return;
     }
-    const currentMeal = dataRef.current?.meals[slot] ?? emptyMeal(selectedDate, slot);
+    const targetMeals = dataRef.current?.date === operationDate
+      ? dataRef.current.meals
+      : draftCache.current.get(operationDate) ?? startingData.meals;
+    const currentMeal = targetMeals[slot] ?? emptyMeal(operationDate, slot);
     const activePhotoCount = currentMeal.status === "confirmed" ? 0 : currentMeal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available").length;
     const limitMessage = mealPhotoLimitMessage(activePhotoCount, prepared.length);
     const accepted = prepared.slice(0, Math.max(0, MAX_MEAL_PHOTOS - activePhotoCount));
-    if (limitMessage) setFileError(limitMessage);
+    if (limitMessage && selectedDateRef.current === operationDate) setFileError(limitMessage);
     const newPhotos = accepted.map((file) => {
       const id = randomId("photo");
       const url = URL.createObjectURL(file);
@@ -856,7 +900,12 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     });
     if (newPhotos.length) {
       setFilesByPhotoId((files) => ({ ...files, ...Object.fromEntries(newPhotos.map((photo, index) => [photo.id, accepted[index]])) }));
-      updateMeal(slot, (meal) => ({ ...meal, photos: [...meal.photos, ...newPhotos], status: "draft", error: null }));
+      const nextMeal = { ...currentMeal, photos: [...currentMeal.photos, ...newPhotos], status: "draft" as const, error: null };
+      if (selectedDateRef.current === operationDate && dataRef.current?.date === operationDate) {
+        updateMealOnDate(operationDate, slot, () => nextMeal);
+      } else {
+        updateCachedMealForDate(operationDate, slot, currentMeal, () => nextMeal);
+      }
     }
     setProcessingFiles(false);
     inFlightSlots.current.delete(slot);
@@ -917,28 +966,36 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       pendingDeleteTrigger.current?.focus();
       return;
     }
+    const operationDate = meal.date;
     inFlightSlots.current.add(pending.slot);
     setSavingSlot(pending.slot);
     let mealDeleted = false;
     try {
       if (pending.kind === "meal") {
         await (api?.removeMeal ? api.removeMeal(meal.id) : defaultRemoveMeal(meal.id));
-        setData((current) => current ? { ...current, meals: { ...current.meals, [pending.slot]: null } } : current);
-        setStatusMessage(`${SLOT_LABELS[pending.slot]} deleted.`);
+        clearCachedMealForDate(operationDate, pending.slot, [meal.id]);
+        if (selectedDateRef.current === operationDate) {
+          setData((current) => current?.date === operationDate ? { ...current, meals: { ...current.meals, [pending.slot]: null } } : current);
+          setStatusMessage(`${SLOT_LABELS[pending.slot]} deleted.`);
+        }
         mealDeleted = true;
       } else {
         await (api?.removePhoto ? api.removePhoto(meal.id, pending.photoId) : defaultRemovePhoto(meal.id, pending.photoId));
-        removePhotoFromState(pending.slot, pending.photoId);
+        if (selectedDateRef.current === operationDate) removePhotoFromState(pending.slot, pending.photoId);
+        else updateCachedMealForDate(operationDate, pending.slot, meal, (current) => ({
+          ...current,
+          photos: current.photos.filter((photo) => photo.id !== pending.photoId),
+        }));
       }
     } catch (error) {
       const fallback = pending.kind === "meal" ? "This meal could not be deleted." : "This photo could not be deleted.";
-      setFileError(error instanceof Error ? error.message : fallback);
+      if (selectedDateRef.current === operationDate) setFileError(error instanceof Error ? error.message : fallback);
     } finally {
       inFlightSlots.current.delete(pending.slot);
       setSavingSlot(null);
-      if (mealDeleted && typeof window !== "undefined") {
+      if (selectedDateRef.current === operationDate && mealDeleted && typeof window !== "undefined") {
         window.requestAnimationFrame(() => document.getElementById(`meal-${pending.slot}-title`)?.focus({ preventScroll: true }));
-      } else {
+      } else if (selectedDateRef.current === operationDate) {
         pendingDeleteTrigger.current?.focus();
       }
     }
@@ -950,6 +1007,8 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
 
   const setPhotoOrigin = async (slot: MealSlot, photoId: string, origin: MealOrigin) => {
     const meal = data?.meals[slot];
+    if (!meal) return;
+    const operationDate = meal.date;
     updateMeal(slot, (current) => ({
       ...current,
       photos: current.photos.map((photo) => photo.id === photoId ? { ...photo, origin } : photo),
@@ -961,7 +1020,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       if (api?.updatePhotoOrigin) await api.updatePhotoOrigin(meal.id, photoId, origin);
       else await defaultSetPhotoOrigin(meal.id, photoId, origin);
     } catch (error) {
-      setFileError(error instanceof Error ? error.message : "The photo origin could not be saved.");
+      if (selectedDateRef.current === operationDate) setFileError(error instanceof Error ? error.message : "The photo origin could not be saved.");
     }
   };
 
@@ -971,14 +1030,18 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
 
   const saveMeal = async (meal: MealRecord, status: MealStatus = "confirmed", options: { queued?: boolean; announce?: boolean } = {}): Promise<boolean> => {
     if (!options.queued && inFlightSlots.current.has(meal.slot)) return false;
+    const operationDate = meal.date;
     inFlightSlots.current.add(meal.slot);
     setSavingSlot(meal.slot);
     setConfirmError((previous) => ({ ...previous, [meal.slot]: null }));
     try {
       const saved = await (api?.save ? api.save({ ...meal, status }) : defaultSave({ ...meal, status }));
-      const nextMeal = normalizeMeal({ ...meal, ...saved, note: typeof saved.note === "string" ? saved.note : meal.note, status }, selectedDate, meal.slot);
-      setData((current) => current ? { ...current, meals: { ...current.meals, [meal.slot]: nextMeal } } : current);
-      if (!options.queued && options.announce !== false && status === "confirmed") {
+      const nextMeal = normalizeMeal({ ...meal, ...saved, note: typeof saved.note === "string" ? saved.note : meal.note, status }, operationDate, meal.slot);
+      clearCachedMealForDate(operationDate, meal.slot, [meal.id, saved.id]);
+      if (selectedDateRef.current === operationDate) {
+        setData((current) => current?.date === operationDate ? { ...current, meals: { ...current.meals, [meal.slot]: nextMeal } } : current);
+      }
+      if (selectedDateRef.current === operationDate && !options.queued && options.announce !== false && status === "confirmed") {
         setStatusMessage("Meal confirmed. Photo and note can still be updated.");
         if (typeof window !== "undefined") {
           window.requestAnimationFrame(() => {
@@ -988,8 +1051,10 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       }
       return true;
     } catch (error) {
-      setConfirmError((previous) => ({ ...previous, [meal.slot]: error instanceof Error ? error.message : "The meal could not be saved." }));
-      updateMeal(meal.slot, (current) => ({ ...current, status: current.analysis ? "review" : "draft", error: error instanceof Error ? error.message : "The meal could not be saved." }));
+      if (selectedDateRef.current === operationDate) {
+        setConfirmError((previous) => ({ ...previous, [meal.slot]: error instanceof Error ? error.message : "The meal could not be saved." }));
+        updateMealOnDate(operationDate, meal.slot, (current) => ({ ...current, status: current.analysis ? "review" : "draft", error: error instanceof Error ? error.message : "The meal could not be saved." }));
+      }
       return false;
     } finally {
       inFlightSlots.current.delete(meal.slot);
@@ -1000,6 +1065,8 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   const analyzeMeal = async (slot: MealSlot, correction?: MealCorrection) => {
     const meal = dataRef.current?.meals[slot];
     if (!meal || inFlightSlots.current.has(slot)) return;
+    const operationDate = meal.date;
+    if (dataRef.current?.date === operationDate) stashLocalDrafts(operationDate, dataRef.current.meals);
     const activePhotos = meal.status === "confirmed" ? [] : meal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available");
     const hasPhotosForAnalyze = activePhotos.length > 0;
     const hasTextForAnalyze = Boolean(meal.note.trim());
@@ -1021,8 +1088,15 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     updateMeal(slot, (current) => ({ ...current, status: "accepted", error: null }));
     setAnalysisProgress((prev) => ({ ...prev, [slot]: { stage: "connecting", phase: "Connexion…", foods: [] } }));
     try {
+      let persistedMealId = meal.id;
       const reconcileUploadedPhotos = (pairs: Array<{ localPhotoId: string; photo: MealPhoto }>) => {
         const uploadedByLocalId = new Map(pairs.map((pair) => [pair.localPhotoId, pair.photo]));
+        if (selectedDateRef.current !== operationDate) {
+          updateCachedMealForDate(operationDate, slot, meal, (current) => ({
+            ...current,
+            photos: current.photos.map((photo) => uploadedByLocalId.get(photo.id) ?? photo),
+          }));
+        }
         pairs.forEach(({ localPhotoId }) => {
           const localPhoto = meal.photos.find((photo) => photo.id === localPhotoId);
           if (localPhoto && objectUrls.current.has(localPhoto.url)) {
@@ -1035,7 +1109,8 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
           pairs.forEach(({ localPhotoId }) => delete next[localPhotoId]);
           return next;
         });
-        updateMeal(slot, (current) => ({
+        if (selectedDateRef.current !== operationDate) return;
+        updateMealOnDate(operationDate, slot, (current) => ({
           ...current,
           photos: current.photos.map((photo) => uploadedByLocalId.get(photo.id) ?? photo),
         }));
@@ -1045,21 +1120,31 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
         return file ? { photoId: photo.id, file } : null;
       }).filter((entry): entry is { photoId: string; file: File } => Boolean(entry));
       const files = photoFiles.map((entry) => entry.file);
-      const analyzed = await (api?.analyze ? api.analyze({ date: selectedDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }) : defaultAnalyze({ date: selectedDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }, { onMealCreated: (mealId) => updateMeal(slot, (current) => ({ ...current, id: mealId })), onPhotosUploaded: reconcileUploadedPhotos, onProgress: (progress) => setAnalysisProgress((prev) => ({ ...prev, [slot]: progress })) }));
+      const analyzed = await (api?.analyze ? api.analyze({ date: operationDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }) : defaultAnalyze({ date: operationDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }, {
+        onMealCreated: (mealId) => {
+          persistedMealId = mealId;
+          if (selectedDateRef.current === operationDate) updateMealOnDate(operationDate, slot, (current) => ({ ...current, id: mealId }));
+          else updateCachedMealForDate(operationDate, slot, meal, (current) => ({ ...current, id: mealId }));
+        },
+        onPhotosUploaded: reconcileUploadedPhotos,
+        onProgress: (progress) => { if (selectedDateRef.current === operationDate) setAnalysisProgress((prev) => ({ ...prev, [slot]: progress })); },
+      }));
       if (cancelledAnalysisIds.current.has(meal.id)) {
         // Annulation demandée pendant l’envoi : le résultat tardif est ignoré
         // et le brouillon local est conservé tel quel.
-        updateMeal(slot, (current) => ({ ...current, status: current.analysis ? "review" : "draft", error: null }));
+        updateMealOnDate(operationDate, slot, (current) => ({ ...current, status: current.analysis ? "review" : "draft", error: null }));
         return;
       }
+      clearCachedMealForDate(operationDate, slot, [meal.id, persistedMealId]);
+      if (selectedDateRef.current !== operationDate) return;
       const nextStatus = analyzed.status === "error" ? "error" : analyzed.status === "accepted" || analyzed.status === "analyzing"
         ? analyzed.status
         : (analyzed.analysis || analyzed.status === "confirmed")
           ? (analyzed.status === "confirmed" ? "confirmed" : "review")
           : "draft";
-      updateMeal(slot, (current) => ({ ...current, ...normalizeMeal({ ...analyzed, note: typeof analyzed.note === "string" && analyzed.note ? analyzed.note : current.note, photos: analyzed.photos?.length ? analyzed.photos : current.photos, status: nextStatus, error: nextStatus === "error" ? analyzed.error : null }, selectedDate, slot), status: nextStatus }));
+      updateMealOnDate(operationDate, slot, (current) => ({ ...current, ...normalizeMeal({ ...analyzed, note: typeof analyzed.note === "string" && analyzed.note ? analyzed.note : current.note, photos: analyzed.photos?.length ? analyzed.photos : current.photos, status: nextStatus, error: nextStatus === "error" ? analyzed.error : null }, operationDate, slot), status: nextStatus }));
     } catch (error) {
-      updateMeal(slot, (current) => ({ ...current, status: current.analysis ? "review" : "error", error: error instanceof Error ? error.message : "Analysis could not be completed." }));
+      if (selectedDateRef.current === operationDate) updateMealOnDate(operationDate, slot, (current) => ({ ...current, status: current.analysis ? "review" : "error", error: error instanceof Error ? error.message : "Analysis could not be completed." }));
     } finally {
       inFlightSlots.current.delete(slot);
       setAnalyzingSlots((previous) => previous.filter((entry) => entry !== slot));
