@@ -271,3 +271,13 @@ it("rejects raw sleep minutes from model text and formats the fallback as hours 
   const patch = assistantDatabaseRequest.mock.calls.find(([path, options]) => String(path).startsWith("home_soma_insights?") && options?.method === "PATCH");
   expect(patch?.[1].body.status).toBe("failed");
 });
+
+it("does not spend a morning attempt when there are no facts to summarize", async () => {
+  createPersonalLabStream.mockReturnValue({ overview: Promise.resolve({ todayDate: "2026-09-25", timeZone: "Europe/Paris", today: {} }) });
+  const provider = vi.fn();
+  vi.stubGlobal("fetch", provider);
+  const payload = await (await POST(request())).json();
+  expect(payload.text).toContain("Aucune mesure");
+  expect(provider).not.toHaveBeenCalled();
+  expect(assistantDatabaseRequest).not.toHaveBeenCalled();
+});

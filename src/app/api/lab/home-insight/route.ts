@@ -181,7 +181,8 @@ export async function POST(request: Request) {
     const responseTime = new Date().toISOString();
     if (isLocalPreviewMode()) return NextResponse.json({ text: defaultText, source, moment: slot, generatedAt: responseTime, stale: false, preview: true }, { headers });
     if (!process.env.OPENAI_API_KEY) return NextResponse.json({ text: defaultText, source, moment: slot, generatedAt: responseTime, stale: false }, { headers });
-    if (!modelEligible) return NextResponse.json({ text: defaultText, source, moment: slot, generatedAt: responseTime, stale: false, pending: false }, { headers });
+    const hasFacts = Boolean(activitySummary) || [evidence.sleepMinutes, evidence.recoveryScore, evidence.effortScore].some((value) => value !== null);
+    if (!modelEligible || !hasFacts) return NextResponse.json({ text: defaultText, source, moment: slot, generatedAt: responseTime, stale: false, pending: false }, { headers });
 
     const cachePath = "home_soma_insights?select=source_hash,status,insight_text,generated_at,generation_count&user_id=eq." + assistantFilter(user.id) + "&local_date=eq." + day + "&slot=eq." + slot;
     let cached: CachedInsight | null;
