@@ -400,7 +400,7 @@
   .conversationMenu button { min-height: 44px; }
 }
 
-@media (max-width: 360px) {
+@media (max-width: 700px) {
   .composerLine { grid-template-columns: 44px minmax(0, 1fr) repeat(3, 44px); gap: 4px; }
   .composerLine > textarea { grid-column: 1 / -1; grid-row: 1; }
   .composerLine > .attachButton,
