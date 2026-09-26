@@ -1,5 +1,5 @@
 # Dependencies
-node_modules/
+node_modules
 .pnpm-store/
 
 # Next.js
@@ -37,3 +37,7 @@ next-env.d.ts
 .dev.vars
 .impeccable/
 .codex-worktree/
+
+# Local worktrees and Supabase CLI cache
+/.worktrees/
+/supabase/.temp/

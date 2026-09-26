@@ -90,7 +90,7 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
   }
   const today = todayIn(timeZone);
   const requestedDate = typeof params.date === "string" && isIsoDate(params.date) && params.date <= today ? params.date : today;
-  const historyFrom = addDays(requestedDate, -27);
+  const historyFrom = addDays(requestedDate, -29);
 
   const [mealResult, recipeResult, nutritionResult, targetsResult, goalResult] = await Promise.all([
     isLocalPreviewMode()

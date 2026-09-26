@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 
 import { calculateSignalFreshness } from "@/domain/health/freshness";
-import type { HealthAnalytics, HealthMetricDay, ScoreDay } from "@/services/health-analytics";
+import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analytics";
 
 import { averageLast30MeasuredWithCount, formatAverage, healthSourceLabel, latestSourceMeasuredAt, measuredCoverage } from "./health-metric-utils";
 import { HealthPageShell } from "./health-page-shell";
 import { HealthScrollReveal } from "./health-scroll-reveal";
 import { MetricTrendCard } from "./metric-trend-card";
+import { averageLast30RecoveryDriver, averageLast30Scores, compareRecoveryValue } from "./recovery-comparison";
 import type { RecoveryRadarDimension } from "./recovery-radar";
 import { RecoveryRadar } from "./recovery-radar";
 import { RecoveryScorePopover } from "./recovery-score-popover";
@@ -59,19 +60,6 @@ function formatValue(value: number | null, decimals = 0) {
 function scoreDriver(drivers: Record<string, unknown> | undefined, key: string) {
   const value = drivers?.[key];
   return typeof value === "number" && Number.isFinite(value) ? Math.round(value) : null;
-}
-
-function averageLast30Scores(scores: ScoreDay[], kind: ScoreDay["kind"], endDate: string | undefined) {
-  const latestDate = endDate ?? scores.filter((item) => item.kind === kind).map((item) => item.score_date).sort().at(-1);
-  if (!latestDate) return null;
-  const start = new Date(`${latestDate}T12:00:00.000Z`);
-  if (!Number.isFinite(start.getTime())) return null;
-  start.setUTCDate(start.getUTCDate() - 29);
-  const startDate = start.toISOString().slice(0, 10);
-  const values = scores
-    .filter((item) => item.kind === kind && item.score_date >= startDate && item.score_date <= latestDate && typeof item.score === "number" && Number.isFinite(item.score))
-    .map((item) => item.score as number);
-  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 }
 
 function hasRecoveryMeasurement(day: HealthMetricDay) {
@@ -164,11 +152,13 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
     respiratoryRate: latest ? averageLast30MeasuredWithCount(data.days, "respiratory_rate", latest.metric_date) : { value: null, measuredDays: 0 },
   };
   const averages = {
-    hrv: signalAverages.hrv.value,
-    restingHeartRate: signalAverages.restingHeartRate.value,
+    hrvDriver: averageLast30RecoveryDriver(data.scores, "hrv", latest?.metric_date),
+    restingHeartRateDriver: averageLast30RecoveryDriver(data.scores, "restingHeartRate", latest?.metric_date),
+    sleepDriver: averageLast30RecoveryDriver(data.scores, "sleep", latest?.metric_date),
     respiratoryRate: signalAverages.respiratoryRate.value,
     recovery: averageLast30Scores(data.scores, "recovery", latest?.metric_date),
   };
+  const scoreComparison = compareRecoveryValue(score, averages.recovery, "higher");
   const drivers = recoveryScore?.drivers;
   const driverCoverage = Number(drivers?.coverage);
   const coverage = Number.isFinite(driverCoverage)
@@ -183,11 +173,35 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   const detailId = "recovery-radar-detail";
   const detailTitleId = "recovery-radar-detail-title";
   const detailOpen = selectedAxis !== null;
-  const dimensions: RecoveryRadarDimension[] = [
-    { key: "hrv", label: "HRV", score: scoreDriver(drivers, "hrv"), weight: 40, valueLabel: scoreDriver(drivers, "hrv") === null ? undefined : `${scoreDriver(drivers, "hrv")}%`, averageLabel: averages.hrv === null ? undefined : `30-day avg · ${Math.round(averages.hrv)} ms · n=${signalAverages.hrv.measuredDays}`, definition: "Daily heart rate variability reported by health source, compared to your personal baseline. The source does not specify whether it was measured during sleep.", readingDirection: "Higher = better", scoreRole: "Score component · 40%", scoreFormula: "deviation from personal baseline", scoreNormalization: "0–100", scoreContribution: null, sourceLabel },
-    { key: "restingHeartRate", label: "Resting heart rate", score: scoreDriver(drivers, "restingHeartRate"), weight: 30, valueLabel: scoreDriver(drivers, "restingHeartRate") === null ? undefined : `${scoreDriver(drivers, "restingHeartRate")}%`, averageLabel: averages.restingHeartRate === null ? undefined : `30-day avg · ${Math.round(averages.restingHeartRate)} bpm · n=${signalAverages.restingHeartRate.measuredDays}`, definition: "Resting heart rate compared to your personal baseline.", readingDirection: "Lower = better", scoreRole: "Score component · 30%", scoreFormula: "deviation from personal baseline", scoreNormalization: "0–100", scoreContribution: null, sourceLabel },
-    { key: "sleep", label: "Sleep", score: scoreDriver(drivers, "sleep"), weight: 30, valueLabel: scoreDriver(drivers, "sleep") === null ? undefined : `${scoreDriver(drivers, "sleep")}%`, averageLabel: averages.recovery === null ? undefined : `30-day avg · ${Math.round(averages.recovery)} /100`, definition: "Sleep score included as a recovery component.", readingDirection: "Higher = better", scoreRole: "Score component · 30%", scoreFormula: "Soma Sleep score", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Soma" },
-  ];
+  const dimensionInputs = [
+    { key: "hrv", label: "HRV", driverKey: "hrv", average: averages.hrvDriver, weight: 40, cautious: true, definition: "HRV score component based on daily variability reported by the health source. Measurement timing can vary.", readingDirection: "Higher component score tends favorable; HRV measurement context varies.", scoreFormula: "deviation from personal baseline", sourceLabel },
+    { key: "restingHeartRate", label: "Resting heart rate", driverKey: "restingHeartRate", average: averages.restingHeartRateDriver, weight: 30, cautious: false, definition: "Recovery score component derived from resting heart rate compared to your personal baseline.", readingDirection: "Higher component score reflects a lower resting heart rate against baseline.", scoreFormula: "deviation from personal baseline", sourceLabel },
+    { key: "sleep", label: "Sleep", driverKey: "sleep", average: averages.sleepDriver, weight: 30, cautious: false, definition: "Sleep score included as a recovery component.", readingDirection: "Higher = better", scoreFormula: "Soma Sleep score", sourceLabel: "Soma" },
+  ] as const;
+  const dimensions: RecoveryRadarDimension[] = dimensionInputs.map((dimension) => {
+    const value = scoreDriver(drivers, dimension.driverKey);
+    const comparison = compareRecoveryValue(value, dimension.average, "higher", 0, dimension.cautious);
+    const averageLabel = dimension.average.value === null
+      ? "30-day avg unavailable"
+      : `30-day avg · ${Math.round(dimension.average.value)}% · n=${dimension.average.count}`;
+    return {
+      key: dimension.key,
+      label: dimension.label,
+      score: value,
+      weight: dimension.weight,
+      valueLabel: value === null ? undefined : `${value}%`,
+      averageLabel,
+      comparisonLabel: comparison.description,
+      comparisonTone: comparison.tone,
+      definition: dimension.definition,
+      readingDirection: dimension.readingDirection,
+      scoreRole: `Score component · ${dimension.weight}%`,
+      scoreFormula: dimension.scoreFormula,
+      scoreNormalization: "0–100",
+      scoreContribution: null,
+      sourceLabel: dimension.sourceLabel,
+    };
+  });
   const selectedDimension = dimensions.find((dimension) => dimension.key === selectedAxis) ?? null;
   useEffect(() => {
     if (selectedAxis) detailHeadingRef.current?.focus({ preventScroll: true });
@@ -217,7 +231,7 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
       score={score}
       freshness={freshness}
       timezone={data.timezone}
-      heroScore={<span className="sr-only">Recovery score: {scoreText(score)} out of 100. 30-day average: {scoreText(averages.recovery)} out of 100.</span>}
+      heroScore={<span className="sr-only">Recovery score: {scoreText(score)} out of 100. 30-day average: {scoreText(averages.recovery.value)} out of 100 from {averages.recovery.count} measured scores. {scoreComparison.description}.</span>}
     >
       <section className={`${styles.content} health-observatory-content`} aria-label="Recovery content" data-scroll-reveal-root>
         <HealthScrollReveal />
@@ -233,8 +247,9 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
                 </div>
                 {selectedDimension && (
                   <dl className={styles.recoveryDimensionMetrics}>
-                    <div><dt>Current value</dt><dd>{selectedDimension.valueLabel ?? "—"}</dd></div>
+                    <div><dt>Current value</dt><dd data-comparison-tone={selectedDimension.comparisonTone}>{selectedDimension.valueLabel ?? "—"}</dd></div>
                     <div><dt>30-day avg</dt><dd>{selectedDimension.averageLabel ?? "—"}</dd></div>
+                    <div><dt>30-day comparison</dt><dd>{selectedDimension.comparisonLabel ?? "30-day comparison unavailable"}</dd></div>
                     <div><dt>Reading</dt><dd>{selectedDimension.readingDirection ?? "—"}</dd></div>
                     <div><dt>Role</dt><dd>{selectedDimension.scoreRole ?? "—"}</dd></div>
                     <div><dt>Formula</dt><dd>{selectedDimension.scoreFormula ?? "—"}</dd></div>
@@ -249,8 +264,12 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
             <aside className={styles.scoreSummary} aria-labelledby="recovery-score-summary-title">
               <RecoveryScorePopover hrv={scoreDriver(drivers, "hrv")} restingHeartRate={scoreDriver(drivers, "restingHeartRate")} sleep={scoreDriver(drivers, "sleep")}>
                 <span id="recovery-score-summary-title" className={styles.summaryLabel}>Recovery score</span>
-                <span className={styles.summaryValue} aria-label={`Recovery score: ${scoreText(score)} out of 100`}><strong>{scoreText(score)}</strong><span>/100</span></span>
-                <span className={styles.summaryAverage}>30-day avg · {scoreText(averages.recovery)} /100</span>
+                <span className={styles.summaryValue} aria-label={`Recovery score: ${scoreText(score)} out of 100`}><strong data-comparison-tone={scoreComparison.tone}>{scoreText(score)}</strong><span>/100</span></span>
+                <span className={styles.summaryAverage}>
+                  {averages.recovery.value === null
+                    ? "30-day avg unavailable"
+                    : `30-day avg · ${scoreText(averages.recovery.value)} /100 · n=${averages.recovery.count}${scoreComparison.deltaLabel ? ` · ${scoreComparison.deltaLabel}` : ""}${scoreComparison.interpretation ? ` · ${scoreComparison.interpretation}` : ""}`}
+                </span>
               </RecoveryScorePopover>
               <div className={styles.summaryRail} aria-hidden="true"><span style={{ transform: `scaleX(${score === null ? 0 : Math.min(1, Math.max(0, score / 100))})` }} /></div>
             </aside>
@@ -262,7 +281,7 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
                 { label: "HRV", value: latest.hrv_ms, average: signalAverages.hrv, unit: "ms", decimals: 0 },
                 { label: "Resting heart rate", value: latest.resting_heart_rate, average: signalAverages.restingHeartRate, unit: "bpm", decimals: 0 },
                 { label: "Respiratory rate", value: latest.respiratory_rate, average: signalAverages.respiratoryRate, unit: "rpm", decimals: 1 },
-              ].map((signal) => <div className={styles.signalRow} key={signal.label}><span>{signal.label}</span><div><strong>{formatValue(signal.value, signal.decimals)}</strong>{signal.value === null ? null : <small>{signal.unit}</small>}<em>30-day avg · {signal.average.value === null ? "—" : `${formatAverage(signal.average.value, "decimal", signal.decimals)} ${signal.unit}`}</em></div></div>)}
+              ].map((signal) => <div className={styles.signalRow} key={signal.label}><span>{signal.label}</span><div><strong>{formatValue(signal.value, signal.decimals)}</strong>{signal.value === null ? null : <small>{signal.unit}</small>}<em>30-day avg · {signal.average.value === null ? "—" : `${formatAverage(signal.average.value, "decimal", signal.decimals)} ${signal.unit} · n=${signal.average.measuredDays}`}</em></div></div>)}
             </div>
           </section>
 
