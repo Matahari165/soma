@@ -281,7 +281,10 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   targetSelectedDateRef.current = selectedDate;
   const targetStateDateRef = useRef(initialTargetsFresh && initialTargets && initialTargetsDate === selectedDate ? selectedDate : null);
   const initialMealSnapshotRef = useRef<MealJournalData | null>(initialData ? normalizeData(initialData, initialDate) : null);
+  const initialDataPropRef = useRef(initialData);
   const initialDateRef = useRef(initialDate);
+  const activeMealDateRef = useRef(selectedDate);
+  const transitionLoadStartedRef = useRef<string | null>(null);
   const loadRequestId = useRef(0);
   // Les mutations sont suivies par créneau : une analyse sur un repas ne bloque
   // ni les autres créneaux ni la navigation entre les jours.
@@ -352,24 +355,32 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
 
   const load = useCallback(async () => {
     const requestId = ++loadRequestId.current;
+    const requestDate = selectedDate;
     setLoadState("loading");
     setLoadError(null);
     try {
       const loaded = await (api?.load ? api.load(selectedDate) : defaultLoad(selectedDate));
-      if (requestId !== loadRequestId.current) return;
+      if (requestId !== loadRequestId.current || requestDate !== activeMealDateRef.current) return;
       setData(mergeCachedDrafts(normalizeData(loaded, selectedDate), selectedDate));
       setLoadState("ready");
     } catch (error) {
-      if (requestId !== loadRequestId.current) return;
+      if (requestId !== loadRequestId.current || requestDate !== activeMealDateRef.current) return;
       setLoadState("error");
       setLoadError(error instanceof Error ? error.message : "Meals are currently unavailable.");
+    } finally {
+      if (transitionLoadStartedRef.current === requestDate && requestId === loadRequestId.current) {
+        transitionLoadStartedRef.current = null;
+      }
     }
   }, [api, mergeCachedDrafts, selectedDate]);
 
   useEffect(() => {
+    const initialDataChanged = initialData !== initialDataPropRef.current;
     if (selectedDateProp === undefined && initialDateRef.current !== initialDate) {
       initialDateRef.current = initialDate;
       loadRequestId.current += 1;
+      activeMealDateRef.current = initialDate;
+      transitionLoadStartedRef.current = null;
       const current = dataRef.current;
       if (current) stashLocalDrafts(current.date, current.meals);
       setInternalSelectedDate(initialDate);
@@ -382,10 +393,33 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       setConfirmError({});
       setStatusMessage(null);
       setPendingDelete(null);
+      initialDataPropRef.current = initialData;
       return;
     }
     initialDateRef.current = initialDate;
-    if (initialData && selectedDate === initialDate) {
+    if (activeMealDateRef.current !== selectedDate) {
+      const current = dataRef.current;
+      if (current) stashLocalDrafts(current.date, current.meals);
+      loadRequestId.current += 1;
+      activeMealDateRef.current = selectedDate;
+      initialMealSnapshotRef.current = initialMealSnapshotRef.current?.date === selectedDate ? initialMealSnapshotRef.current : null;
+      setData(null);
+      setFileError(null);
+      setConfirmError({});
+      setEntryRequest(null);
+      setStatusMessage(null);
+      setPendingDelete(null);
+      setLoadState("loading");
+      setLoadError(null);
+      transitionLoadStartedRef.current = selectedDate;
+      void load();
+      initialDataPropRef.current = initialData;
+      return;
+    }
+    if (transitionLoadStartedRef.current === selectedDate && !initialDataChanged) return;
+    if (initialData && selectedDate === initialDate && (initialDataChanged || transitionLoadStartedRef.current !== selectedDate)) {
+      loadRequestId.current += 1;
+      transitionLoadStartedRef.current = null;
       const nextServerData = normalizeData(initialData, selectedDate);
       const mergedData = reconcileMealJournalData(
         nextServerData,
@@ -395,8 +429,10 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       initialMealSnapshotRef.current = nextServerData;
       setData(mergeCachedDrafts(mergedData, selectedDate));
       setLoadState("ready");
+      initialDataPropRef.current = initialData;
       return;
     }
+    initialDataPropRef.current = initialData;
     if (!initialData) initialMealSnapshotRef.current = null;
     const current = dataRef.current;
     if (current && current.date !== selectedDate) stashLocalDrafts(current.date, current.meals);
@@ -457,19 +493,6 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [activeAnalysisKey, api, selectedDate]);
-
-  const controlledDate = useRef(selectedDateProp);
-  useEffect(() => {
-    if (selectedDateProp === undefined || controlledDate.current === selectedDateProp) return;
-    controlledDate.current = selectedDateProp;
-    const current = dataRef.current;
-    if (current) stashLocalDrafts(current.date, current.meals);
-    setData(null);
-    setFileError(null);
-    setConfirmError({});
-    setLoadState("loading");
-    setLoadError(null);
-  }, [selectedDateProp, stashLocalDrafts]);
 
   useEffect(() => () => { objectUrls.current.forEach((url) => URL.revokeObjectURL(url)); }, []);
 
@@ -538,6 +561,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   }, [pendingDelete]);
 
   const applyLoadedTargets = useCallback((nextBase: NutritionTargets, nextEffective: NutritionTargets, nextContext: EffortTargetContext, targetDate: string) => {
+    if (targetDate !== targetSelectedDateRef.current) return;
     const baseUnchanged = JSON.stringify(targetBaseRef.current) === JSON.stringify(nextBase);
     const merged = mergeDailyNutritionTargets({
       current: effectiveTargetsRef.current,
@@ -555,6 +579,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   }, []);
 
   const refreshTargets = useCallback(async (signal?: AbortSignal) => {
+    if (selectedDate !== targetSelectedDateRef.current || signal?.aborted) return;
     const localTargets = loadNutritionTargets();
     if (targetStateDateRef.current !== selectedDate) {
       targetStateDateRef.current = selectedDate;
@@ -567,6 +592,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     const url = `/api/nutrition-targets?date=${encodeURIComponent(selectedDate)}`;
     const response = await fetch(url, { cache: "no-store", signal });
     const body = await response.json().catch(() => ({})) as Record<string, unknown>;
+    if (selectedDate !== targetSelectedDateRef.current || signal?.aborted) return;
     if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "Nutrition targets are unavailable.");
     const parsed = parseNutritionTargets(body.targets);
     if (!parsed) return;
@@ -580,6 +606,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     const hasCustomizedLocalTargets = JSON.stringify(localTargets) !== JSON.stringify(DEFAULT_NUTRITION_TARGETS);
     if (body.persisted === false && hasCustomizedLocalTargets) {
       const migrated = await fetch("/api/nutrition-targets", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targets: localTargets }), signal });
+      if (selectedDate !== targetSelectedDateRef.current || signal?.aborted) return;
       if (!migrated.ok) throw new Error("Local targets could not be synchronized.");
       applyLoadedTargets(localTargets, nutritionTargetsForEffort(localTargets, context), context, selectedDate);
       return;
