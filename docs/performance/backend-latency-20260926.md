@@ -13,7 +13,7 @@
 - Exact compatible counts use HEAD and Content-Range. Unsupported filters retain local counting. Bounded reads paginate across the REST page cap rather than truncating requested ranges.
 - Session and user are joined in one live request. The session must exist, have an existing user, and remain unexpired after the request completes. There is no cross-request authentication cache.
 - Latest health records, sync diagnostics, and health coverage use server-only SQL aggregate functions. Coverage preserves timezone and wearable-window rules, including Whoop mirrors and later wearable changes. Missing measurements remain distinct from explicit zero.
-- Meal cron selects due recoverable failures and expired unmarked purges. Successfully purged failures receive a terminal marker; failed R2 purges remain recoverable. Photo snapshot IDs constrain cleanup, including an explicitly empty snapshot. The queue consumer no longer repeats the cron's retry scan.
+- Meal cron selects due recoverable failures and expired unmarked purges. Successfully purged failures receive a terminal marker; failed R2 purges remain recoverable. Photo snapshot IDs constrain cleanup, including an explicitly empty snapshot. The queue consumer no longer repeats the cron's retry scan; standalone drains retain automatic retry recovery.
 - Strongest Effects uses a dedicated matrix path, versioned cache and revision checks. Cache/source/history timing is separate. Secondary persistence runs after the response via Next.js `after`.
 
 ## Evidence and limits

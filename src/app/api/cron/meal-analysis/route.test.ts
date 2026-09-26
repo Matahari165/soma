@@ -33,6 +33,7 @@ describe("meal analysis worker route", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ processed: true, status: "completed" });
     expect(processNextMealAnalysis).toHaveBeenCalledOnce();
+    expect(processNextMealAnalysis).toHaveBeenCalledWith(undefined, { retriesAlreadyScanned: true });
   });
 
   it("returns a retryable server error when the worker cannot run", async () => {

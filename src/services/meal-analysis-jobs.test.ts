@@ -173,7 +173,7 @@ describe("durable meal analysis jobs", () => {
     }]);
     state.analyzeMealInputWithFallback.mockResolvedValue({ provider: "xai", model: "grok-4.6", result: canonicalResult });
 
-    const result = await processNextMealAnalysis();
+    const result = await processNextMealAnalysis(undefined, { retriesAlreadyScanned: true });
 
     expect(result).toMatchObject({ processed: true, analysis: { status: "completed" } });
     expect(state.updateMealAnalysis).toHaveBeenNthCalledWith(1, "user-1", queuedAnalysis.id, expect.objectContaining({ status: "running", attempts: 2, lease_token: "lease-token" }), "queued");

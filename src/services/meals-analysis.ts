@@ -269,7 +269,12 @@ function workerFailure(error: unknown) {
  * Claims one durable job, executes it outside the UI request, and commits the
  * result only while its persisted lease token still owns the row.
  */
-export async function processNextMealAnalysis(target?: { userId: string; analysisId: string }) {
+export async function processNextMealAnalysis(target?: { userId: string; analysisId: string }, options: { retriesAlreadyScanned?: boolean } = {}) {
+  // The minute cron scans once before draining. Standalone drains retain their
+  // recovery behavior; targeted runs already follow an explicit enqueue.
+  if (!target && !options.retriesAlreadyScanned) {
+    await requeueRetryableMealAnalyses().catch((error) => logMeal("warn", "retry_scan", error));
+  }
   const candidate = target
     ? await findQueuedMealAnalysis(target.userId, target.analysisId)
     : (await listQueuedMealAnalyses(1))[0];
