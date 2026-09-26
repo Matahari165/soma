@@ -1,12 +1,12 @@
 .entry { width:min(100%,520px); margin-top:28px; color:var(--lab-text-primary); }
-.conversation { width:min(100%,520px); margin:24px 0 0; scroll-margin-block:16px calc(var(--soma-mobile-nav-height,64px) + 16px); }
+.conversation { pointer-events:auto; width:min(100%,520px); margin:24px 0 0; scroll-margin-block:16px calc(var(--soma-mobile-nav-height,64px) + 16px); }
 .observations { display:grid; gap:7px; }
 .observation { display:flex; align-items:start; gap:10px; width:100%; padding:0; border:0; background:transparent; color:#f1f1f1; text-align:left; font:400 16px/1.45 var(--font-soma-ui),sans-serif; cursor:pointer; }
 .observation > svg { flex:none; margin-top:3px; color:var(--lab-text-secondary); transition:transform 160ms ease,color 160ms ease; }
 .observation:hover > svg { color:var(--lab-text-primary); transform:translate(2px,-2px); }
 .observation:focus-visible { outline:2px solid #eee; outline-offset:4px; }
 .loading { min-height:23px; margin:0 0 14px; color:#aaa; font:400 14px/1.5 var(--font-soma-ui),sans-serif; }
-.composer { display:flex; align-items:flex-end; gap:8px; min-height:52px; padding:5px 6px 5px 17px; border:1px solid #454545; border-radius:25px; background:#141414; transition:border-color 180ms ease,background-color 180ms ease; }
+.composer { cursor:text; display:flex; align-items:flex-end; gap:8px; min-height:52px; padding:5px 6px 5px 17px; border:1px solid #454545; border-radius:25px; background:#141414; transition:border-color 180ms ease,background-color 180ms ease; }
 .composer:hover,.composer:focus-within { border-color:#777; background:#1a1a1a; }
 .composer textarea { display:block; flex:1; width:100%; min-width:0; min-height:40px; max-height:160px; padding:9px 0; resize:none; border:0; outline:0; background:transparent; color:#f1f1f1; font:400 15px/1.45 var(--font-soma-ui),sans-serif; }
 .composer textarea::placeholder { color:#aaa; }
