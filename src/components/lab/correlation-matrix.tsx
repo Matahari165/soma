@@ -693,9 +693,7 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
   }
 
   function refreshSelectedDetail() {
-    detailRequestRef.current.cancel();
-    setSelected(null);
-    void loadPeriod(period, true);
+    selectPeriod(period, true);
   }
 
   function closeSelectedRelation() {
