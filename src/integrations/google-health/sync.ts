@@ -326,9 +326,22 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
     const dataType = dataTypes[typeIndex];
     if (!dataType) {
       const analyticsRequest = googleHealthAnalyticsRequestForJob(claimedJob);
-      const analytics = refreshAnalytics
-        ? await recomputeUserHealth(claimedJob.user_id, { windowDays: analyticsRequest.lookbackDays })
-        : null;
+      let analytics: Awaited<ReturnType<typeof recomputeUserHealth>> | null = null;
+      if (refreshAnalytics) {
+        const analyticsLockKey = `health-analysis:${claimedJob.user_id}`;
+        if (!await claimCloudflareLock(analyticsLockKey, claimedJob.user_id, 120_000)) {
+          throw new Error("Health analysis is already in progress.");
+        }
+        try {
+          analytics = await recomputeUserHealth(claimedJob.user_id, { windowDays: analyticsRequest.lookbackDays });
+        } finally {
+          try {
+            await releaseCloudflareLock(analyticsLockKey, claimedJob.user_id);
+          } catch {
+            console.error("[google-health-sync] analysis lock could not be released");
+          }
+        }
+      }
       const completedAt = new Date().toISOString();
       const { error: freshnessError } = await admin.from("provider_connections").update({
         last_synced_at: completedAt,

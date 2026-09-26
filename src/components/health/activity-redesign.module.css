@@ -165,6 +165,7 @@
 
 .detailSummary { margin: 20px 0 0; }
 .detailFootnote { margin: 16px 0 0; }
+.scoreExplanation { color: var(--effort-text); font-size: 14px; }
 .detailUnavailable { margin-top: 20px; }
 .detailUnavailable strong { color: var(--effort-text); font: 400 15px/1.4 var(--font-soma-ui), system-ui, sans-serif; }
 .detailUnavailable p { margin: 8px 0 0; }

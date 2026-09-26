@@ -87,13 +87,13 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
   const rings = [
     { id: "sleep", label: "Sommeil", value: data.sleepMinutes, target: 510, display: valid(data.sleepMinutes) ? duration(data.sleepMinutes) : "—", ringDisplay: valid(data.sleepMinutes) ? duration(data.sleepMinutes).replace(" ", "") : "—", goal: "8h 30", color: "var(--lab-ring-sleep)", labelColor: "var(--lab-ring-sleep-label)" },
     { id: "recovery", label: "Récupération", value: data.recoveryScore, target: 100, display: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", ringDisplay: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", goal: "100", color: "var(--lab-ring-recovery)", labelColor: "var(--lab-ring-recovery-label)" },
-    { id: "effort", label: "Effort", value: data.effortScore, target: 100, display: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", ringDisplay: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", goal: "21", color: "var(--lab-ring-effort)", labelColor: "var(--lab-ring-effort-label)" },
+    { id: "effort", label: "Strain", value: data.effortScore, target: 100, display: valid(data.effortScore) ? String(Math.round(data.effortScore)) : "—", ringDisplay: valid(data.effortScore) ? String(Math.round(data.effortScore)) : "—", goal: "100", color: "var(--lab-ring-effort)", labelColor: "var(--lab-ring-effort-label)" },
     { id: "calories", label: "Calories", value: calories, target: calorieTarget, display: valid(calories) ? `${Math.round(calories).toLocaleString("fr-FR")} kcal` : "—", ringDisplay: valid(calories) ? String(Math.round(calories)) : "—", goal: valid(calorieTarget) && calorieTarget > 0 ? `${Math.round(calorieTarget).toLocaleString("fr-FR")} kcal` : "—", color: "var(--lab-ring-calories)", labelColor: "var(--lab-ring-calories-label)" },
   ] as const;
   const details = {
     sleep: { reference: "Repère de sommeil", average: valid(data.averageSleepMinutes) ? duration(data.averageSleepMinutes) : null },
     recovery: { reference: "Échelle du score", average: valid(data.averageRecoveryScore) ? String(Math.round(data.averageRecoveryScore)) : null },
-    effort: { reference: "Échelle de charge", average: valid(data.averageEffortScore) ? (data.averageEffortScore * .21).toFixed(1) : null },
+    effort: { reference: "Échelle du score", average: valid(data.averageEffortScore) ? String(Math.round(data.averageEffortScore)) : null },
     calories: { reference: "Cible alimentaire", average: valid(data.averageCaloriesKcal) ? `${Math.round(data.averageCaloriesKcal).toLocaleString("fr-FR")} kcal` : null },
   };
   const activeId = hoveredId ?? focusedId ?? selectedId;
@@ -149,7 +149,7 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
         <dl className={styles.facts}>
           <div><dt>{selectedDetail.reference}</dt><dd>{selectedRing.goal === "—" ? "Non renseignée" : selectedRing.goal}</dd></div>
           <div><dt>Progression</dt><dd>{progress(selectedRing.value, selectedRing.target) === null ? "Indisponible" : `${Math.round(progress(selectedRing.value, selectedRing.target)! * 100)} %`}</dd></div>
-          {selectedRing.id === "effort" && valid(selectedRing.value) && <div><dt>Score d’activité Soma</dt><dd>{Math.round(selectedRing.value)} / 100</dd></div>}
+          {selectedRing.id === "effort" && valid(selectedRing.value) && <div><dt>Score Strain Soma</dt><dd>{Math.round(selectedRing.value)} / 100</dd></div>}
           {selectedDetail.average && <div><dt>Moyenne sur 30 jours</dt><dd>{selectedDetail.average}</dd></div>}
         </dl>
       </div>}

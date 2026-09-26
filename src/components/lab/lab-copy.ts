@@ -60,7 +60,7 @@ const metricLabels: Record<string, string> = {
   weekly_load: "Weekly load",
   load_ratio: "Acute / chronic load ratio",
   recovery: "Recovery",
-  effort: "Activity",
+  effort: "Strain",
   meal_calories: "Meal calories",
   meal_protein: "Meal protein",
   meal_carbs: "Meal carbohydrates",

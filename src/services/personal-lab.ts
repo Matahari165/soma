@@ -131,7 +131,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
       overview: targetsPromise.then((targets) => buildOverview({ ...input, targets, greetingName: user.displayName })),
       activityDate: Promise.resolve(todayDate),
       journal: targetStatePromise.then((targetState) => {
-        const effortTargetContext = effortContextForDate(input.scores, todayDate);
+        const effortTargetContext = effortContextForDate(input.scores, todayDate, "load");
         return buildJournalView(input.timeZone, input.journal, input.meals, input.health, undefined, {
           mealData: mealJournalDataFor(mealRows, todayDate),
           targets: targetState.targets,
@@ -157,7 +157,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
     if (profileResult.error) throw new Error("Your Personal Lab is temporarily unavailable.");
     const timeZone = profileResult.data?.timezone ?? "Europe/Paris";
     const todayDate = dateInTimezone(timeZone);
-    const effortTargetContext = effortContextForDate(core.scores, todayDate);
+    const effortTargetContext = effortContextForDate(core.scores, todayDate, "load");
     return buildJournalView(timeZone, journalData, meals, [], supplements, {
       mealData: initialMealData.date === todayDate ? initialMealData.data : undefined,
       targets: targetState.targets,
