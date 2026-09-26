@@ -1,14 +1,6 @@
 /* Five local visual worlds; shared primitives, independent compositions. */
 html[data-lab-theme] {
-  color-scheme: dark;
-  --lab-canvas: #121416; --lab-sidebar: #0d0f11;
-  --lab-surface: #1b1e21; --lab-surface-subtle: #23272b;
-  --lab-surface-selected: #343b41; --lab-control-track: #2b3035;
-  --lab-border: #30363b; --lab-border-strong: #465058;
-  --lab-text-primary: #edf0ef; --lab-text-secondary: #b1babf;
-  --lab-brand: #c6d5d7; --lab-signal: #aecbb7; --lab-error: #e1aaa0;
-  --lab-error-soft: #382a27; --lab-warning: #d5c397; --lab-warning-soft: #342f25;
-  --lab-info: #adc5df; --lab-info-soft: #273340;
+  color-scheme: light;
   --lab-shadow-subtle: none; --lab-radius-xs: 4px; --lab-radius-sm: 4px; --lab-radius-md: 4px;
   --lab-content-top: 0px; --lab-card-padding: 16px; --lab-column-gap: 20px;
   scrollbar-color: var(--lab-border-strong) var(--lab-canvas);
@@ -105,7 +97,7 @@ html[data-lab-theme] :is(#daily-journal, #meal-journal-title) { scroll-margin-to
 .lab-world .meal-journal-lab h2 { font-size: 20px; font-weight: 550; }
 .lab-world .lab-entry__section { animation: none; }
 /* Focus is a single working canvas with persistent activity tabs. */
-html[data-lab-theme="focus"] { --lab-canvas: #131a1d; --lab-sidebar: #10171a; --lab-surface: #1b2529; --lab-surface-subtle: #243136; --lab-surface-selected: #34464b; --lab-control-track: #2a393f; --lab-border: #38484e; --lab-border-strong: #536b73; --lab-text-primary: #e7f0ef; --lab-text-secondary: #acc1c4; --lab-brand: #b4d7d5; }
+html[data-lab-theme="focus"] { }
 html[data-lab-theme="focus"] .sidebar { display: none; }
 html[data-lab-theme="focus"] .app-shell--personal-lab .main-content { margin-left: 0; }
 html[data-lab-theme="focus"] .lab-world { max-width: 1240px; margin-inline: auto; padding: 36px 48px; grid-template-columns: 1fr; gap: 26px; }

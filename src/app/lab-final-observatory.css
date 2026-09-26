@@ -1,14 +1,14 @@
 /* Final Observatory pass: midnight instrument panel, scoped to the continuous world. */
 .lab-experience.lab-continuous[data-continuous-theme="observatory"] {
-  --world-bg: #080b0f;
-  --world-surface: #11171c;
-  --world-surface-strong: #182229;
-  --world-ink: #edf4f5;
-  --world-muted: #a6b5b9;
-  --world-line: #29383f;
-  --world-accent: #b8dce5;
+  --world-bg: var(--lab-canvas);
+  --world-surface: var(--lab-surface);
+  --world-surface-strong: var(--lab-surface-subtle);
+  --world-ink: var(--lab-text-primary);
+  --world-muted: var(--lab-text-secondary);
+  --world-line: var(--lab-rule);
+  --world-accent: var(--lab-text-primary);
   --world-radius: 4px;
-  color-scheme: dark;
+  color-scheme: light;
   color: var(--world-ink);
   background: var(--world-bg);
   font-family: var(--font-soma-sans), ui-sans-serif, system-ui, sans-serif;

@@ -304,16 +304,16 @@
   background:
     radial-gradient(
       ellipse 68% 48% at 36% 28%,
-      rgba(4, 7, 10, 0.62) 0%,
-      rgba(5, 8, 11, 0.44) 46%,
-      rgba(6, 9, 12, 0.16) 74%,
+      rgba(var(--lab-canvas-rgb), 0.62) 0%,
+      rgba(var(--lab-canvas-rgb), 0.44) 46%,
+      rgba(var(--lab-canvas-rgb), 0.16) 74%,
       transparent 100%
     ),
     linear-gradient(
       140deg,
-      rgba(255, 255, 255, 0.03) 0%,
+      rgba(var(--lab-ink-rgb), 0.03) 0%,
       transparent 38%,
-      rgba(0, 0, 0, 0.28) 68%,
+      rgba(var(--lab-canvas-rgb), 0.28) 68%,
       transparent 100%
     );
   opacity: 1;
@@ -363,24 +363,24 @@
 }
 
 .authIntroChiaroscuro {
-  background-color: #0b0f0d !important;
-  color: #f4f6f2 !important;
+  background-color: var(--lab-surface) !important;
+  color: var(--lab-text-primary) !important;
 }
 
 .authIntroChiaroscuro h1 {
-  color: #f4f6f2 !important;
+  color: var(--lab-text-primary) !important;
 }
 
 .authIntroChiaroscuro em {
-  color: #ffffff !important;
+  color: var(--lab-text-primary) !important;
 }
 
 .authIntroChiaroscuro p {
-  color: #9eb0a3 !important;
+  color: var(--lab-text-secondary) !important;
 }
 
 .authPageChiaroscuro {
-  background: #0b0f0d !important;
+  background: var(--lab-surface) !important;
 }
 
 /* ── Responsive Mobile & Tablette ── */

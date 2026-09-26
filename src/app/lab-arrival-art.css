@@ -13,39 +13,39 @@
   stroke-linejoin: round;
 }
 
-.arrival-art--observatory { color: #cbd8dc; }
+.arrival-art--observatory { color: var(--lab-text-primary); }
 .arrival-art--observatory .arrival-art__orbit { opacity: .78; stroke-width: 1.2; transform-box: fill-box; transform-origin: center; animation: arrival-orbit-drift 28s linear infinite; }
 .arrival-art--observatory .arrival-art__orbit--secondary { opacity: .34; stroke-dasharray: 2 9; }
 .arrival-art--observatory .arrival-art__field { opacity: .24; stroke-width: 1; }
 .arrival-art--observatory .arrival-art__constellation { opacity: .8; stroke-width: 1.5; }
-.arrival-art--observatory .arrival-art__anchor { color: #a8c9b2; stroke: none; }
+.arrival-art--observatory .arrival-art__anchor { color: var(--lab-signal); stroke: none; }
 
-.arrival-art--strata { color: #c0d0c7; }
+.arrival-art--strata { color: var(--lab-text-secondary); }
 .arrival-art--strata .arrival-art__contour { opacity: .72; stroke-width: 1.5; transform-box: fill-box; transform-origin: center; animation: arrival-contour-drift 24s ease-in-out infinite alternate; }
-.arrival-art--strata .arrival-art__contour--ridge { color: #a8c8b0; opacity: .9; stroke-width: 2; }
+.arrival-art--strata .arrival-art__contour--ridge { color: var(--lab-signal); opacity: .9; stroke-width: 2; }
 .arrival-art--strata .arrival-art__contour--axis { opacity: .26; stroke-width: 1; stroke-dasharray: 1 8; }
-.arrival-art--strata .arrival-art__markers { color: #d8c291; opacity: .9; }
+.arrival-art--strata .arrival-art__markers { color: var(--lab-warning); opacity: .9; }
 
-.arrival-art--atelier { color: #d8d4c7; }
+.arrival-art--atelier { color: var(--lab-text-secondary); }
 .arrival-art--atelier .arrival-art__sculpture { opacity: .82; stroke-width: 1.6; transform-box: fill-box; transform-origin: center; animation: arrival-sculpture-breathe 18s ease-in-out infinite alternate; }
-.arrival-art--atelier .arrival-art__sculpture-line { color: #b5c8b8; opacity: .38; stroke-width: 1; }
+.arrival-art--atelier .arrival-art__sculpture-line { color: var(--lab-signal); opacity: .38; stroke-width: 1; }
 .arrival-art--atelier .arrival-art__sculpture-mark { opacity: .55; stroke-width: 1; }
 
-.arrival-art--focus { color: #b4d7d5; }
+.arrival-art--focus { color: var(--lab-text-secondary); }
 .arrival-art--focus .arrival-art__instrument-frame { opacity: .28; stroke-width: 1; }
 .arrival-art--focus .arrival-art__instrument-arc { opacity: .72; stroke-width: 1.5; }
 .arrival-art--focus .arrival-art__instrument-ticks { opacity: .48; stroke-width: 1; }
 .arrival-art--focus .arrival-art__needle { transform-box: view-box; transform-origin: 300px 220px; animation: arrival-needle-sweep 12s ease-in-out infinite alternate; }
 .arrival-art--focus .arrival-art__needle line { stroke-width: 2; }
-.arrival-art--focus .arrival-art__needle circle { color: #d5e4df; stroke: none; }
-.arrival-art--focus .arrival-art__cursor { color: #b4d7d5; stroke: none; transform-box: view-box; transform-origin: 300px 220px; animation: arrival-cursor-pulse 12s ease-in-out infinite alternate; }
+.arrival-art--focus .arrival-art__needle circle { color: var(--lab-text-primary); stroke: none; }
+.arrival-art--focus .arrival-art__cursor { color: var(--lab-text-secondary); stroke: none; transform-box: view-box; transform-origin: 300px 220px; animation: arrival-cursor-pulse 12s ease-in-out infinite alternate; }
 .arrival-art--focus .arrival-art__instrument-base { opacity: .34; stroke-width: 1; }
 
-.arrival-art--index { color: #d3dde2; }
+.arrival-art--index { color: var(--lab-text-primary); }
 .arrival-art--index .arrival-art__grid { opacity: .28; stroke-width: 1; }
 .arrival-art--index .arrival-art__index-labels { opacity: .86; }
-.arrival-art--index .arrival-art__index-scan { color: #a9c4b7; stroke-width: 2; transform-box: view-box; transform-origin: center; animation: arrival-index-scan 16s ease-in-out infinite alternate; }
-.arrival-art--index .arrival-art__index-mark { color: #a9c4b7; stroke: none; }
+.arrival-art--index .arrival-art__index-scan { color: var(--lab-signal); stroke-width: 2; transform-box: view-box; transform-origin: center; animation: arrival-index-scan 16s ease-in-out infinite alternate; }
+.arrival-art--index .arrival-art__index-mark { color: var(--lab-signal); stroke: none; }
 
 @keyframes arrival-orbit-drift {
   from { transform: rotate(0deg); }
