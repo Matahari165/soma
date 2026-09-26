@@ -41,3 +41,13 @@ describe("assistant evidence summary", () => {
     expect(dataSummaryFromSteps([{ toolResults: [{ toolName: "querySomaData", input: {}, output: { manifest: { dataset: "scores" } } }] }])).toBeNull();
   });
 });
+
+it("uses only the latest persisted summary checkpoint when counting an exhaustive history", () => {
+  function job(processedItems: number, complete: boolean) {
+    return { toolName: "summarizeSomaData", input: { query: { dataset: "activities", period: { from: "2020-01-01", to: "2020-01-31" }, activityTypes: ["BOXING"] } },
+      output: { jobId: "test-job", manifest: { dataset: "activities", requestedPeriod: { from: "2020-01-01", to: "2020-01-31" },
+        coveredPeriod: { from: "2020-01-01", to: "2020-01-31" }, processedItems, totalItems: 600, complete, hasMore: !complete, generatedAt: "2020-02-01T00:00:00Z" } } };
+  }
+  expect(dataSummaryFromSteps([{ toolResults: [job(200, false)] }, { toolResults: [job(600, true)] }]))
+    .toMatchObject({ itemCount: 600, label: "Données Soma consultées", domains: ["effort"] });
+});

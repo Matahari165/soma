@@ -19,6 +19,11 @@ describe("assistant quality policy", () => {
     expect(classifyAssistantQuality({ text: "Fais-moi un plan pour courir 30 kilomètres." })).toBe("deep");
     expect(classifyAssistantQuality({ text: "Analyse en profondeur mon historique des six derniers mois." })).toBe("deep");
   });
+  it("reserves enough steps for targeted metrics, zones and temporal comparisons", () => {
+    expect(classifyAssistantQuality({ text: "Mes séances de boxe depuis un mois" })).toBe("balanced");
+    expect(classifyAssistantQuality({ text: "Quelles zones cardiaques pendant cette séance ?" })).toBe("balanced");
+    expect(classifyAssistantQuality({ text: "Les relations avec la HRV sur les différentes temporalités" })).toBe("deep");
+  });
   it("uses configured model ids and bounded budgets", () => {
     process.env.SOMA_ASSISTANT_MODEL_FAST = "provider/fast";
     process.env.SOMA_ASSISTANT_MODEL_BALANCED = "provider/balanced";

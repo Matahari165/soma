@@ -342,6 +342,7 @@ function periodStartDate(period: AnalysisPeriod, endDate: string) {
  * that window when Soma's cache has expired or its inputs changed.
  */
 export async function loadAssistantLabAnalyses(userId: string, query: AssistantLabAnalysisQuery = {}) {
+  if (!userId) throw new Error("Authenticated user is required.");
   const periods = normalizePeriods(query.periods);
   const mode = query.mode ?? "summary";
   const offset = Math.max(0, Math.trunc(query.offset ?? 0));

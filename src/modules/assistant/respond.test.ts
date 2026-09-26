@@ -137,7 +137,7 @@ describe("respondToAssistant", () => {
     }, { apiKey: "test-key", dependencies: state as never });
 
     expect(result).toMatchObject({ memoryStatus: { state: "retry_pending", complete: false, retryOnNextMessage: true } });
-    expect(result.memoryStatus.warning).toContain("fenêtre récente bornée");
+    expect(result.memoryStatus?.warning).toContain("fenêtre récente bornée");
     expect(state.generate).toHaveBeenCalled();
     expect(state.repository.updateConversation).toHaveBeenCalledWith("user-1", ids.conversation, expect.objectContaining({ summary_through_sequence: 5 }));
   });

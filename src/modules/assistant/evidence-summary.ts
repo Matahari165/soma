@@ -26,7 +26,30 @@ function domainsFor(dataset: string, input: unknown): Domain[] {
 }
 
 export function dataSummaryFromSteps(steps: ReadonlyArray<Step> | undefined): Extract<AssistantMessagePart, { type: "data-summary" }> | null {
-  const queries = (steps ?? []).flatMap((step) => step.toolResults).filter((result) => result.toolName === "querySomaData");
+  const results = (steps ?? []).flatMap((step) => step.toolResults);
+  const completedJobs = new Map<string, ToolResult>();
+  for (const result of results) if (result.toolName === "summarizeSomaData") {
+    const output = result.output as { jobId?: unknown } | null;
+    if (typeof output?.jobId === "string") completedJobs.set(output.jobId, result);
+  }
+  const summaries = [...completedJobs.values()].flatMap((result): ToolResult[] => {
+    const output = result.output as { manifest?: Record<string, unknown> };
+    const manifest = output.manifest;
+    const input = result.input as { query?: Record<string, unknown> };
+    if (!manifest || typeof manifest.processedItems !== "number" || typeof manifest.complete !== "boolean") return [];
+    // A checkpoint covers all preceding pages; count the latest checkpoint once.
+    return [{ ...result, input: input.query ?? {}, output: { manifest: {
+      ...manifest, timezone: "UTC", returnedItems: manifest.processedItems,
+      totalItems: typeof manifest.totalItems === "number" ? manifest.totalItems : manifest.processedItems,
+      nextCursor: manifest.complete ? null : "summary-checkpoint",
+    } } }];
+  });
+  function identity(input: unknown) {
+    const value = input && typeof input === "object" ? input as Record<string, unknown> : {};
+    return JSON.stringify({ dataset: value.dataset, period: value.period, metrics: value.metrics, kinds: value.kinds, activityTypes: value.activityTypes });
+  }
+  const summaryByQuery = new Map(summaries.map((result) => [identity(result.input), result]));
+  const queries = [...results.filter((result) => result.toolName === "querySomaData" && !summaryByQuery.has(identity(result.input))), ...summaryByQuery.values()];
   if (!queries.length) return null;
   const domains = new Set<Domain>();
   const latestByQuery = new Map<string, boolean>();

@@ -4,12 +4,14 @@ export type AssistantPolicy = { quality: AssistantQuality; model: string; maxSte
 type PolicyInput = { text: string; attachmentCount?: number; explicitlyRequestsWeb?: boolean };
 
 const deepSignals = [
+  /(?:relations?|analyses?).{0,80}(?:temporalit[ée]s|fen[eê]tres|toutes? les p[ée]riodes)/iu,
   /analyse (?:en profondeur|compl[eè]te)/iu,
   /(?:cr[ée]e|fais|construis|adapte).{0,30}(?:plan|programme)/iu,
   /(?:derniers?|historique).{0,20}(?:mois|ann[ée]es?)/iu,
   /(?:croise|corr[ée]lation|relation entre)/iu,
 ];
 const balancedSignals = [
+  /(?:r[ée]sume|zones? cardiaques|donn[ée]es brutes|HRV|glucose|s[ée]ances? de boxe|sessions? de boxe)/iu,
   /(?:compare|progression|tendance|pourquoi|avis|objectif|performance)/iu,
   /(?:donn[ée]es|s[ée]ances?|activit[ée]s?|course|courir|running).{0,60}(?:derni[eè]res?|pass[ée]es?)\s+(?:(?:\d+|deux|trois|quatre|six|huit)\s+)?semaines?/iu,
   /(?:derni[eè]res?|pass[ée]es?)\s+(?:(?:\d+|deux|trois|quatre|six|huit)\s+)?semaines?.{0,60}(?:donn[ée]es|s[ée]ances?|activit[ée]s?|course|courir|running)/iu,
