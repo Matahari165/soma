@@ -1127,9 +1127,10 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art.a
   animation:none!important;
 }
 html[data-lab-theme="observatory"] .arrival-visual { width:100%; height:min(410px,34vw); }
-html[data-lab-theme="observatory"] .arrival-art--conversation:has([data-home-rings]) .arrival-visual { height:min(360px,30vw); }
+html[data-lab-theme="observatory"] .arrival-art--conversation:has([data-home-rings]) .arrival-visual { height:auto; }
+html[data-lab-theme="observatory"] .arrival-art--conversation [data-home-rings] { height:auto; }
+html[data-lab-theme="observatory"] .arrival-art--conversation [data-home-rings] > aside { position:relative; top:auto; }
 @media(max-width:700px) {
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art.arrival-art--conversation { margin:24px 0 0!important; }
   html[data-lab-theme="observatory"] .arrival-visual { height:min(410px,106vw); }
-  html[data-lab-theme="observatory"] .arrival-art--conversation:has([data-home-rings]) .arrival-visual { height:225px; }
 }
