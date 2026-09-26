@@ -3,7 +3,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { proxy, requestBodyLimitForPath } from "@/proxy";
 
-vi.mock("@/lib/env", () => ({ isLocalPreviewMode: () => false }));
+const previewState = vi.hoisted(() => ({ remote: false }));
+vi.mock("@/lib/env", () => ({ isLocalPreviewMode: () => previewState.remote, isRemoteDemoPreviewMode: () => previewState.remote }));
+
+describe("remote demo preview", () => {
+  beforeEach(() => { previewState.remote = true; });
+  afterEach(() => { previewState.remote = false; });
+
+  it("allows page navigation without a session", async () => {
+    const response = await proxy(new NextRequest("https://preview.example/sleep"));
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it.each(["/api/meals", "/api/assistant/chat", "/"])("blocks writes to %s", async (path) => {
+    const response = await proxy(new NextRequest(`https://preview.example${path}`, { method: "POST" }));
+    expect(response.status).toBe(403);
+  });
+
+  it("blocks real integration reads", async () => {
+    const response = await proxy(new NextRequest("https://preview.example/api/cron/sync"));
+    expect(response.status).toBe(403);
+  });
+});
 
 describe("unauthenticated auth routes", () => {
   beforeEach(() => vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://soma.example"));
