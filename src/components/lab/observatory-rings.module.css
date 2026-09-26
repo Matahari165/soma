@@ -60,7 +60,7 @@
 @keyframes reveal { from { stroke-dasharray: 0 100; } }
 
 @media (min-width: 701px) {
-  .detail { position: absolute; top: calc(100% - 30px); }
+  .detail { position: absolute; top: calc(50% + 145px); }
   .figure[data-expanded="true"] .visual { transform: translate(-8px, -28px); }
 }
 
