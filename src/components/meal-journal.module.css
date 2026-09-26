@@ -597,6 +597,9 @@
 .ratingSelected { border-color: var(--clay); background: var(--clay-soft); color: var(--clay); font-weight: 700; }
 
 .visuallyHidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.progressTrace { display: inline-block; width: 22px; height: 2px; overflow: hidden; flex: 0 0 auto; background: currentColor; opacity: .34; }
+.progressTrace::after { display: block; width: 45%; height: 100%; background: currentColor; content: ""; opacity: 1; }
+
 .targetEditor {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
