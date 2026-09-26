@@ -287,8 +287,6 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   const initialDataPropRef = useRef(initialData);
   const initialDateRef = useRef(initialDate);
   const activeMealDateRef = useRef(selectedDate);
-  const selectedDateRef = useRef(selectedDate);
-  selectedDateRef.current = selectedDate;
   const transitionLoadStartedRef = useRef<string | null>(null);
   const loadRequestId = useRef(0);
   // Les mutations sont suivies par créneau : une analyse sur un repas ne bloque
