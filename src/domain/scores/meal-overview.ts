@@ -12,7 +12,7 @@ import {
 } from "./meal-balance";
 
 export type MealScoreRolling = {
-  days: 14 | 28;
+  days: 14 | 30;
   score: number | null;
   observedDays: number;
   readyDays: number;
@@ -102,7 +102,7 @@ function emptyTrendPoint(date: string): MealScoreTrendPoint {
   };
 }
 
-function rollingScore(scoreTrend: readonly MealScoreTrendPoint[], days: 14 | 28): MealScoreRolling {
+function rollingScore(scoreTrend: readonly MealScoreTrendPoint[], days: 14 | 30): MealScoreRolling {
   const points = scoreTrend.slice(-days);
   const observations = points.filter((point): point is MealScoreTrendPoint & { balanceScore: number } => point.balanceScore !== null);
   const score = observations.length
@@ -132,8 +132,8 @@ export function buildMealScoreOverview(input: {
   const aggregates = aggregateConfirmedMeals(input.records);
   const current = aggregates.find((day) => day.date === input.date) ?? null;
   const goalMode = input.goalMode ?? "maintain";
-  const scoreTrend = Array.from({ length: 28 }, (_, index) => {
-    const date = addDays(input.date, index - 27);
+  const scoreTrend = Array.from({ length: 30 }, (_, index) => {
+    const date = addDays(input.date, index - 29);
     const day = aggregates.find((candidate) => candidate.date === date);
     return day
       ? trendPoint(day, input.targets, input.records, input.records, goalMode, input.slotStatesByDate?.get(date))
@@ -155,6 +155,6 @@ export function buildMealScoreOverview(input: {
     dimensionScores: dimensionValues(currentBalance),
     trend: aggregates.map((day) => trendPoint(day, input.targets, input.records, input.records, goalMode, input.slotStatesByDate?.get(day.date))),
     scoreTrend,
-    rolling: [14, 28].map((days) => rollingScore(scoreTrend, days as 14 | 28)),
+    rolling: [14, 30].map((days) => rollingScore(scoreTrend, days as 14 | 30)),
   };
 }

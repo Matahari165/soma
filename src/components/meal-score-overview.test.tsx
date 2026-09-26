@@ -83,7 +83,7 @@ describe("MealScoreOverviewPanel", () => {
         daily={completeScore}
         rolling={[
           { days: 14, score: 68, observedDays: 8, readyDays: 5, totalDays: 14 },
-          { days: 28, score: 70, observedDays: 12, readyDays: 7, totalDays: 28 },
+          { days: 30, score: 70, observedDays: 12, readyDays: 7, totalDays: 30 },
         ]}
         trend={[
           { date: "2026-09-08", score: 61, dimensionScores: { nutritionAdequacy: 70 } },
@@ -98,10 +98,12 @@ describe("MealScoreOverviewPanel", () => {
     }
     expect(html).toContain("Contribution");
     expect(html).toContain("Dimension details");
-    expect(html).toContain("28-day trend");
+    expect(html).toContain("30-day trend");
     expect(html).toContain("14-day average");
     expect(html).toContain("8 observed days");
-    expect(html).toContain("28-day average");
+    expect(html).toContain("30-day average");
+    expect(html).toContain("30d avg 73%");
+    expect(html).toContain("+2 pts vs avg");
     expect(html).toContain("12 observed days");
     expect(html.match(/role="button"/g)).toHaveLength(5);
     expect(html.match(/aria-controls="meal-score-dimension-detail"/g)).toHaveLength(5);
@@ -149,6 +151,15 @@ describe("MealScoreOverviewPanel", () => {
     expect(html).toMatch(/<b>100 pts<\/b>/);
     expect(html).toMatch(/<b>0 pts<\/b>/);
     expect(html).toContain('id="meal-score-trend-title"');
+  });
+
+  it("does not compare a raw dimension score when its adjusted value is unavailable", () => {
+    const html = renderToStaticMarkup(<MealScoreOverviewPanel daily={completeScore} rolling={[]} trend={[
+      { date: "2026-09-15", score: 70, dimensionScores: { nutritionAdequacy: 80 }, dimensionAdjustedScores: { nutritionAdequacy: null } },
+    ]} />);
+
+    expect(html).toContain("30-day average unavailable");
+    expect(html).toContain("30d avg —");
   });
 
   it("shows a single observed score without filling missing dates with zero bars", () => {

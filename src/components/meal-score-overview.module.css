@@ -100,6 +100,9 @@
 @media (prefers-reduced-motion: reduce) { .radarValue,.radarSegment,.radarPoint { animation:none; stroke-dashoffset:0; fill-opacity:1; opacity:1; transform:none; } }
 .radarLabel { fill: var(--score-muted); font: 400 13px/1.2 var(--font-soma-ui), sans-serif; pointer-events: none; }
 .radarLabelValue { fill: var(--score-text); font-family: var(--font-soma-mono), monospace; font-size: 12px; font-variant-numeric: tabular-nums; }
+.radarLabelValue[data-tone="positive"] { fill: var(--lab-signal); }
+.radarLabelValue[data-tone="negative"] { fill: var(--lab-error); }
+.radarLabelAverage { fill: var(--score-muted); font-family: var(--font-soma-mono), monospace; font-size: 11px; font-variant-numeric: tabular-nums; }
 
 .dimensionDetailShell { display: contents; }
 
@@ -143,6 +146,8 @@
 
 .dailyPanel { min-width: 0; padding: 20px 0 20px 24px; border-left: 1px solid var(--score-rule); }
 .dailyScore { display: flex; align-items: baseline; gap: 5px; margin-top: 12px; color: var(--score-text); font-family: var(--font-soma-mono, ui-monospace, monospace); font-size: var(--score-display-size); font-weight: 400; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.dailyScore[data-tone="positive"] { color: var(--lab-signal); }
+.dailyScore[data-tone="negative"] { color: var(--lab-error); }
 .dailyScoreTrigger { display: block; width: fit-content; min-width: 44px; min-height: 44px; margin-top: 12px; padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
 :global(html[data-lab-theme="observatory"]) .root .dailyPanel .dailyScoreTrigger:is(:hover, :active):not(:disabled),
 :global(html[data-lab-theme="observatory"]) .root .dailyPanel .dailyScoreTrigger[aria-expanded="true"] { background: transparent; }
@@ -187,7 +192,7 @@
 .subscoreRail { height: 2px; margin-top: 6px; background: var(--score-rule); }
 .subscoreRail span { display: block; height: 100%; min-width: 2px; background: var(--score-positive); }
 .dimensionHistory p { margin: 0; color: var(--score-muted); font-size: 12px; }
-.dimensionHistoryBars { display: grid; min-width: 0; grid-template-columns: repeat(28, minmax(2px, 1fr)); align-items: end; gap: 2px; height: 52px; padding-top: 8px; border-bottom: 1px solid var(--score-rule); }
+.dimensionHistoryBars { display: grid; min-width: 0; grid-template-columns: repeat(30, minmax(2px, 1fr)); align-items: end; gap: 2px; height: 52px; padding-top: 8px; border-bottom: 1px solid var(--score-rule); }
 .dimensionHistoryBars span { display: block; min-height: 2px; height: 100%; background: var(--score-positive); transform: scaleY(var(--bar-scale, 0)); transform-origin: bottom; }
 
 .rollingList { margin: 16px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--score-rule); }
