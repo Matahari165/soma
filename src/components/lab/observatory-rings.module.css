@@ -12,34 +12,34 @@
   color: var(--lab-text-primary);
 }
 
-.visual { min-width: 0; width: min(100%, 330px); transition: transform 1100ms var(--ring-spring); }
+.visual { min-width: 0; width: min(100%, 330px); transition: transform var(--soma-motion-state, 240ms) var(--ring-spring); }
 .figure[data-expanded="true"] .visual { transform: translate(-8px, -10px); }
 .chart { display: block; width: 100%; height: auto; overflow: visible; }
-.control { cursor: pointer; outline: none; opacity: 1; filter: grayscale(0); transition: opacity 1100ms cubic-bezier(.32, .05, .32, 1), filter 1100ms cubic-bezier(.32, .05, .32, 1); }
+.control { cursor: pointer; outline: none; opacity: 1; filter: grayscale(0); transition: opacity var(--soma-motion-state, 240ms) cubic-bezier(.32, .05, .32, 1), filter var(--soma-motion-state, 240ms) cubic-bezier(.32, .05, .32, 1); }
 .control[data-dimmed="true"] { opacity: var(--lab-ring-dimmed-opacity); filter: grayscale(.9); }
 .control[data-dimmed="true"] .ring { stroke-width: 25; }
 .control > :not(.hitArea), .ring { pointer-events: none; }
 .hitArea { fill: none; stroke: transparent; stroke-width: 29; pointer-events: stroke; }
-.ring { fill: none; stroke-width: 27; transition: stroke-width 1100ms var(--ring-spring); }
+.ring { fill: none; stroke-width: 27; transition: stroke-width var(--soma-motion-state, 240ms) var(--ring-spring); }
 .control[data-active="true"] .ring { stroke-width: 32; }
 .control[data-active="true"] .ringNumber { font-size: 19px; fill-opacity: 1; }
 .focusRing { fill: none; stroke: var(--lab-text-primary); stroke-width: 1; stroke-dasharray: 2 4; opacity: 0; }
 .control:focus-visible .focusRing { opacity: 1; }
 .track { stroke: var(--lab-ring-track-color); opacity: var(--lab-ring-track-opacity); }
-.progress { stroke: var(--ring-color); stroke-linecap: round; stroke-opacity: var(--lab-ring-progress-opacity); -webkit-backdrop-filter: blur(2px) saturate(1.15); backdrop-filter: blur(2px) saturate(1.15); animation: reveal 780ms cubic-bezier(.32, .05, .32, 1) var(--ring-delay) both; }
-.glassEdge, .glassEdgeInner { stroke: var(--ring-color); stroke-width: 1.25; stroke-linecap: round; stroke-opacity: .42; transition: r 1100ms var(--ring-spring); }
+.progress { stroke: var(--ring-color); stroke-linecap: round; stroke-opacity: var(--lab-ring-progress-opacity); -webkit-backdrop-filter: blur(2px) saturate(1.15); backdrop-filter: blur(2px) saturate(1.15); animation: reveal 680ms cubic-bezier(.32, .05, .32, 1) var(--ring-delay) both; }
+.glassEdge, .glassEdgeInner { stroke: var(--ring-color); stroke-width: 1.25; stroke-linecap: round; stroke-opacity: .42; transition: r var(--soma-motion-state, 240ms) var(--ring-spring); }
 .control[data-active="true"] .glassEdge { r: calc(var(--ring-radius) + 14.5px); }
 .control[data-active="true"] .glassEdgeInner { r: calc(var(--ring-radius) - 14.5px); }
 .glassEdgeInner { stroke-opacity: .25; }
 .completedOverlap { stroke: var(--ring-color); stroke-linecap: round; }
 .overlap { stroke: var(--ring-color); stroke-linecap: round; stroke-opacity: .5; filter: drop-shadow(0 3px 3px var(--lab-ring-overlap-shadow)); }
-.lapEnd { fill: var(--ring-color); opacity: .52; filter: drop-shadow(0 3px 3px var(--lab-ring-end-shadow)); transition: r 1100ms var(--ring-spring); }
+.lapEnd { fill: var(--ring-color); opacity: .52; filter: drop-shadow(0 3px 3px var(--lab-ring-end-shadow)); transition: r var(--soma-motion-state, 240ms) var(--ring-spring); }
 .control[data-active="true"] .lapEnd { r: 16px; }
 .unknown { stroke: var(--lab-ring-unknown-color); opacity: .7; }
-.ringNumber { fill: var(--ring-label); fill-opacity: var(--lab-ring-label-opacity); stroke: var(--lab-ring-label-stroke); stroke-width: .8px; paint-order: stroke fill; font: 600 16px var(--font-soma-mono), monospace; font-variant-numeric: tabular-nums; transition: font-size 1100ms var(--ring-spring), fill-opacity 1100ms ease-out; }
+.ringNumber { fill: var(--ring-label); fill-opacity: var(--lab-ring-label-opacity); stroke: var(--lab-ring-label-stroke); stroke-width: .8px; paint-order: stroke fill; font: 600 16px var(--font-soma-mono), monospace; font-variant-numeric: tabular-nums; transition: font-size var(--soma-motion-state, 240ms) var(--ring-spring), fill-opacity var(--soma-motion-state, 240ms) ease-out; }
 
-.detail { display: grid; grid-template-rows: 0fr; width: min(100%, 360px); margin-top: 0; transition: grid-template-rows 1100ms var(--ring-spring), margin-top 1100ms var(--ring-spring); }
-.detailContent { min-height: 0; overflow: hidden; opacity: 0; transform: translateY(20px); transition: opacity 900ms cubic-bezier(.32, .05, .32, 1), transform 1100ms var(--ring-spring); }
+.detail { display: grid; grid-template-rows: 0fr; width: min(100%, 360px); margin-top: 0; transition: grid-template-rows var(--soma-motion-state, 240ms) var(--ring-spring), margin-top var(--soma-motion-state, 240ms) var(--ring-spring); }
+.detailContent { min-height: 0; overflow: hidden; opacity: 0; transform: translateY(20px); transition: opacity var(--soma-motion-state, 240ms) cubic-bezier(.32, .05, .32, 1), transform var(--soma-motion-state, 240ms) var(--ring-spring); }
 .figure[data-expanded="true"] .detail { grid-template-rows: 1fr; margin-top: 12px; }
 .figure[data-expanded="true"] .detailContent { opacity: 1; transform: translateY(0); }
 .detailHeader h2:focus { outline: none; }

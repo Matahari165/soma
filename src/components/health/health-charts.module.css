@@ -83,12 +83,12 @@
 .lineChart :global([data-chart-trace]) {
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
-  animation: somaChartTrace 820ms cubic-bezier(.16, 1, .3, 1) 160ms both;
+  animation: somaChartTrace 740ms cubic-bezier(.16, 1, .3, 1) 160ms both;
 }
 
 .lineChart :global([data-chart-area]) {
   opacity: 0;
-  animation: somaChartArea 900ms cubic-bezier(.16, 1, .3, 1) 280ms both;
+  animation: somaChartArea 650ms cubic-bezier(.16, 1, .3, 1) 280ms both;
 }
 
 @keyframes somaChartTrace {

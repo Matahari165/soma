@@ -649,8 +649,7 @@ svg.spin {
 }
 
 .lab-entry__relations,
-.lab-entry__registry,
-.health-trends-block {
+.lab-entry__registry {
   content-visibility: auto;
   contain-intrinsic-size: auto 600px;
 }
