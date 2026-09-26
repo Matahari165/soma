@@ -105,7 +105,7 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
   }}>
     <div className={styles.visual}>
       <svg className={styles.chart} viewBox="0 0 320 320" role="group" aria-label={rings.map(ring => `${ring.label} : ${ring.display}, objectif ${ring.goal}${progress(ring.value, ring.target) === null ? ", progression indisponible" : `, ${Math.round(progress(ring.value, ring.target)! * 100)} % de l’objectif`}`).join(". ")}>
-        <defs><filter id={`${ringPathPrefix}-lap-shadow`} x="-50%" y="-50%" width="200%" height="200%" colorInterpolationFilters="sRGB"><feDropShadow dx="0" dy="3" stdDeviation="2.5" floodColor="#000" floodOpacity=".7" /></filter>{rings.map((ring, index) => <path key={ring.id} id={`${ringPathPrefix}-${ring.id}`} d={ringTextPath(136 - index * 29)} />)}</defs>
+        <defs><filter id={`${ringPathPrefix}-lap-shadow`} x="-50%" y="-50%" width="200%" height="200%" colorInterpolationFilters="sRGB"><feDropShadow dx="0" dy="3" stdDeviation="2.5" floodColor="#000" className={styles.overlapShadow} /></filter>{rings.map((ring, index) => <path key={ring.id} id={`${ringPathPrefix}-${ring.id}`} d={ringTextPath(136 - index * 29)} />)}</defs>
         {rings.map((ring, index) => {
           const radius = 136 - index * 29;
           const ratio = progress(ring.value, ring.target);
@@ -125,12 +125,12 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
                 const next = event.key === "Home" ? 0 : event.key === "End" ? rings.length - 1 : (index + direction + rings.length) % rings.length;
                 figureRef.current?.querySelector<SVGGElement>(`[data-ring="${rings[next].id}"]`)?.focus();
               }
-            }} style={{ "--ring-color": ring.color, "--ring-label": ring.labelColor, "--ring-radius": `${radius}px`, "--ring-delay": `${index * 40}ms` } as CSSProperties}>
+            }} style={{ "--ring-color": ring.color, "--ring-label": ring.labelColor, "--ring-radius": `${radius}px`, "--ring-extra-laps": extraLaps, "--ring-delay": `${index * 40}ms` } as CSSProperties}>
             <g className={styles.ring} transform={`rotate(${ringStartAngle} 160 160)`}>
               <circle className={styles.track} cx="160" cy="160" r={radius} />
               {ratio !== null && <circle className={styles.progress} data-complete={ratio >= 1} cx="160" cy="160" r={radius} pathLength="100" strokeDasharray={dash} />}
               {ratio === null && <circle className={styles.unknown} cx="160" cy="160" r={radius} pathLength="100" strokeDasharray="1 2.8" />}
-              {extraLaps > 0 && <circle className={styles.completedOverlap} cx="160" cy="160" r={radius} pathLength="100" strokeDasharray="100 100" strokeOpacity={Math.min(.22 + extraLaps * .1, .5)} />}
+              {extraLaps > 0 && <circle className={styles.completedOverlap} cx="160" cy="160" r={radius} pathLength="100" strokeDasharray="100 100" />}
               {overflow > 0 && <circle className={styles.overlap} filter={`url(#${ringPathPrefix}-lap-shadow)`} cx="160" cy="160" r={radius} pathLength="100" strokeDasharray={`${overflow * 100} 100`} />}
             </g>
             {end && overflow === 0 && <circle className={styles.lapEnd} data-lap-end={ring.id} filter={`url(#${ringPathPrefix}-lap-shadow)`} cx={end.x} cy={end.y} r="13.5" />}

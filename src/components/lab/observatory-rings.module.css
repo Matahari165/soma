@@ -27,9 +27,10 @@
 .track { stroke: var(--lab-ring-track-color); opacity: var(--lab-ring-track-opacity); }
 .progress { stroke: var(--ring-color); stroke-linecap: round; stroke-opacity: var(--lab-ring-progress-opacity); -webkit-backdrop-filter: blur(2px) saturate(1.15); backdrop-filter: blur(2px) saturate(1.15); animation: reveal 420ms cubic-bezier(.32, .05, .32, 1) var(--ring-delay) both; }
 .progress[data-complete="true"], .completedOverlap { stroke-linecap: butt; }
-.completedOverlap { stroke: var(--ring-color); }
-.overlap { stroke: var(--ring-color); stroke-linecap: round; stroke-opacity: .42; }
-.lapEnd { fill: var(--ring-color); opacity: .42; transition: r 160ms var(--ring-spring); }
+.completedOverlap { stroke: var(--ring-color); stroke-opacity: min(var(--lab-ring-max-lap-opacity), calc(var(--lab-ring-lap-opacity) + var(--ring-extra-laps) * var(--lab-ring-lap-opacity-step))); }
+.overlapShadow { flood-opacity: var(--lab-ring-shadow-opacity); }
+.overlap { stroke: var(--ring-color); stroke-linecap: round; stroke-opacity: var(--lab-ring-overflow-opacity); }
+.lapEnd { fill: var(--ring-color); opacity: var(--lab-ring-overflow-opacity); transition: r 160ms var(--ring-spring); }
 .control[data-active="true"] .lapEnd { r: 16px; }
 .unknown { stroke: var(--lab-ring-unknown-color); opacity: .7; }
 .ringNumber { fill: var(--ring-label); fill-opacity: 1; font: 500 16px var(--font-soma-mono), monospace; font-variant-numeric: tabular-nums; transition: font-size 160ms var(--ring-spring), fill-opacity 160ms ease-out; }
