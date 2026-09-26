@@ -1131,7 +1131,6 @@ html[data-lab-theme="observatory"] .arrival-art--conversation:has([data-home-rin
 html[data-lab-theme="observatory"] .arrival-art--conversation [data-home-rings] { height:auto; }
 html[data-lab-theme="observatory"] .arrival-art--conversation [data-home-rings] > aside { position:relative; top:auto; }
 @media(max-width:700px) {
-  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-intro:has(.arrival-art--conversation) { padding-block-start:32px; }
-  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art.arrival-art--conversation { margin:12px 0 0!important; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art.arrival-art--conversation { margin:0!important; }
   html[data-lab-theme="observatory"] .arrival-visual { height:min(410px,106vw); }
 }
