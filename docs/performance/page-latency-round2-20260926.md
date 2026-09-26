@@ -1,5 +1,7 @@
 # Latence des pages — seconde passe du 26 septembre 2026
 
+> Correction demandée après cet audit : les titres participent désormais à un fondu commun de 420 ms à l’ouverture des pages. Les chiffres d’animation de ce rapport décrivent le build mesuré avant cette correction. Les optimisations des lectures et réponses restent conservées.
+
 ## Périmètre autorisé
 
 Priorité à l’accueil, Nutrition, Activité, Sommeil et Récupération. Les points 2 à 6 de l’audit sont retenus. Analyse conserve son rôle de laboratoire : réponse initiale allégée, preuves détaillées disponibles à la demande. Aucun calcul d’Analyse n’est préparé à la synchronisation.
@@ -57,7 +59,7 @@ Cela représente −63,2 % en JSON brut et −51,9 % en gzip. Les preuves compl�
 2. **Repas** : l’historique borné utilise une seule lecture groupée. Il conserve l’analyse en cours ou en erreur la plus récente ainsi que la dernière analyse réussie utile aux totaux. Les anciennes analyses inutiles à cet affichage ne transitent plus à chaque lecture.
 3. **Accueil** : titre et scores n’attendent plus le résumé des activités récentes. Cette zone garde une place pendant le chargement ; une erreur de ce résumé ne transforme pas les activités en zéro et ne bloque pas le reste. Les connexions aux fournisseurs ne sont plus lues pour construire cet écran.
 4. **Journal et Nutrition** : les repas du jour et les cibles fraîches déjà calculés côté serveur sont réutilisés. Chaque changement de jour relit les repas correspondants, y compris le retour à aujourd’hui ; une réponse tardive du jour précédent ne remplace pas le jour affiché. Les cibles restent actualisées toutes les 60 secondes ; les modifications locales, notes et photos restent conservées au retour sur le même repas. Un échec de lecture des cibles côté serveur conserve la récupération côté navigateur.
-5. **Ouverture des pages** : les titres et textes essentiels ne sont plus masqués par un long fondu. Les tracés et éléments graphiques secondaires gardent leur mouvement ; le réglage de mouvement réduit reste respecté.
+5. **Ouverture des pages** : un fondu commun de 420 ms révèle doucement le contenu, titres compris, sans décalage ni découpage des mots. Les graphiques gardent leurs animations de données ; le réglage de mouvement réduit supprime le fondu.
 
 ## Migration précédente
 

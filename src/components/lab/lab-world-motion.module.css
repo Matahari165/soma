@@ -4,10 +4,6 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .observatoryScroll :global(.arrival-heading h1) {
-    animation: none;
-  }
-
   @supports (animation-timeline: scroll(root)) {
     .observatoryScroll :global(.lab-intro .arrival-art) {
       animation: observatory-art-recede linear both;
