@@ -262,3 +262,35 @@ it("labels a failed new conversation request as a send error", async () => {
   expect(container.textContent).not.toContain("Conversation indisponible");
   await act(async () => root.unmount());
 });
+
+
+it("announces incomplete memory once and keeps analytical evidence distinct from health samples", async () => {
+  const question = "Résume les analyses";
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/starter-prompts")) return Response.json({ calibrated: true, prompts: [{ id: "one", text: question }, { id: "two", text: "Autre demande" }, { id: "three", text: "Dernière demande" }] });
+    if (url.endsWith("/conversations") && init?.method === "POST") return Response.json({ conversation: { id: "synthetic-conversation" } });
+    if (url.endsWith("/chat")) return Response.json({ memoryStatus: { state: "retry_pending" },
+      assistantMessage: { id: "synthetic-answer", sequence: 2, role: "assistant", status: "completed", parts: [
+        { type: "text", text: "Associations consultées." },
+        { type: "data-summary", label: "Analyses Soma consultées", period: null, coveredPeriod: null, itemCount: 0, domains: [],
+          toolStats: [{ toolName: "queryLabAnalyses", itemCount: 2, complete: false, periods: ["90", "all"] }] },
+      ] } });
+    return Response.json({ conversations: [] });
+  }));
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<AssistantWorkspace />));
+  const starter = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes(question));
+  await act(async () => starter?.click());
+  const statuses = [...container.querySelectorAll("[role=status]")].filter((element) => element.textContent?.includes("historique ancien"));
+  expect(statuses).toHaveLength(1);
+  expect(container.textContent).toContain("2 relations consultées · 90 jours, tout l’historique · analyse partielle");
+  expect(container.textContent).not.toContain("Aucune donnée sur cette période");
+  expect(container.textContent).not.toContain("0 élément");
+  const newConversation = [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Nouvelle conversation"));
+  await act(async () => newConversation?.click());
+  expect(container.textContent).not.toContain("historique ancien");
+  await act(async () => root.unmount());
+});

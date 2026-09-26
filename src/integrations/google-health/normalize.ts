@@ -14,6 +14,13 @@ function getString(value: unknown) {
   return typeof value === "string" ? value : null;
 }
 
+function canonicalTimestamp(value: unknown) {
+  const raw = getString(value);
+  if (!raw) return null;
+  const instant = Date.parse(raw);
+  return Number.isFinite(instant) ? new Date(instant).toISOString() : null;
+}
+
 function nestedObject(value: unknown, key: string) {
   return isObject(value) && isObject(value[key]) ? value[key] as Record<string, unknown> : undefined;
 }
@@ -35,9 +42,9 @@ export function normalizeGoogleHealthPoint(
   const body = findRecordBody(point) ?? {};
   const interval = nestedObject(body, "interval");
   const sampleTime = nestedObject(body, "sampleTime");
-  const physicalTime = sampleTime ? getString(sampleTime.physicalTime) : null;
-  const startTime = interval ? getString(interval.startTime) : null;
-  const endTime = interval ? getString(interval.endTime) : null;
+  const physicalTime = sampleTime ? canonicalTimestamp(sampleTime.physicalTime) : null;
+  const startTime = interval ? canonicalTimestamp(interval.startTime) : null;
+  const endTime = interval ? canonicalTimestamp(interval.endTime) : null;
   const measuredAt = endTime ?? startTime ?? physicalTime;
   const date = civilDateFrom(body.date)
     ?? getString(body.date)

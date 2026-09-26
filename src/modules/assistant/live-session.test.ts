@@ -209,4 +209,14 @@ describe("assistant Live voice session", () => {
     expect(state.respondToPreviewChat).toHaveBeenCalledWith(expect.objectContaining({ conversationId, text: "Bonjour Soma" }));
     expect(state.respondToAssistant).not.toHaveBeenCalled();
   });
+  it("returns the saved backend result and preserves retry_pending memory status", async () => {
+    const memoryStatus = { state: "retry_pending", complete: false, retryOnNextMessage: true, throughSequence: 2, warning: "Synthetic memory warning" };
+    state.respondToAssistant.mockResolvedValueOnce({ assistantMessage: { parts: [{ type: "text", text: "Résultat vérifié." }] }, memoryStatus });
+    const session = await createAssistantLiveSession(userId, { conversationId: null, sdp: sdpOffer }, { fetchImpl: vi.fn().mockResolvedValue(providerResponse()) });
+    const result = await respondToAssistantLiveDelegation(userId, { sessionToken: session.sessionToken, delegationId: "memory_pending", transcript: "Analyse" });
+    expect(result).toMatchObject({ memoryStatus });
+    expect(result.responseText).toContain("Résultat vérifié.");
+    expect(result.responseText.match(/réessaiera/gu)).toHaveLength(1);
+  });
+
 });

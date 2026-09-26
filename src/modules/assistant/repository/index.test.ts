@@ -5,8 +5,11 @@ import {
   attachAssistantAttachmentToMessage,
   claimAssistantRun,
   createAssistantAttachment,
+  forkAssistantConversationAtMessage,
   deleteAssistantAttachmentMetadata,
   findAssistantAttachment,
+  findAssistantAttachmentInConversation,
+  listAssistantMessages,
   listAssistantAttachments,
   loadActiveAssistantPlan,
   loadActiveAssistantPlans,
@@ -63,6 +66,92 @@ describe("assistant attachment repository", () => {
     expect(paths[2]).toContain(`user_id=eq.${userId}&id=eq.${attachmentId}`);
     expect(paths[3]).toContain(`user_id=eq.${userId}&conversation_id=eq.${conversationId}&id=eq.${attachmentId}&message_id=is.null`);
     expect(paths[4]).toContain(`user_id=eq.${userId}&id=eq.${attachmentId}`);
+  });
+
+  it("only reopens an available photo when the authenticated user's conversation references it", async () => {
+    vi.mocked(assistantDatabaseRequest).mockImplementation(async (path) => {
+      if (path.startsWith("assistant_attachments?") && path.includes(`id=eq.${attachmentId}`)) return [{
+        id: attachmentId, user_id: userId, conversation_id: conversationId, message_id: "00000000-0000-4000-8000-000000000003",
+        object_path: `${objectPath}`, media_type: "image/png", byte_size: 10, sha256: "a".repeat(64), purpose: "context", status: "available", created_at: "2026-09-23T12:00:00.000Z",
+      }] as never;
+      if (path.startsWith("assistant_messages?")) return [{ id: "00000000-0000-4000-8000-000000000003", sequence: 4 }] as never;
+      return [] as never;
+    });
+
+    await expect(findAssistantAttachmentInConversation(userId, conversationId, attachmentId)).resolves.toMatchObject({
+      id: attachmentId, user_id: userId, conversation_id: conversationId, status: "available",
+    });
+    expect(vi.mocked(assistantDatabaseRequest).mock.calls[1]?.[0]).toContain(`user_id=eq.${userId}&conversation_id=eq.${conversationId}`);
+    expect(vi.mocked(assistantDatabaseRequest).mock.calls[1]?.[0]).toContain("parts=cs.");
+  });
+
+  it("follows explicit message pages past the default PostgREST row cap", async () => {
+    const rows = Array.from({ length: 1_002 }, (_, index) => ({
+      id: crypto.randomUUID(), user_id: userId, conversation_id: conversationId, sequence: index + 1,
+      role: "user", parts: [{ type: "text", text: `Message ${index + 1}` }], status: "completed", parent_message_id: null,
+      created_at: "2026-09-23T12:00:00.000Z",
+    }));
+    vi.mocked(assistantDatabaseRequest).mockImplementation(async (path) => {
+      const after = Number(/sequence=gt\.(\d+)/u.exec(path)?.[1] ?? 0);
+      return rows.filter((row) => row.sequence > after).slice(0, 500) as never;
+    });
+
+    const history = await listAssistantMessages(userId, conversationId);
+    expect(history).toHaveLength(1_002);
+    expect(history[0]?.sequence).toBe(1);
+    expect(history.at(-1)?.sequence).toBe(1_002);
+    const paths = vi.mocked(assistantDatabaseRequest).mock.calls.map(([path]) => path);
+    expect(paths).toHaveLength(3);
+    expect(paths[0]).toContain("&limit=500");
+    expect(paths[1]).toContain("sequence=gt.500");
+    expect(paths[2]).toContain("sequence=gt.1000");
+  });
+});
+
+describe("conversation edits create a coherent branch", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("copies only history before the edited user message and preserves its evidence references", async () => {
+    const forkId = "00000000-0000-4000-8000-000000000040";
+    const targetId = "00000000-0000-4000-8000-000000000003";
+    const photoId = "00000000-0000-4000-8000-000000000022";
+    const sourceMessages = [
+      { id: "00000000-0000-4000-8000-000000000001", user_id: userId, conversation_id: conversationId, sequence: 1, role: "user", parts: [{ type: "text", text: "Contexte ancien." }, { type: "attachment", attachmentId: photoId, mediaType: "image/jpeg" }], status: "completed", parent_message_id: null, created_at: "2026-09-23T12:00:00Z" },
+      { id: "00000000-0000-4000-8000-000000000002", user_id: userId, conversation_id: conversationId, sequence: 2, role: "assistant", parts: [{ type: "text", text: "Réponse ancienne." }, { type: "data-summary", label: "Données Soma consultées", period: { from: "2026-06-01", to: "2026-08-30" }, itemCount: 91, domains: ["sleep"] }], status: "completed", parent_message_id: null, created_at: "2026-09-23T12:00:00Z" },
+      { id: targetId, user_id: userId, conversation_id: conversationId, sequence: 3, role: "user", parts: [{ type: "text", text: "Question modifiée." }], status: "completed", parent_message_id: null, created_at: "2026-09-23T12:00:00Z" },
+      { id: "00000000-0000-4000-8000-000000000004", user_id: userId, conversation_id: conversationId, sequence: 4, role: "assistant", parts: [{ type: "text", text: "Réponse après cible." }], status: "completed", parent_message_id: targetId, created_at: "2026-09-23T12:00:00Z" },
+    ];
+    const appended: Array<Record<string, unknown>> = [];
+    vi.mocked(assistantDatabaseRequest).mockImplementation(async (path, request) => {
+      if (path.startsWith("assistant_conversations?") && path.includes(`id=eq.${conversationId}`)) return [{
+        id: conversationId, user_id: userId, title: "Discussion", status: "active", summary: "legacy summary", summary_through_sequence: 2,
+        created_at: "2026-09-23T12:00:00Z", updated_at: "2026-09-23T12:00:00Z",
+      }] as never;
+      if (path.startsWith("assistant_messages?") && path.includes(`id=eq.${targetId}`)) return [sourceMessages[2]] as never;
+      if (path.startsWith("assistant_messages?")) return sourceMessages as never;
+      if (path === "assistant_conversations" && request?.method === "POST") return [{
+        id: forkId, user_id: userId, title: "Discussion", status: "active", summary: null, summary_through_sequence: 0,
+        created_at: "2026-09-24T12:00:00Z", updated_at: "2026-09-24T12:00:00Z",
+      }] as never;
+      if (path === "rpc/append_assistant_message") {
+        const body = request?.body as Record<string, unknown>;
+        appended.push(body);
+        return [{
+          id: body.p_message_id, user_id: userId, conversation_id: forkId, sequence: appended.length,
+          role: body.p_role, parts: body.p_parts, status: "completed", parent_message_id: body.p_parent_message_id, created_at: "2026-09-24T12:00:00Z",
+        }] as never;
+      }
+      throw new Error(`Unexpected database path: ${path}`);
+    });
+
+    const fork = await forkAssistantConversationAtMessage({ userId, conversationId, messageId: targetId });
+    expect(fork).toMatchObject({ id: forkId, summary: null, summary_through_sequence: 0 });
+    expect(appended).toHaveLength(2);
+    expect(appended[0]?.p_parts).toEqual(sourceMessages[0]?.parts);
+    expect(appended[1]?.p_parts).toEqual(sourceMessages[1]?.parts);
+    expect(JSON.stringify(appended)).not.toContain("Réponse après cible");
+    expect(JSON.stringify(appended)).not.toContain(targetId);
+    expect(appended[0]?.p_parts).toContainEqual(expect.objectContaining({ attachmentId: photoId }));
   });
 });
 

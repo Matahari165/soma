@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({ options: [] as Array<Record<string, unknown>> 
 vi.mock("server-only", () => ({}));
 vi.mock("@ai-sdk/openai", () => ({ openai: { responses: (model: string) => model } }));
 vi.mock("ai", () => ({
+  tool: <T>(options: T) => options,
   isStepCount: (count: number) => count,
   ToolLoopAgent: class {
     constructor(options: Record<string, unknown>) { state.options.push(options); }
@@ -33,6 +34,10 @@ describe("Soma assistant model configuration", () => {
       userId: "user-1", runId: "run-1", triggeringMessageId: "message-1",
       triggeringUserText: "Question", conversationId: "conversation-1", quality,
     });
+    expect(Object.keys(state.options[0].tools as Record<string, unknown>)).toEqual(expect.arrayContaining([
+      "getDataCatalog", "queryLabAnalyses", "getActivityTelemetry", "queryRawHealth",
+      "summarizeSomaData", "searchConversation", "readConversationMessage", "reopenConversationImage",
+    ]));
     expect(state.options[0]).toMatchObject({
       model: "gpt-6-luna", stopWhen: steps, maxOutputTokens: tokens,
       providerOptions: { openai: { reasoningEffort: effort, store: false } },
