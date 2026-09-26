@@ -151,7 +151,17 @@ export async function ensureJournalVariables(
   }
 }
 
-export async function loadJournalData(userId: string, options: { from?: string; to?: string; timeZone?: string; includeAutomaticEntries?: boolean; ensureDefaults?: boolean; mealRecords?: readonly ConfirmedMealRecord[]; skippedBreakfastDates?: ReadonlySet<string>; dailyTargetKcal?: number | null } = {}) {
+export async function loadJournalData(userId: string, options: {
+  from?: string;
+  to?: string;
+  timeZone?: string;
+  includeAutomaticEntries?: boolean;
+  ensureDefaults?: boolean;
+  mealRecords?: readonly ConfirmedMealRecord[] | Promise<readonly ConfirmedMealRecord[]>;
+  automaticHealth?: readonly AutomaticJournalHealthDay[] | Promise<readonly AutomaticJournalHealthDay[]>;
+  skippedBreakfastDates?: ReadonlySet<string>;
+  dailyTargetKcal?: number | null | Promise<number | null>;
+} = {}) {
   // Loading the journal remains backwards-compatible for write boundaries, but
   // page reads opt out explicitly so they never provision or rewrite variables.
   if (options.ensureDefaults !== false) await ensureJournalVariables(userId);
@@ -191,15 +201,19 @@ export async function loadJournalData(userId: string, options: { from?: string; 
     const needsMealData = needsMealSugar || needsLightBreakfast;
     let health: AutomaticJournalHealthDay[] = [];
     if (needsHealth) {
-      let healthQuery = admin.from("daily_health_metrics").select("metric_date,bedtime,running_distance_km,running_duration_minutes,running_pace_seconds_per_km,running_average_heart_rate,data_quality").eq("user_id", userId).order("metric_date", { ascending: true });
-      if (options.from) healthQuery = healthQuery.gte("metric_date", options.from);
-      if (options.to) healthQuery = healthQuery.lte("metric_date", options.to);
-      const healthResult = await healthQuery;
-      if (!healthResult.error) health = (healthResult.data ?? []) as AutomaticJournalHealthDay[];
+      if (options.automaticHealth) {
+        health = [...await options.automaticHealth];
+      } else {
+        let healthQuery = admin.from("daily_health_metrics").select("metric_date,bedtime,running_distance_km,running_duration_minutes,running_pace_seconds_per_km,running_average_heart_rate,data_quality").eq("user_id", userId).order("metric_date", { ascending: true });
+        if (options.from) healthQuery = healthQuery.gte("metric_date", options.from);
+        if (options.to) healthQuery = healthQuery.lte("metric_date", options.to);
+        const healthResult = await healthQuery;
+        if (!healthResult.error) health = (healthResult.data ?? []) as AutomaticJournalHealthDay[];
+      }
     }
     const [mealRecords, skippedBreakfast] = await Promise.all([
       needsMealData
-        ? options.mealRecords ?? loadConfirmedMealRecords(userId, { from: options.from, to: options.to })
+        ? options.mealRecords ? Promise.resolve(options.mealRecords) : loadConfirmedMealRecords(userId, { from: options.from, to: options.to })
         : [],
       needsLightBreakfast
         ? options.skippedBreakfastDates ?? listMeals(userId, { from: options.from, to: options.to }).then(skippedBreakfastDates)
@@ -212,7 +226,7 @@ export async function loadJournalData(userId: string, options: { from?: string; 
     const explicitlyNoBreakfast = needsLightBreakfast
       ? new Set([...explicitNoBreakfastByDate({ variables, entries, days }), ...skippedBreakfast])
       : undefined;
-    let dailyTargetKcal = options.dailyTargetKcal;
+    let dailyTargetKcal = options.dailyTargetKcal === undefined ? undefined : await options.dailyTargetKcal;
     if (needsLightBreakfast && dailyTargetKcal === undefined) {
       try {
         dailyTargetKcal = (await loadNutritionTargetsForUser(userId)).caloriesKcal.likely;

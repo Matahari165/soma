@@ -59,6 +59,37 @@ type PersonalLabSnapshotBuilderInput = PersonalLabSnapshotInput & {
   cachedMatrix?: PersonalLabSnapshot["matrix"];
 };
 
+type PersonalLabMatrixBuilderInput = Pick<PersonalLabSnapshotInput, "timeZone" | "health" | "scores" | "calendars" | "checkins" | "journal"> & {
+  meals?: readonly ConfirmedMealRecord[];
+  metricPreferences?: Array<{ metric_id: string; role: MetricRole }>;
+  requestedPeriods?: import("@/domain/lab/matrix").AnalysisPeriod[];
+};
+
+function buildMatrixFromPreparedJournal(input: PersonalLabMatrixBuilderInput, journal: PersonalLabJournalData): PersonalLabSnapshot["matrix"] {
+  const observations = joinObservations(input.health, input.scores, input.calendars, input.checkins);
+  const metricPreferences = new Map((input.metricPreferences ?? []).map((item) => [item.metric_id, item.role]));
+  const metricDefinitions = metricDefinitionsForHealth(input.health as unknown as Array<Record<string, unknown>>);
+  const validatedDates = new Set(journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate));
+  return buildCorrelationMatrix({
+    health: input.health,
+    observations,
+    variables: journal.variables,
+    entries: journal.entries,
+    meals: input.meals,
+    validatedDates,
+    metricPreferences,
+    metricDefinitions,
+    timeZone: input.timeZone,
+    requestedPeriods: input.requestedPeriods,
+  });
+}
+
+/** Build only the Strongest Effects matrix without deriving today's overview. */
+export function buildPersonalLabMatrix(input: PersonalLabMatrixBuilderInput): PersonalLabSnapshot["matrix"] {
+  const journal = journalWithAutomaticEntries(input.journal, input.meals, input.health);
+  return buildMatrixFromPreparedJournal(input, journal);
+}
+
 export function buildSnapshot(input: PersonalLabSnapshotBuilderInput): PersonalLabSnapshot {
   const journal = journalWithAutomaticEntries(input.journal, input.meals, input.health);
   const observations = joinObservations(input.health, input.scores, input.calendars, input.checkins);
@@ -68,9 +99,8 @@ export function buildSnapshot(input: PersonalLabSnapshotBuilderInput): PersonalL
   const todayDate = dateInTimezone(input.timeZone);
   const today = buildTodayData(input);
   const checkin = input.checkins.find((day) => day.checkin_date === todayDate) ?? null;
-  const validatedDates = new Set(journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate));
   const mealSeries = mealDailySeries(input.meals ?? []);
-  const matrix = input.cachedMatrix ?? buildCorrelationMatrix({ health: input.health, observations, variables: journal.variables, entries: journal.entries, meals: input.meals, validatedDates, metricPreferences, metricDefinitions, timeZone: input.timeZone, requestedPeriods: input.requestedPeriods });
+  const matrix = input.cachedMatrix ?? buildMatrixFromPreparedJournal(input, journal);
   const metricRegistry = metricDefinitions.filter((metric) => isPersonalLabMetricAllowed(metric.id)).map((metric) => {
     const sourceDays = new Map<string, number>();
     const recordedDays = isMealMetric(metric.id)

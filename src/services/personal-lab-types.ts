@@ -104,6 +104,14 @@ export type PersonalLabStream = {
   overview: Promise<PersonalLabOverview>;
   journal: Promise<PersonalLabJournal>;
   analysis: Promise<PersonalLabSnapshot> | null;
+  analysisTimings?: Promise<PersonalLabAnalysisTimings> | null;
+};
+
+export type PersonalLabAnalysisTimings = {
+  cacheMs: number;
+  dataMs: number;
+  buildMs: number;
+  cacheStatus: "hit" | "miss" | "bypass" | "unavailable";
 };
 
 export type PersonalLabJournalData = {
