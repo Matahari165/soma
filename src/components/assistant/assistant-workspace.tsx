@@ -781,7 +781,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
 
         <div className={styles.composerRegion}>
           {error && <div className={`${styles.error} ${notConfigured ? styles.configurationError : ""}`} role="alert">
-            <strong>{notConfigured ? "Assistant non configuré" : conversationLoadErrorId === activeId ? "Conversation indisponible" : "Envoi impossible"}</strong>
+            <strong>{notConfigured ? "Assistant non configuré" : activeId && conversationLoadErrorId === activeId ? "Conversation indisponible" : "Envoi impossible"}</strong>
             <span>{error}</span>
             {activeId && conversationLoadErrorId === activeId && <button className={styles.retryConversation} type="button" onClick={() => void openConversation(activeId)}>Réessayer</button>}
           </div>}

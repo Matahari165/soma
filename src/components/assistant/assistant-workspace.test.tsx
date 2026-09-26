@@ -193,3 +193,22 @@ it("distinguishes new search coverage from legacy summaries without coverage", a
   expect(container.textContent).toContain("Aucune donnée sur cette période");
   await act(async () => root.unmount());
 });
+
+it("labels a failed new conversation request as a send error", async () => {
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/starter-prompts")) return Response.json({ calibrated: true, prompts: [{ id: "test", text: "Question de test" }, { id: "two", text: "Deuxième question" }, { id: "three", text: "Troisième question" }] });
+    if (init?.method === "POST") return Response.json({ error: "Service indisponible" }, { status: 503 });
+    return Response.json({ conversations: [] });
+  }));
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<AssistantWorkspace />));
+  const starter = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Question de test"));
+  expect(starter).toBeDefined();
+  await act(async () => starter?.click());
+  expect(container.textContent).toContain("Envoi impossible");
+  expect(container.textContent).not.toContain("Conversation indisponible");
+  await act(async () => root.unmount());
+});
