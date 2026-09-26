@@ -9,7 +9,7 @@ describe("LabMealCard nutrition chart", () => {
   it("keeps the meal visible while the analysis stage changes", () => {
     const meal: MealRecord = { id: "meal-dinner", date: "2026-09-23", slot: "dinner", note: "Example dinner", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "accepted" };
     const props = { meal, slot: "dinner" as const, saving: false, processingFiles: false, mutationBusy: false, onFiles: () => undefined, onRemovePhoto: () => undefined, onAnalyze: () => undefined, onCancelAnalysis: () => undefined, onNote: () => undefined };
-    for (const [stage, label] of Object.entries({ connecting: "Connexion…", preparing: "Préparation des photos…", queued: "Analyse en attente…", analyzing: "Analyse du repas…" }) as Array<["connecting" | "preparing" | "queued" | "analyzing", string]>) {
+    for (const [stage, label] of Object.entries({ connecting: "Connexion…", preparing: "Préparation des photos…", queued: "Analyse en attente…", analyzing: "Analyse du repas…", finalizing: "Enregistrement des résultats…" }) as Array<["connecting" | "preparing" | "queued" | "analyzing" | "finalizing", string]>) {
       const html = renderToStaticMarkup(<LabMealCard {...props} analysisProgress={{ stage, foods: [] }} />);
       expect(html).toContain(label);
       expect(html).toContain("Example dinner");
@@ -17,6 +17,13 @@ describe("LabMealCard nutrition chart", () => {
       expect(html).toContain('aria-label="Progression de l’analyse"');
       expect(html).toContain('aria-current="step"');
     }
+    const staleDraft = renderToStaticMarkup(<LabMealCard {...props} meal={{ ...meal, status: "draft" }} analysisProgress={{ stage: "analyzing", foods: [] }} />);
+    expect(staleDraft).toContain('data-purpose="meal-dinner-analyzing"');
+    expect(staleDraft).not.toContain("Analyze meal");
+    const finalizing = renderToStaticMarkup(<LabMealCard {...props} analysisProgress={{ stage: "finalizing", foods: [] }} />);
+    expect(finalizing).toContain("Résultats");
+    expect(finalizing).toContain('data-state="complete"');
+    expect(finalizing).toContain("disabled");
     const detailedPhase = renderToStaticMarkup(<LabMealCard {...props} analysisProgress={{ stage: "analyzing", phase: "Lecture des détails du repas…", foods: [] }} />);
     expect(detailedPhase).toContain("Lecture des détails du repas…");
   });
@@ -46,7 +53,8 @@ describe("LabMealCard nutrition chart", () => {
     expect(pendingConfirmation).toContain("Saving meal…");
     expect(pendingConfirmation).not.toContain(">Confirmed</span>");
     const confirmed = renderToStaticMarkup(<LabMealCard {...props} meal={{ ...meal, status: "confirmed" }} onConfirm={() => undefined} />);
-    expect(confirmed).toContain(">Confirmed</span>");
+    expect(confirmed).not.toContain("Confirmed");
+    expect(confirmed).toContain("250 kcal");
     const draft = renderToStaticMarkup(<LabMealCard {...props} meal={{ ...meal, analysis: null, status: "draft" }} />);
     expect(draft).toContain("Sauce à part");
     expect(draft).toContain("commentaire facultatif");
@@ -310,11 +318,11 @@ describe("LabMealCard nutrition chart", () => {
       onNote={() => undefined}
     />);
 
-    expect(html).toContain("Confirmed");
+    expect(html).not.toContain("Confirmed");
     expect(html).toContain('aria-label="Déplier Breakfast"');
     expect(html).not.toContain("08:30");
     expect(html).not.toContain("08:15");
-    expect(html).toContain(">Confirmed</span>");
+    expect(html).not.toContain("confirmedIndicator");
     expect(html).not.toContain("animate-fade-in");
   });
 
