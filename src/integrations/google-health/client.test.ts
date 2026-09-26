@@ -13,6 +13,7 @@ import {
   GOOGLE_HEALTH_SCOPES,
   isGoogleHealthDataType,
   rollUpGoogleHealthSessionHeartRate,
+  refreshGoogleHealthToken,
 } from "./client";
 
 const originalClientId = process.env.GOOGLE_HEALTH_CLIENT_ID;
@@ -174,4 +175,25 @@ describe("Google Health consent", () => {
     expect(isGoogleHealthDataType("steps")).toBe(true);
     expect(isGoogleHealthDataType("unknown-signal")).toBe(false);
   });
+});
+
+it("forwards cancellation to OAuth refresh while retaining its request timeout", async () => {
+  const controller = new AbortController();
+  process.env.GOOGLE_HEALTH_CLIENT_ID = "288016413243-example.apps.googleusercontent.com";
+  const previousSecret = process.env.GOOGLE_HEALTH_CLIENT_SECRET;
+  process.env.GOOGLE_HEALTH_CLIENT_SECRET = "synthetic-test-secret";
+  const fetchMock = vi.fn(async (_url, init) => {
+    expect(init.signal).not.toBe(controller.signal);
+    controller.abort(new Error("synthetic cancellation"));
+    expect(init.signal.aborted).toBe(true);
+    throw init.signal.reason;
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  try {
+    await expect(refreshGoogleHealthToken("synthetic-refresh", { signal: controller.signal })).rejects.toThrow("synthetic cancellation");
+  } finally {
+    vi.unstubAllGlobals();
+    if (previousSecret === undefined) delete process.env.GOOGLE_HEALTH_CLIENT_SECRET;
+    else process.env.GOOGLE_HEALTH_CLIENT_SECRET = previousSecret;
+  }
 });

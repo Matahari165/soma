@@ -1,7 +1,7 @@
 import "server-only";
 
 import { openai, type OpenAILanguageModelResponsesOptions } from "@ai-sdk/openai";
-import { isStepCount, ToolLoopAgent, type ModelMessage } from "ai";
+import { isStepCount, ToolLoopAgent, type ModelMessage, type ToolSet } from "ai";
 
 import type { AssistantQuality } from "./contracts";
 import { assistantInstructionsForTurn, createAssistantTemporalContext, type AssistantTemporalContext } from "./prompt";
@@ -14,6 +14,15 @@ import { createManageUserContextTool } from "./tools/manage-user-context";
 import { createManageMealTool } from "./tools/manage-meal";
 import { createManageNutritionTargetsTool } from "./tools/manage-nutrition-targets";
 import { createQuerySomaDataTool } from "./tools/query-soma-data";
+
+import { createGetDataCatalogTool } from "./tools/get-data-catalog";
+import { createQueryLabAnalysesTool } from "./tools/query-lab-analyses";
+import { createGetActivityTelemetryTool } from "./tools/get-activity-telemetry";
+import { createQueryRawHealthTool } from "./tools/query-raw-health";
+import { createSummarizeSomaDataTool } from "./tools/summarize-soma-data";
+import { createReadConversationMessageTool } from "./tools/read-conversation-message";
+import { createSearchConversationTool } from "./tools/search-conversation";
+import { createReopenConversationImageTool } from "./tools/reopen-conversation-image";
 
 export const SOMA_ASSISTANT_PROVIDER = "openai";
 export const SOMA_ASSISTANT_MODEL = "gpt-6-luna";
@@ -48,20 +57,29 @@ export function createSomaAssistantAgent(input: {
 }): SomaAssistantAgent {
   const settings = qualitySettings[input.quality];
   const temporalContext = input.temporalContext ?? createAssistantTemporalContext({ now: new Date(), profileTimezone: null });
+  const tools: ToolSet = {
+    getUserContext: createGetUserContextTool(input),
+    getPlanDetails: createGetPlanDetailsTool(input),
+    getStrongestEffects: createGetStrongestEffectsTool(input),
+    getWorkoutHistory: createGetWorkoutHistoryTool(input),
+    getLatestRun: createGetLatestRunTool(input),
+    querySomaData: createQuerySomaDataTool(input),
+    getDataCatalog: createGetDataCatalogTool(input),
+    queryLabAnalyses: createQueryLabAnalysesTool(input),
+    getActivityTelemetry: createGetActivityTelemetryTool(input),
+    queryRawHealth: createQueryRawHealthTool(input),
+    summarizeSomaData: createSummarizeSomaDataTool(input),
+    searchConversation: createSearchConversationTool(input),
+    readConversationMessage: createReadConversationMessageTool(input),
+    reopenConversationImage: createReopenConversationImageTool(input),
+    manageUserContext: createManageUserContextTool(input),
+    manageMeal: createManageMealTool(input),
+    manageNutritionTargets: createManageNutritionTargetsTool(input),
+  };
   return new ToolLoopAgent({
     model: openai.responses(SOMA_ASSISTANT_MODEL),
     instructions: assistantInstructionsForTurn(temporalContext),
-    tools: {
-      getUserContext: createGetUserContextTool(input),
-      getPlanDetails: createGetPlanDetailsTool(input),
-      getStrongestEffects: createGetStrongestEffectsTool(input),
-      getWorkoutHistory: createGetWorkoutHistoryTool(input),
-      getLatestRun: createGetLatestRunTool(input),
-      querySomaData: createQuerySomaDataTool(input),
-      manageUserContext: createManageUserContextTool(input),
-      manageMeal: createManageMealTool(input),
-      manageNutritionTargets: createManageNutritionTargetsTool(input),
-    },
+    tools,
     stopWhen: isStepCount(settings.maxSteps),
     maxOutputTokens: settings.maxOutputTokens,
     providerOptions: {

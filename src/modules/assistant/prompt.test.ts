@@ -9,7 +9,7 @@ import {
 
 describe("Soma assistant coaching prompt", () => {
   it("requires professional reformulation and active objective clarification", () => {
-    expect(SOMA_ASSISTANT_PROMPT_VERSION).toBe("soma-assistant-v1.12");
+    expect(SOMA_ASSISTANT_PROMPT_VERSION).toBe("soma-assistant-v1.14");
     expect(SOMA_ASSISTANT_INSTRUCTIONS).toContain("appelle toujours getLatestRun");
     expect(SOMA_ASSISTANT_INSTRUCTIONS).toContain("consulte getWorkoutHistory");
     expect(SOMA_ASSISTANT_INSTRUCTIONS).toContain("running_distance_km");

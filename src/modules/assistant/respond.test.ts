@@ -22,7 +22,7 @@ function message(input: { id: string; role: "user" | "assistant"; text: string; 
     role: input.role,
     parts: [{ type: "text" as const, text: input.text }],
     status: "completed" as const,
-    parent_message_id: null,
+    parent_message_id: null as string | null,
     created_at: "2026-09-21T12:00:00.000Z",
   };
 }
@@ -37,7 +37,7 @@ function setup() {
   const repository = {
     findRunByRequestId: vi.fn(async () => currentRun),
     findMessage: vi.fn(async (_userId: string, messageId: string): Promise<ReturnType<typeof message> | null> => messages.get(messageId) ?? null),
-    findConversation: vi.fn(async () => ({ id: ids.conversation, title: null, summary: null, summary_through_sequence: 0 })),
+    findConversation: vi.fn(async (_userId: string, conversationId = ids.conversation) => ({ id: conversationId, title: null, summary: null, summary_through_sequence: 0 })),
     createConversation: vi.fn(async () => ({ id: ids.conversation, title: null, summary: null, summary_through_sequence: 0 })),
     forkConversationAtMessage: vi.fn(async () => ({ id: ids.forkConversation, title: null, summary: null, summary_through_sequence: 0 })),
     appendMessage: vi.fn(async (input: { conversationId: string; role: string; parts: Array<Record<string, unknown>>; parentMessageId?: string }) => {
@@ -135,7 +135,7 @@ describe("respondToAssistant", () => {
       steps: [{ toolResults: [{ toolName: "querySomaData", input: { dataset: "scores", kinds: ["sleep"] }, output: {
         manifest: { dataset: "scores", requestedPeriod: { from: "2026-09-01", to: "2026-09-07" },
           coveredPeriod: { from: "2026-09-01", to: "2026-09-07" }, timezone: "Europe/Zurich",
-          totalItems: 7, returnedItems: 7, hasMore: false, nextCursor: null, complete: true,
+          totalItems: 7, totalKnown: true, returnedItems: 7, hasMore: false, nextCursor: null, complete: true,
           generatedAt: "2026-09-23T10:00:00.000Z" },
       } }] }],
     } as never);
@@ -147,6 +147,28 @@ describe("respondToAssistant", () => {
         { type: "data-summary", label: "Données Soma consultées", period: { from: "2026-09-01", to: "2026-09-07" }, coveredPeriod: { from: "2026-09-01", to: "2026-09-07" }, itemCount: 7, domains: ["sleep"] },
       ],
     }));
+  });
+
+  it("keeps chat available when compaction persistence fails and exposes a safe retry status", async () => {
+    const state = setup();
+    state.user.sequence = 25;
+    state.repository.listMessages.mockResolvedValueOnce(Array.from({ length: 25 }, (_, index) => ({
+      ...state.user,
+      id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+      sequence: index + 1,
+      role: index % 2 ? "assistant" : "user",
+      parts: [{ type: "text", text: index === 0 ? "Je corrige : ma séance habituelle est la boxe du jeudi." : `Ancien échange ${index + 1}.` }],
+    })) as never);
+    state.repository.updateConversation.mockRejectedValue(new Error("private database failure"));
+
+    const result = await respondToAssistant("user-1", {
+      requestId: "request-memory-retry-123", text: "Et pour cette semaine ?", conversationId: ids.conversation,
+    }, { apiKey: "test-key", dependencies: state as never });
+
+    expect(result).toMatchObject({ memoryStatus: { state: "retry_pending", complete: false, retryOnNextMessage: true } });
+    expect(result.memoryStatus?.warning).toContain("fenêtre récente bornée");
+    expect(state.generate).toHaveBeenCalled();
+    expect(state.repository.updateConversation).toHaveBeenCalledWith("user-1", ids.conversation, expect.objectContaining({ summary_through_sequence: 5 }));
   });
 
   it("replays a completed idempotent request without calling GPT-6 Luna", async () => {
