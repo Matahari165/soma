@@ -55,7 +55,7 @@ export function compactStrongestEffectsResponse(
       relations: MatrixRelation[];
     }>;
     outcomes: StrongestEffectsOutcome[];
-    periods: AnalysisPeriod[];
+    periods: readonly AnalysisPeriod[];
   },
   generation: string,
 ): StrongestEffectsResponse {
@@ -72,7 +72,7 @@ export function compactStrongestEffectsResponse(
       relations: row.relations.map(compactStrongestEffectsRelation),
     })),
     outcomes: matrix.outcomes,
-    periods: matrix.periods,
+    periods: [...matrix.periods],
   };
 }
 

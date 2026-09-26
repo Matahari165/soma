@@ -76,7 +76,7 @@ function scrollToMatrixElement(element: Element | null) {
   element?.scrollIntoView({ behavior: matrixScrollBehavior(), block: "start" });
 }
 
-function effectDirection(relation: MatrixRelation, direction: "higher" | "lower" | "target") {
+function effectDirection(relation: Pick<MatrixRelation, "effect">, direction: "higher" | "lower" | "target") {
   void direction;
   return relation.effect === null || relation.effect === 0 ? 0 : relation.effect > 0 ? 1 : -1;
 }
