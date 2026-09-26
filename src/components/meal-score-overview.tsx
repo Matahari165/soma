@@ -16,7 +16,7 @@ import { BarTrendChart } from "@/components/health/health-charts";
 import styles from "./meal-score-overview.module.css";
 
 export type MealScoreRolling = {
-  days: 14 | 28;
+  days: 14 | 30;
   score: number | null;
   observedDays: number;
   readyDays: number;
@@ -90,6 +90,23 @@ function scoreDescription(score: number | null) {
   return score === null ? "Score unavailable" : `Score ${formatScore(score)} out of 100`;
 }
 
+function comparisonTone(value: number | null, average: number | null): "positive" | "negative" | "neutral" {
+  if (value === null || average === null || !Number.isFinite(value) || !Number.isFinite(average)) return "neutral";
+  const displayedValue = Math.round(value);
+  const displayedAverage = Math.round(average);
+  return displayedValue > displayedAverage ? "positive" : displayedValue < displayedAverage ? "negative" : "neutral";
+}
+
+function averageDimension(trend: readonly MealScoreTrendPoint[], key: MealBalanceComponentKey): number | null {
+  const measured = trend.slice(-30)
+    .map((point) => {
+      const adjusted = point.dimensionAdjustedScores?.[key];
+      return adjusted === undefined ? point.dimensionScores?.[key] ?? null : adjusted;
+    })
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  return measured.length ? measured.reduce((sum, value) => sum + value, 0) / measured.length : null;
+}
+
 function componentFor(daily: MealBalanceScore | null, key: MealBalanceComponentKey) {
   return daily?.components.find((component) => component.key === key) ?? null;
 }
@@ -121,12 +138,13 @@ function axisData(daily: MealBalanceScore | null): RadarAxis[] {
 
 type MealBalanceRadarProps = {
   daily: MealBalanceScore | null;
+  trend: readonly MealScoreTrendPoint[];
   selectedKey: MealBalanceComponentKey | null;
   onSelect: (key: MealBalanceComponentKey) => void;
   registerButton: (key: MealBalanceComponentKey, node: SVGGElement | null) => void;
 };
 
-function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: MealBalanceRadarProps) {
+function MealBalanceRadar({ daily, trend, selectedKey, onSelect, registerButton }: MealBalanceRadarProps) {
   const axes = axisData(daily);
   const complete = axes.every((axis) => axis.score !== null && Number.isFinite(axis.score));
   const description = axes.map((axis) => `${axis.label} : ${scoreDescription(axis.score)}`).join(". ");
@@ -168,6 +186,9 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
         return <polygon className={styles.radarGrid} key={ratio} points={DIMENSION_KEYS.map((_, index) => radarPoint(index, radius).join(",")).join(" ")} aria-hidden="true" />;
       })}
       {axes.map((axis, index) => {
+        const average = averageDimension(trend, axis.keyName);
+        const tone = comparisonTone(axis.score, average);
+        const comparison = average === null ? "30-day average unavailable" : axis.score === null ? `30-day average ${formatScore(average)} out of 100; current comparison unavailable` : `30-day average ${formatScore(average)} out of 100; ${tone === "positive" ? "above" : tone === "negative" ? "below" : "equal to"} average`;
         const edge = radarPoint(index, RADAR_RADIUS);
         const [labelX, y] = radarPoint(index, RADAR_LABEL_RADIUS);
         const anchor = labelX < 185 ? "end" : labelX > 235 ? "start" : "middle";
@@ -180,7 +201,7 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
         return <g
           aria-controls={RADAR_DETAIL_ID}
           aria-expanded={selected}
-          aria-label={`${axis.label}. ${scoreDescription(axis.score)}. ${actionLabel}.`}
+          aria-label={`${axis.label}. ${scoreDescription(axis.score)}. ${comparison}. ${actionLabel}.`}
           aria-pressed={selected}
           className={styles.radarAxisButton}
           data-key={axis.keyName}
@@ -199,7 +220,8 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
           <circle className={styles.radarFocusRing} cx={x} cy={y} r="26" aria-hidden="true" />
           <text className={styles.radarLabel} x={x} y={y} textAnchor={anchor} aria-hidden="true">
             {lines.map((line, lineIndex) => <tspan x={x} dy={lineIndex === 0 ? firstDy : 13} key={line}>{line}</tspan>)}
-            <tspan className={styles.radarLabelValue} x={x} dy="16">{axis.score === null ? "—" : `${formatScore(axis.score)}%`}</tspan>
+            <tspan className={styles.radarLabelValue} data-tone={tone} x={x} dy="16">{axis.score === null ? "—" : `${formatScore(axis.score)}%`}</tspan>
+            <tspan className={styles.radarLabelAverage} x={x} dy="13">{average === null ? "30d avg —" : `30d avg ${formatScore(average)}%`}</tspan>
           </text>
         </g>;
       })}
@@ -255,8 +277,8 @@ function DimensionDetail({ dimension, open, trend, headingRef, onClose }: Dimens
       </li>)}</ul>
     </section> : null}
     <section className={styles.dimensionHistory} aria-labelledby="meal-score-dimension-history-title">
-      <h4 id="meal-score-dimension-history-title">28-day trend</h4>
-      {observedHistory.length ? <div className={styles.dimensionHistoryBars} role="img" aria-label={`28-day trend for ${label}`}>
+      <h4 id="meal-score-dimension-history-title">30-day trend</h4>
+      {observedHistory.length ? <div className={styles.dimensionHistoryBars} role="img" aria-label={`30-day trend for ${label}`}>
         {history.map((point) => <span key={point.date} title={`${formatDate(point.date)}: ${formatScore(point.score)}`} style={scoreBarStyle(point.score)} />)}
       </div> : <p>No historical data.</p>}
     </section>
@@ -303,7 +325,14 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className, date,
   const dailyScore = daily?.score ?? null;
   const scoreDate = date && today && date !== today ? formatDate(date) : null;
   const rolling14 = rolling.find((item) => item.days === 14);
-  const rolling28 = rolling.find((item) => item.days === 28);
+  const rolling30 = rolling.find((item) => item.days === 30);
+  const scoreTone = comparisonTone(dailyScore, rolling30?.score ?? null);
+  const scoreDifference = dailyScore !== null && rolling30?.score !== null && rolling30?.score !== undefined
+    ? Math.round(dailyScore) - Math.round(rolling30.score)
+    : null;
+  const scoreComparison = scoreDifference === null ? null : scoreDifference === 0
+    ? "at avg"
+    : `${scoreDifference > 0 ? "+" : "−"}${Math.abs(scoreDifference)} pts vs avg`;
   const [selectedKey, setSelectedKey] = useState<MealBalanceComponentKey | null>(null);
   const [scoreOpen, setScoreOpen] = useState(false);
   const [openFact, setOpenFact] = useState<number | null>(null);
@@ -361,7 +390,7 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className, date,
 
   const facts = [
     { label: "14-day average", value: formatScore(rolling14?.score ?? null), suffix: "/100", context: rolling14 ? `${rolling14.observedDays} observed days` : "No observations", explanation: "Average of days with a calculated nutrition score over the last 14 days. Missing days are excluded." },
-    { label: "28-day average", value: formatScore(rolling28?.score ?? null), suffix: "/100", context: rolling28 ? `${rolling28.observedDays} observed days` : "No observations", explanation: "Average of days with a calculated nutrition score over the last 28 days. Missing days are excluded." },
+    { label: "30-day average", value: formatScore(rolling30?.score ?? null), suffix: "/100", context: rolling30 ? `${rolling30.observedDays} observed days` : "No observations", explanation: "Average of days with a calculated nutrition score over the last 30 days. Missing days are excluded." },
     { label: "Confidence", value: formatPercent(daily?.confidence), suffix: "", context: daily ? daily.status === "ready" ? "Complete" : daily.status === "limited" ? "Partial" : "Insufficient" : "Unavailable", explanation: "Soma estimates confidence from the confirmed observations. It can adjust the score slightly." },
     { label: "Dimensions observed", value: daily ? String(daily.observedDimensions) : "—", suffix: "/5", context: "Confirmed meals only", explanation: "The five nutrition dimensions use confirmed meals. Unobserved dimensions remain unavailable." },
   ];
@@ -370,15 +399,15 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className, date,
     <div className={styles.scoreTop} data-score-part="top">
       <div className={styles.scoreEssentials}>
         <div className={styles.radarStage} data-detail-open={selectedDimension ? "true" : "false"}>
-          <MealBalanceRadar daily={daily} onSelect={toggleDimension} registerButton={(key, node) => { radarButtonRefs.current[key] = node; }} selectedKey={selectedKey} />
+          <MealBalanceRadar daily={daily} trend={trend} onSelect={toggleDimension} registerButton={(key, node) => { radarButtonRefs.current[key] = node; }} selectedKey={selectedKey} />
           <div className={styles.dimensionDetailShell} data-open={selectedDimension !== null}>
             <DimensionDetail dimension={selectedDimension} trend={trend} headingRef={detailHeadingRef} open={selectedDimension !== null} onClose={closeDimension} />
           </div>
         </div>
         <article className={styles.dailyPanel} aria-labelledby="meal-score-daily-title">
           <div className={styles.panelHeading}><h3 id="meal-score-daily-title">Nutrition score</h3></div>
-          <button ref={scoreButtonRef} type="button" className={styles.dailyScoreTrigger} aria-label={`${scoreDescription(dailyScore)}. ${scoreOpen ? "Close" : "View"} score calculation.`} aria-controls={scoreDetailId} aria-expanded={scoreOpen} onClick={() => { setSelectedKey(null); setScoreOpen((open) => !open); }}><strong className={styles.dailyScore}>{formatScore(dailyScore)}<span>/100</span></strong></button>
-          <p className={styles.scoreAverage}>{scoreDate ? `${scoreDate} · ` : ""}28-day avg · {formatScore(rolling28?.score ?? null)} /100</p>
+          <button ref={scoreButtonRef} type="button" className={styles.dailyScoreTrigger} aria-label={`${scoreDescription(dailyScore)}. 30-day average ${formatScore(rolling30?.score ?? null)} out of 100. ${scoreComparison ?? "Comparison unavailable"}. ${scoreOpen ? "Close" : "View"} score calculation.`} aria-controls={scoreDetailId} aria-expanded={scoreOpen} onClick={() => { setSelectedKey(null); setScoreOpen((open) => !open); }}><strong className={styles.dailyScore} data-tone={scoreTone}>{formatScore(dailyScore)}<span>/100</span></strong></button>
+          <p className={styles.scoreAverage}>{scoreDate ? `${scoreDate} · ` : ""}30-day avg · {formatScore(rolling30?.score ?? null)} /100{scoreComparison ? ` · ${scoreComparison}` : ""}</p>
           <div className={styles.scoreInline} id={scoreDetailId} data-open={scoreOpen} aria-hidden={!scoreOpen} inert={!scoreOpen}>
             <div className={styles.scoreInlineInner}>
               <h4>Nutrition calculation</h4>

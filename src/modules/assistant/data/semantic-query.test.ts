@@ -1,15 +1,36 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ExerciseSummary, HealthMetricDay, ScoreDay } from "@/services/health-analytics";
-import { decodeAssistantCursor, encodeAssistantCursor, queryAssistantData, type AssistantPageRequest } from "./semantic-query";
+import { decodeAssistantCursor, encodeAssistantCursor, queryAssistantData, type AssistantPageRequest, type AssistantActivitySource, type AssistantSleepSessionSource } from "./semantic-query";
 import { assistantHealthMetricCatalog } from "./health-catalog";
 
-const storage = vi.hoisted(() => ({ records: [] as Record<string, unknown>[], ranges: [] as number[] }));
+import type { Meal } from "@/domain/meals";
+import { mealAnalysisSchema } from "@/domain/meals";
+
+const mockDataSources = vi.hoisted(() => ({ healthRows: [] as Record<string, unknown>[], queries: [] as Array<{ table: string; filters: Array<{ method: string; column: string; value: unknown }>; orders: Array<{ column: string; ascending: boolean }>; ranges: Array<[number, number]> }>, mealCalls: [] as Array<{ userId: string; from: string; to: string; preferLatestCompletedAnalysis: boolean }> }));
+const storage = vi.hoisted(() => ({ records: [] as Record<string, unknown>[], ranges: [] as number[], useSupabaseAdapter: false }));
 vi.mock("@/lib/cloudflare/db", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/cloudflare/db")>();
   const { matches, sortRows } = await import("@/lib/cloudflare/db-query");
+  const { SupabaseQueryBuilder } = await import("@/lib/cloudflare/db-supabase");
   return { ...actual, createCloudflareAdminClient: () => ({ from: (table: string) => {
-    let rows = table === "health_records" ? [...storage.records] : [];
+    if (table === "health_records" && storage.useSupabaseAdapter) {
+      return new SupabaseQueryBuilder(async <T>(path: string): Promise<T> => {
+        const params = new URL(path, "https://storage.test").searchParams;
+        const civilBranch = params.getAll("json_data->>civil_date").some((value) => value.startsWith("gte."));
+        const ascending = params.get("order")?.includes(".asc") ?? false;
+        // Synthetic binary database collation intentionally differs from localeCompare.
+        const rows = storage.records.filter((row) => civilBranch ? row.civil_date !== null : row.civil_date === null)
+          .sort((left, right) => (String(left.source_record_id) < String(right.source_record_id) ? -1 : 1) * (ascending ? 1 : -1));
+        const offset = Number(params.get("offset") ?? 0);
+        const limit = Number(params.get("limit"));
+        storage.ranges.push(limit);
+        return rows.slice(offset, offset + limit).map((row) => ({ table_name: table, row_key: String(row.source_record_id), json_data: row })) as T;
+      }, table);
+    }
+    const recordedQuery: (typeof mockDataSources.queries)[number] = { table, filters: [], orders: [], ranges: [] };
+    mockDataSources.queries.push(recordedQuery);
+    let rows = table === "health_records" ? [...(storage.records.length ? storage.records : mockDataSources.healthRows.map((row) => ({ user_id: "user-1", data_type: row.payload && typeof row.payload === "object" && "sleep" in row.payload ? "sleep" : "exercise", ...row })))] : [];
     const sorts: Array<{ field: string; ascending: boolean }> = [];
     const builder = {
       select: () => builder,
@@ -19,21 +40,33 @@ vi.mock("@/lib/cloudflare/db", async (importOriginal) => {
       lt: (field: string, value: unknown) => filter(field, "lt", value),
       is: (field: string, value: unknown) => filter(field, "is", value),
       in: (field: string, value: unknown[]) => filter(field, "in", value),
-      order: (field: string, options: { ascending: boolean }) => { sorts.push({ field, ...options }); return builder; },
+      order: (field: string, options: { ascending: boolean }) => { sorts.push({ field, ...options }); recordedQuery.orders.push({ column: field, ascending: options.ascending }); return builder; },
       range: async (from: number, to: number) => {
-        storage.ranges.push(to - from + 1);
+        storage.ranges.push(to - from + 1); recordedQuery.ranges.push([from, to]);
         return { data: sortRows(rows, sorts).slice(from, to + 1), error: null };
       },
       maybeSingle: async () => ({ data: table === "profiles" ? { timezone: "Europe/Paris" } : null, error: null }),
     };
     const filter = (field: string, operator: "eq" | "gte" | "lte" | "lt" | "is" | "in", value: unknown) => {
+      recordedQuery.filters.push({ method: operator, column: field, value });
       rows = rows.filter((row) => matches(row, { field, operator, value }));
       return builder;
     };
     return builder;
   } }) };
 });
-afterEach(() => { storage.records = []; storage.ranges = []; });
+afterEach(() => { storage.records = []; storage.ranges = []; storage.useSupabaseAdapter = false; mockDataSources.healthRows = []; mockDataSources.queries = []; mockDataSources.mealCalls = []; });
+
+vi.mock("@/repositories/meals", () => ({
+  findMeal: async () => null,
+  listMeals: async (userId: string, options: { from: string; to: string; preferLatestCompletedAnalysis: boolean }) => {
+    mockDataSources.mealCalls.push({ userId, ...options });
+    return [];
+  },
+}));
+
+vi.mock("@/services/meals", () => ({ loadConfirmedMealRecords: async () => [] }));
+
 
 const secret = "test-assistant-cursor-secret-123456";
 const baseHealthDay = (date: string, steps: number | null): HealthMetricDay => ({
@@ -55,10 +88,45 @@ const baseHealthDay = (date: string, steps: number | null): HealthMetricDay => (
   source_freshness: { latestMeasuredAt: `${date}T08:00:00.000Z` },
 });
 
-function sources(input: { health?: HealthMetricDay[]; scores?: ScoreDay[]; activities?: ExerciseSummary[] } = {}) {
+function sources(input: {
+  health?: HealthMetricDay[]; scores?: ScoreDay[]; activities?: Array<AssistantActivitySource | ExerciseSummary>;
+  sleepSessions?: AssistantSleepSessionSource[]; meals?: Meal[];
+} = {}) {
   return {
     profile: async () => ({ timezone: "Europe/Zurich", importedAt: "2026-09-21T09:00:00.000Z" }),
-    health: async () => input.health ?? [], scores: async () => input.scores ?? [], nutrition: async () => [], activities: async () => input.activities ?? [],
+    health: async () => input.health ?? [], scores: async () => input.scores ?? [], nutrition: async () => [],
+    activities: async () => (input.activities ?? []).map((source) => "activity" in source ? source : ({ activity: source, provider: null, startTime: source.startTime ?? null, endTime: null, importedAt: null })), sleepSessions: async () => input.sleepSessions ?? [], meals: async () => input.meals ?? [],
+  };
+}
+
+function exercise(id: string, date: string): ExerciseSummary {
+  return {
+    id, date, name: "Morning Run", type: "RUNNING", durationMinutes: 42, activeMinutes: 40, calories: 400, distanceKm: 8,
+    averageHeartRate: 148, maximumHeartRate: 171, zoneMinutes: 26, averageSpeedKph: 11.4,
+    averagePaceSecondsPerKm: 315.8, elevationGainMeters: 36, steps: 7_800, runVo2Max: null, swimLengths: null,
+    cadence: 168, strideLengthMeters: 1.1, groundContactMilliseconds: 245, verticalOscillationMillimeters: 8,
+    verticalRatio: 7.2,
+  };
+}
+
+function mealFixture(date: string): Meal {
+  const analysis = mealAnalysisSchema.parse({
+    summary: "A bowl of oatmeal",
+    foods: [],
+    totals: {
+      calories: { low: 400, likely: 450, high: 500 }, proteinGrams: { low: 12, likely: 15, high: 18 },
+      carbohydrateGrams: { low: 55, likely: 60, high: 65 }, fatGrams: { low: 10, likely: 12, high: 14 },
+      fiberGrams: { low: 7, likely: 9, high: 11 }, sugarGrams: null, addedSugarGrams: null,
+    },
+    confidence: "high", uncertainties: [],
+  });
+  return {
+    id: `meal-${date}`, userId: "user-1", mealDate: date, mealType: "breakfast", note: "Before training", status: "confirmed",
+    entryState: "recorded", mouthWarmthIntensity: null, stomachOverfullIntensity: null,
+    createdAt: `${date}T07:30:00.000Z`, updatedAt: `${date}T07:35:00.000Z`,
+    photos: [{ id: "photo-private", mealId: `meal-${date}`, origin: "homemade", objectPath: "private/path.png", mimeType: "image/png", bytes: 1234, filename: null, comment: null, createdAt: `${date}T07:30:00.000Z`, storageStatus: "available", purgedAt: null }],
+    analysis: { id: "analysis-1", mealId: `meal-${date}`, status: "completed", provider: "provider-x", model: "model-y", result: analysis, error: null, sourcePhotoIds: [], createdAt: `${date}T07:35:00.000Z`, completedAt: `${date}T07:35:00.000Z` },
+    lastSuccessfulAnalysis: null,
   };
 }
 
@@ -69,6 +137,7 @@ function activity(id: string, date: string, type: string): ExerciseSummary {
     averagePaceSecondsPerKm: null, elevationGainMeters: null, steps: null, runVo2Max: null,
     swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null,
     verticalOscillationMillimeters: null, verticalRatio: null,
+
   };
 }
 
@@ -221,6 +290,171 @@ describe("assistant semantic data queries", () => {
     }, { sources: sources({ scores: [{ score_date: "2026-09-21", kind: "recovery", score: 0, drivers: {}, algorithm_version: "recovery-v1" }] }), cursorSecret: secret });
     expect(result.items[0]).toMatchObject({ type: "score", observation: { value: 0, availability: "observed", provenance: { algorithmVersion: "recovery-v1" } } });
   });
+
+  it("returns the matching activity with its source identity and rejects rows outside the requested day", async () => {
+    const activitySource = (id: string, date: string): AssistantActivitySource => ({
+      activity: exercise(id, date), provider: "google_health", startTime: `${date}T16:00:00.000Z`,
+      endTime: `${date}T16:42:00.000Z`, importedAt: `${date}T17:00:00.000Z`,
+    });
+    const result = await queryAssistantData("user-1", {
+      dataset: "activities", period: { from: "2026-09-24", to: "2026-09-24" }, activityTypes: ["running"],
+    }, { sources: sources({ activities: [activitySource("run-today", "2026-09-24"), activitySource("run-old", "2026-06-04")] }), cursorSecret: secret });
+
+    expect(result.items).toHaveLength(1);
+    const item = result.items[0];
+    expect(item).toMatchObject({ type: "activity", date: "2026-09-24", activity: { id: "run-today", distanceKm: 8 } });
+    if (item.type === "activity") expect(item.observations).toContainEqual(expect.objectContaining({ metric: "duration_minutes", value: 42, provenance: { source: "soma_calculation", provider: "google_health", algorithmVersion: "session-times-v1" } }));
+    expect(result.manifest).toMatchObject({ requestedPeriod: { from: "2026-09-24", to: "2026-09-24" }, coveredPeriod: { from: "2026-09-24", to: "2026-09-24" }, timezone: "Europe/Zurich" });
+  });
+
+  it("flags zone minutes exceeding the session duration without changing source values", async () => {
+    const activity = { ...exercise("run-today", "2026-09-24"), durationMinutes: 50, zoneMinutes: 97 };
+    const result = await queryAssistantData("user-1", {
+      dataset: "activities", period: { from: "2026-09-24", to: "2026-09-24" },
+    }, { sources: sources({ activities: [{ activity, provider: "google_health", startTime: "2026-09-24T15:00:00Z", endTime: "2026-09-24T15:50:00Z", importedAt: null }] }), cursorSecret: secret });
+
+    expect(result.items[0]).toMatchObject({ type: "activity", qualityFlags: ["zone_minutes_exceed_duration"], activity: { zoneMinutes: 97 } });
+  });
+
+  it("marks a pace derived from the raw exercise payload as a Soma calculation", async () => {
+    mockDataSources.queries.length = 0;
+    mockDataSources.healthRows = [{
+      provider: "google_health", source_device: "Watch", source_record_id: "run-derived-pace", civil_date: "2026-09-24",
+      start_time: "2026-09-24T16:00:00.000Z", end_time: "2026-09-24T16:40:00.000Z", updated_at: "2026-09-24T17:00:00.000Z",
+      payload: { exercise: { exerciseType: "RUNNING", activeDuration: "2400s", metricsSummary: { distanceMillimeters: 8_000_000 } } },
+    }];
+
+    const result = await queryAssistantData("user-1", {
+      dataset: "activities", period: { from: "2026-09-24", to: "2026-09-24" },
+    }, { cursorSecret: secret });
+
+    const item = result.items[0];
+    expect(item).toMatchObject({ type: "activity", activity: { averagePaceSecondsPerKm: 300 } });
+    if (item.type === "activity") expect(item.observations).toContainEqual(expect.objectContaining({
+      metric: "average_pace_seconds_per_km", value: 300,
+      provenance: { source: "soma_calculation", provider: "google_health", algorithmVersion: "activity-derived-pace-v1" },
+    }));
+  });
+
+  it("bounds default activity and sleep reads by user and requested period, with stable storage ordering", async () => {
+    const activityRow = {
+      provider: "google_health", source_device: "Watch", source_record_id: "run-default", civil_date: "2026-09-24",
+      start_time: "2026-09-24T16:00:00.000Z", end_time: "2026-09-24T16:40:00.000Z", updated_at: "2026-09-24T17:00:00.000Z",
+      payload: { exercise: { exerciseType: "RUNNING", activeDuration: "2400s", metricsSummary: { distanceMillimeters: 8_000_000 } } },
+    };
+    mockDataSources.queries.length = 0;
+    mockDataSources.healthRows = [activityRow];
+    await queryAssistantData("user-1", {
+      dataset: "activities", period: { from: "2026-09-24", to: "2026-09-24" },
+    }, { cursorSecret: secret });
+
+    const activityQueries = mockDataSources.queries.filter((query) => query.table === "health_records");
+    expect(activityQueries).toHaveLength(2);
+    for (const query of activityQueries) {
+      expect(query.filters).toContainEqual({ method: "eq", column: "user_id", value: "user-1" });
+      expect(query.filters).toContainEqual({ method: "eq", column: "data_type", value: "exercise" });
+      expect(query.ranges).toEqual([[0, 100]]);
+      expect(query.orders.map(({ column }) => column)).toEqual(query.filters.some(({ method, column }) => method === "is" && column === "civil_date") ? ["start_time", "source_record_id", "provider"] : ["civil_date", "start_time", "source_record_id", "provider"]);
+    }
+    expect(activityQueries[0].filters).toContainEqual({ method: "gte", column: "civil_date", value: "2026-09-24" });
+    expect(activityQueries[0].filters).toContainEqual({ method: "lte", column: "civil_date", value: "2026-09-24" });
+    expect(activityQueries[1].filters).toContainEqual({ method: "gte", column: "start_time", value: "2026-09-23T00:00:00.000Z" });
+    expect(activityQueries[1].filters).toContainEqual({ method: "lt", column: "start_time", value: "2026-09-26T00:00:00.000Z" });
+
+    mockDataSources.queries.length = 0;
+    mockDataSources.healthRows = [{ ...activityRow, source_record_id: "sleep-default", payload: { sleep: { summary: { minutesAsleep: 420 } } } }];
+    await queryAssistantData("user-1", {
+      dataset: "sleep_sessions", period: { from: "2026-09-24", to: "2026-09-24" },
+    }, { cursorSecret: secret });
+    const sleepQueries = mockDataSources.queries.filter((query) => query.table === "health_records");
+    expect(sleepQueries).toHaveLength(3);
+    for (const query of sleepQueries) {
+      expect(query.filters).toContainEqual({ method: "eq", column: "user_id", value: "user-1" });
+      expect(query.filters).toContainEqual({ method: "eq", column: "data_type", value: "sleep" });
+      expect(query.ranges).toEqual([[0, 999]]);
+      expect(query.orders.map(({ column }) => column)).toEqual(["civil_date", "end_time", "provider", "source_record_id"]);
+    }
+    expect(sleepQueries[1].filters).toContainEqual({ method: "gte", column: "end_time", value: "2026-09-23T00:00:00.000Z" });
+    expect(sleepQueries[1].filters).toContainEqual({ method: "lt", column: "end_time", value: "2026-09-26T00:00:00.000Z" });
+
+    mockDataSources.mealCalls.length = 0;
+    await queryAssistantData("user-1", {
+      dataset: "meals", period: { from: "2026-09-23", to: "2026-09-25" },
+    }, { cursorSecret: secret });
+    expect(mockDataSources.mealCalls).toEqual([{
+      userId: "user-1", from: "2026-09-23", to: "2026-09-25", preferLatestCompletedAnalysis: true,
+    }]);
+  });
+
+  it("loads the profile context and requested dataset concurrently", async () => {
+    let releaseProfile: ((value: { timezone: string; importedAt: string | null }) => void) | undefined;
+    let healthStarted = false;
+    const profilePromise = new Promise<{ timezone: string; importedAt: string | null }>((resolve) => { releaseProfile = resolve; });
+    const dataSources = {
+      ...sources(),
+      profile: () => profilePromise,
+      health: async () => { healthStarted = true; return []; },
+    };
+
+    const resultPromise = queryAssistantData("user-1", {
+      dataset: "daily_health", period: { from: "2026-09-24", to: "2026-09-24" }, metrics: ["steps"],
+    }, { sources: dataSources, cursorSecret: secret });
+    await Promise.resolve();
+    expect(healthStarted).toBe(true);
+    releaseProfile?.({ timezone: "Europe/Zurich", importedAt: null });
+    await expect(resultPromise).resolves.toMatchObject({ manifest: { timezone: "Europe/Zurich" } });
+  });
+
+  it("returns a targeted sleep session with the source record id and extracted metrics, without the raw payload", async () => {
+    const sleepSession: AssistantSleepSessionSource = {
+      provider: "google_health", sourceDevice: "Watch", sourceRecordId: "sleep-2026-09-24", civilDate: "2026-09-24",
+      startTime: "2026-09-23T22:30:00.000Z", endTime: "2026-09-24T06:30:00.000Z", updatedAt: "2026-09-24T07:00:00.000Z",
+      payload: { privateVendorField: "must-not-escape", sleep: { summary: { minutesAsleep: 430, minutesInSleepPeriod: 480, minutesAwake: 50, minutesToFallAsleep: 10, stagesSummary: [{ type: "DEEP", minutes: 90, count: 3 }] }, stages: [{ type: "DEEP", startTime: "2026-09-24T01:00:00Z", endTime: "2026-09-24T02:30:00Z", duration: "5400s" }] } },
+    };
+    const result = await queryAssistantData("user-1", { dataset: "sleep_sessions", period: { from: "2026-09-24", to: "2026-09-24" } }, { sources: sources({ sleepSessions: [sleepSession] }), cursorSecret: secret });
+
+    const item = result.items[0];
+    expect(item).toMatchObject({
+      type: "sleep_session", date: "2026-09-24",
+      session: { id: "sleep-2026-09-24", durationMinutes: 480, sleepMinutes: 430, sourceDevice: "Watch", provider: "google_health", stagesSummary: [{ type: "DEEP", minutes: 90, count: 3 }] },
+    });
+    if (item.type === "sleep_session") expect(item.observations).toContainEqual(expect.objectContaining({ metric: "sleep_minutes", value: 430, availability: "observed" }));
+    expect(JSON.stringify(result)).not.toContain("must-not-escape");
+  });
+
+  it("returns targeted meal records and nutrition estimates without photo storage paths", async () => {
+    const result = await queryAssistantData("user-1", {
+      dataset: "meals", period: { from: "2026-09-24", to: "2026-09-24" }, mealTypes: ["breakfast"],
+    }, { sources: sources({ meals: [mealFixture("2026-09-24"), mealFixture("2026-06-04")] }), cursorSecret: secret });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      type: "meal", date: "2026-09-24", meal: {
+        id: "meal-2026-09-24", mealType: "breakfast", analysis: {
+          totals: { calories: { likely: 450 }, proteinGrams: { likely: 15 } },
+        },
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain("private/path.png");
+    expect(result.manifest.coveredPeriod).toEqual({ from: "2026-09-24", to: "2026-09-24" });
+  });
+
+  it("keeps drafts and explicitly skipped meal slots visible without counting them as nutrition", async () => {
+    const draft = { ...mealFixture("2026-09-24"), id: "meal-draft", status: "draft" as const };
+    const skipped = { ...mealFixture("2026-09-24"), id: "meal-skipped", entryState: "skipped" as const };
+    const result = await queryAssistantData("user-1", {
+      dataset: "meals", period: { from: "2026-09-24", to: "2026-09-24" },
+    }, { sources: sources({ meals: [draft, skipped] }), cursorSecret: secret });
+
+    expect(result.items).toHaveLength(2);
+    expect(result.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({ meal: expect.objectContaining({ id: "meal-draft", status: "draft", nutritionEligible: false, nutritionExclusionReason: "draft", analysis: null }) }),
+      expect.objectContaining({ meal: expect.objectContaining({ id: "meal-skipped", entryState: "skipped", nutritionEligible: false, nutritionExclusionReason: "explicitly_skipped", analysis: null }) }),
+    ]));
+    for (const item of result.items) {
+      if (item.type === "meal") expect(item.observations.every((observation) => observation.availability === "not_calculable" && observation.value === null)).toBe(true);
+    }
+  });
 });
 
 describe("default activity storage pagination", () => {
@@ -255,4 +489,57 @@ describe("default activity storage pagination", () => {
     expect(ids).toEqual(order === "asc" ? ["C", "A", "Z", "a", "D", "B"] : ["B", "a", "Z", "A", "D", "C"]);
     expect(storage.ranges.every((size) => size === 3)).toBe(true);
   });
+});
+
+
+it.each(["asc", "desc"] as const)("paginates activities through the real Supabase adapter without collated duplicates (%s)", async (order) => {
+  storage.useSupabaseAdapter = true;
+  const ids = ["A", "Z", "a", "z", "é"];
+  storage.records = ids.map((id) => ({
+    user_id: "user-1", data_type: "exercise", provider: "google_health",
+    source_record_id: id, civil_date: "2026-09-26", start_time: null, end_time: null,
+    updated_at: "2026-09-26T12:00:00Z", payload: { exercise: { exerciseType: "RUNNING" } },
+  }));
+  const seen: string[] = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < 5; page += 1) {
+    const result = await queryAssistantData("user-1", {
+      dataset: "activities", period: { from: "2026-09-26", to: "2026-09-26" },
+      activityTypes: ["running"], pagination: { limit: 2, cursor, order },
+    }, { cursorSecret: secret });
+    seen.push(...result.items.flatMap((item) => item.type === "activity" ? [item.activity.id] : []));
+    cursor = result.manifest.nextCursor;
+    if (!result.manifest.hasMore) break;
+  }
+  expect(cursor).toBeNull();
+  expect(seen).toEqual(order === "asc" ? ids : [...ids].reverse());
+  expect(new Set(seen).size).toBe(ids.length);
+  expect(storage.ranges.every((limit) => limit === 3)).toBe(true);
+});
+
+
+it.each(["asc", "desc"] as const)("consumes widened time windows while preserving labeled activity dates (%s)", async (order) => {
+  storage.records = [
+    ["before", "2026-09-25T23:30:00+02:00"],
+    ["boundary", "2026-09-26T00:00:00+02:00"],
+    ["midday", "2026-09-26T12:00:00Z"],
+    ["after", "2026-09-27T00:00:00+02:00"],
+  ].map(([id, time]) => ({
+    user_id: "user-1", data_type: "exercise", provider: "google_health",
+    source_record_id: id, civil_date: null, start_time: time, end_time: null,
+    payload: { exercise: { exerciseType: "RUNNING" } },
+  }));
+  const seen: string[] = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < 10; page += 1) {
+    const result = await queryAssistantData("user-1", {
+      dataset: "activities", period: { from: "2026-09-26", to: "2026-09-26" },
+      pagination: { limit: 1, cursor, order },
+    }, { cursorSecret: secret });
+    seen.push(...result.items.flatMap((item) => item.type === "activity" ? [item.activity.id] : []));
+    cursor = result.manifest.nextCursor;
+    if (!result.manifest.hasMore) break;
+  }
+  expect(cursor).toBeNull();
+  expect(seen).toEqual(order === "asc" ? ["boundary", "midday"] : ["midday", "boundary"]);
 });

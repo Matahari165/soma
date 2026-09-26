@@ -3,6 +3,8 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import { z } from "zod";
+
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { getR2AssistantAttachment } from "@/lib/r2";
 
 import { createSomaAssistantAgent, SOMA_ASSISTANT_MODEL, SOMA_ASSISTANT_PROVIDER, type SomaAssistantAgent } from "./agent";
@@ -16,7 +18,7 @@ import {
   recentWindowFitsBudget,
   storedConversationSummaryNeedsRebuild,
 } from "./conversation-memory";
-import { SOMA_ASSISTANT_PROMPT_VERSION } from "./prompt";
+import { createAssistantTemporalContext, SOMA_ASSISTANT_PROMPT_VERSION } from "./prompt";
 import {
   appendAssistantMessage,
   attachAssistantAttachmentToMessage,
@@ -57,6 +59,8 @@ export class AssistantResponseError extends Error {
 
 type Dependencies = {
   createAgent: typeof createSomaAssistantAgent;
+  loadProfileTimezone(userId: string): Promise<string | null>;
+  now(): Date;
   repository: {
     appendMessage: typeof appendAssistantMessage;
     attachAttachmentToMessage: typeof attachAssistantAttachmentToMessage;
@@ -74,8 +78,22 @@ type Dependencies = {
   };
 };
 
+async function loadProfileTimezone(userId: string) {
+  try {
+    const result = await createCloudflareAdminClient().from("profiles")
+      .select("timezone")
+      .eq("user_id", userId)
+      .maybeSingle();
+    return !result.error && typeof result.data?.timezone === "string" ? result.data.timezone : null;
+  } catch {
+    return null;
+  }
+}
+
 const dependencies: Dependencies = {
   createAgent: createSomaAssistantAgent,
+  loadProfileTimezone,
+  now: () => new Date(),
   repository: {
     appendMessage: appendAssistantMessage,
     attachAttachmentToMessage: attachAssistantAttachmentToMessage,
@@ -384,6 +402,10 @@ export async function respondToAssistant(
       return { type: "file" as const, data: bytes, mediaType: attachment.media_type };
     }));
     history.push({ role: "user", content: imageParts.length ? [{ type: "text", text: input.text }, ...imageParts] : input.text });
+    const temporalContext = createAssistantTemporalContext({
+      now: deps.now(),
+      profileTimezone: await deps.loadProfileTimezone(userId),
+    });
     const agent: SomaAssistantAgent = deps.createAgent({
       userId,
       runId: run.id,
@@ -391,6 +413,7 @@ export async function respondToAssistant(
       triggeringMessageId: userMessage.id,
       triggeringUserText: input.text,
       conversationId: conversation.id,
+      temporalContext,
     });
     const result = await agent.generate({ messages: history, timeout: 90_000 });
     const text = result.text.trim();

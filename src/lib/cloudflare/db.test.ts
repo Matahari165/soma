@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { affectsLabMatrixRevision, assertJournalDayPersisted, buildCloudflareReadPlan, buildCloudflareUpdatePlan, createCloudflareAdminClient, labMatrixInputRevision, labMatrixRevisionTables, mergeJournalOmissions, stableIdentity } from "@/lib/cloudflare/db";
+import { SupabaseQueryBuilder } from "@/lib/cloudflare/db-supabase";
+import type { SupabaseRequest } from "@/lib/cloudflare/db-types";
 import { CloudflareQueryBuilder } from "@/lib/cloudflare/db-d1";
 import type { D1DatabaseLike } from "@/lib/cloudflare/db-types";
 
@@ -613,4 +615,62 @@ it("advances summary checkpoint versions when the clock has not advanced", async
     if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey;
   }
+});
+
+
+describe("storage pagination preserves database collation", () => {
+  it.each(["asc", "desc"] as const)("keeps Supabase page order before advancing offsets (%s)", async (order) => {
+    const databaseIds = order === "asc" ? ["A", "Z", "a", "é", "z"] : ["z", "é", "a", "Z", "A"];
+    const request: SupabaseRequest = async <T>(path: string): Promise<T> => {
+      const query = new URL(path, "https://storage.test").searchParams;
+      const offset = Number(query.get("offset") ?? 0);
+      const limit = Number(query.get("limit"));
+      expect(limit).toBe(3);
+      expect(query.get("order")).toContain("source_record_id");
+      return databaseIds.slice(offset, offset + limit).map((id) => ({
+        table_name: "health_records", row_key: id, user_id: "user-1",
+        source_record_id: id, civil_date: "2026-09-26", start_time: null,
+        json_data: { source_record_id: id, civil_date: "2026-09-26", start_time: null },
+      })) as T;
+    };
+    const ids: string[] = [];
+    for (let offset = 0; offset < databaseIds.length; offset += 2) {
+      const result = await new SupabaseQueryBuilder(request, "health_records")
+        .select("source_record_id,civil_date,start_time")
+        .order("civil_date", { ascending: order === "asc" })
+        .order("source_record_id", { ascending: order === "asc" }).range(offset, offset + 2);
+      expect(result.error).toBeNull();
+      ids.push(...(result.data ?? []).slice(0, 2).map((row) => String(row.source_record_id)));
+    }
+    expect(ids).toEqual(databaseIds);
+    expect(new Set(ids).size).toBe(databaseIds.length);
+  });
+});
+
+it("advances D1 summary checkpoint CAS versions within the same millisecond", async () => {
+  const instant = "2020-01-01T00:00:00.000Z";
+  const clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse(instant));
+  const statements: Array<{ sql: string; values: unknown[] }> = [];
+  const db = {
+    prepare: (sql: string) => {
+      const statement = { sql, values: [] as unknown[] };
+      statements.push(statement);
+      const prepared = {
+        bind: (...values: unknown[]) => { statement.values = values; return prepared; },
+        all: async () => ({ success: true, results: [{ json_data: JSON.stringify({ id: "job-1", user_id: "user-1", updated_at: instant, processed: 1 }) }] }),
+      };
+      return prepared;
+    },
+    batch: async () => [{ success: true, meta: { changes: 1 } }],
+  } as unknown as D1DatabaseLike;
+  try {
+    const result = await new CloudflareQueryBuilder(db, "assistant_data_jobs")
+      .update({ processed: 2, updated_at: instant }).eq("user_id", "user-1")
+      .eq("id", "job-1").eq("updated_at", instant).select("id,updated_at");
+    expect(result.error).toBeNull();
+    expect(result.data?.[0].updated_at).toBe("2020-01-01T00:00:00.001Z");
+    const patch = statements.find(({ sql }) => sql.trimStart().startsWith("UPDATE"));
+    expect(patch?.sql).toContain("json_extract(json_data, '$.updated_at') = ?");
+    expect(patch?.values).toContain(instant);
+  } finally { clock.mockRestore(); }
 });

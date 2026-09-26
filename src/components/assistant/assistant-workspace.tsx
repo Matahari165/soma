@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowDown, ArrowUp, Check, Image as ImageIcon, Menu, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
-import { FormEvent, KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, FormEvent, KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import styles from "./assistant-workspace.module.css";
 import { AssistantDictation } from "./assistant-dictation";
@@ -24,8 +24,10 @@ type DataSummaryPart = {
   type: "data-summary";
   label: string;
   period: { from: string; to: string } | null;
+  coveredPeriod?: { from: string; to: string } | null;
   itemCount: number;
   domains: Array<"nutrition" | "sleep" | "recovery" | "effort">;
+  toolStats?: Array<{ toolName: "queryLabAnalyses" | "getStrongestEffects"; itemCount: number; complete: boolean; periods: Array<"15" | "30" | "90" | "all"> }>;
 };
 type ActionPart = { type: "action"; actionId: string; actionType: string; state: string };
 type MessagePart = TextPart | AttachmentPart | DataSummaryPart | ActionPart;
@@ -81,7 +83,7 @@ function conversationDate(conversation: Conversation) {
   return new Intl.DateTimeFormat("fr-CH", { day: "2-digit", month: "short" }).format(date);
 }
 
-function analysisPeriod(period: DataSummaryPart["period"]) {
+function analysisPeriod(period: DataSummaryPart["period"] | undefined) {
   if (!period) return null;
   const format = new Intl.DateTimeFormat("fr-CH", { day: "numeric", month: "short", year: "numeric" });
   return `${format.format(new Date(`${period.from}T12:00:00`))} – ${format.format(new Date(`${period.to}T12:00:00`))}`;
@@ -89,13 +91,16 @@ function analysisPeriod(period: DataSummaryPart["period"]) {
 
 function AnalysisSummary({ part }: { part: DataSummaryPart }) {
   const period = analysisPeriod(part.period);
+  const coveredPeriod = analysisPeriod(part.coveredPeriod);
   const domains = part.domains.map((domain) => DOMAIN_LABELS[domain]).join(", ");
   return (
     <details className={styles.analysis}>
       <summary><strong>Analyse :</strong> {part.label}</summary>
       <dl>
-        {period && <><dt>Période</dt><dd>{period}</dd></>}
-        <dt>Données</dt><dd>{part.itemCount} élément{part.itemCount > 1 ? "s" : ""}</dd>
+        {period && <><dt>{part.coveredPeriod === undefined ? "Période" : "Recherche"}</dt><dd>{period}</dd></>}
+        {part.period && part.coveredPeriod !== undefined && <><dt>Trouvé</dt><dd>{coveredPeriod ?? "Aucune donnée sur cette période"}</dd></>}
+        {(part.period || !part.toolStats?.length) && <><dt>Données</dt><dd>{part.itemCount} élément{part.itemCount > 1 ? "s" : ""}</dd></>}
+        {part.toolStats?.map((stat, index) => <Fragment key={index}><dt>{stat.toolName === "queryLabAnalyses" ? "Personal Lab" : "Strongest Effects"}</dt><dd>{stat.itemCount} relation{stat.itemCount > 1 ? "s" : ""} consultée{stat.itemCount > 1 ? "s" : ""}{stat.periods.length ? ` · ${stat.periods.map((period) => period === "all" ? "tout l’historique" : `${period} jours`).join(", ")}` : ""}{!stat.complete ? " · analyse partielle" : ""}</dd></Fragment>)}
         {domains && <><dt>Domaines</dt><dd>{domains}</dd></>}
       </dl>
     </details>
@@ -191,6 +196,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     setVoicePresentation(presentation);
   }, []);
   const [error, setError] = useState<string | null>(null);
+  const [memoryWarning, setMemoryWarning] = useState<string | null>(null);
   const [notConfigured, setNotConfigured] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -200,6 +206,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   const [editingDraft, setEditingDraft] = useState("");
   const [showLatest, setShowLatest] = useState(false);
   const [progressiveMessageId, setProgressiveMessageId] = useState<string | null>(null);
+  const [conversationLoadErrorId, setConversationLoadErrorId] = useState<string | null>(null);
   const [starterState, setStarterState] = useState<"loading" | "calibration" | "ready" | "unavailable">("loading");
   const [starterPrompts, setStarterPrompts] = useState<StarterPrompt[]>(fallbackPrompts);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -422,7 +429,10 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   }, [voicePresentation, voiceLatestMessage, scrollToLatest]);
   async function openConversation(id: string) {
     if (id === activeId && messages.length) return;
+    activeIdRef.current = id;
     setActiveId(id);
+    setMemoryWarning(null);
+    setConversationLoadErrorId(null);
     setEditingMessageId(null);
     setRevealedEditMessageId(null);
     preEditDraftRef.current = "";
@@ -437,18 +447,25 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     setShowLatest(false);
     try {
       const payload = await readJson(await fetch(`/api/assistant/conversations?conversationId=${encodeURIComponent(id)}`, { cache: "no-store" }));
-      setMessages(Array.isArray(payload?.messages) ? payload.messages : []);
+      if (activeIdRef.current === id) setMessages(Array.isArray(payload?.messages) ? payload.messages : []);
     } catch (loadError) {
-      setMessages([]);
-      setError(loadError instanceof Error ? loadError.message : "Cette conversation n’a pas pu être chargée.");
+      if (activeIdRef.current === id) {
+        setMessages([]);
+        setConversationLoadErrorId(id);
+        setError(loadError instanceof Error ? loadError.message : "Cette conversation n’a pas pu être chargée.");
+      }
     } finally {
-      setLoadingConversation(false);
+      if (activeIdRef.current === id) setLoadingConversation(false);
     }
   }
 
   function startConversation() {
     setStarterState("loading");
+    activeIdRef.current = null;
     setActiveId(null);
+    setMemoryWarning(null);
+    setLoadingConversation(false);
+    setConversationLoadErrorId(null);
     setMessages([]);
     setText("");
     setProgressiveMessageId(null);
@@ -522,6 +539,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     const id = payload?.conversation?.id;
     if (typeof id !== "string") throw new Error("La conversation n’a pas pu être créée.");
     setActiveId(id);
+    setMemoryWarning(null);
     return id;
   }
 
@@ -588,6 +606,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
         ],
         status: "completed",
       };
+      setMemoryWarning(payload?.memoryStatus?.state === "retry_pending" ? "Une partie de l’historique ancien est temporairement indisponible. Soma réessaiera au prochain message." : null);
       const persistedUser = payload?.userMessage ?? localUserMessage;
       const assistantMessage = payload?.assistantMessage ?? payload?.message;
       if (editedMessageId && typeof payload?.conversationId === "string") {
@@ -768,7 +787,12 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
         {showLatest && !empty && <button type="button" className={styles.jumpToLatest} onClick={jumpToLatest}><ArrowDown size={16} aria-hidden="true" /> {voicePresentation ? "Dernier échange" : "Dernier message"}</button>}
 
         <div className={styles.composerRegion}>
-          {error && <div className={`${styles.error} ${notConfigured ? styles.configurationError : ""}`} role="alert"><strong>{notConfigured ? "Assistant non configuré" : "Envoi impossible"}</strong><span>{error}</span></div>}
+          {memoryWarning && <p className={`${styles.error} ${styles.memoryWarning}`} role="status">{memoryWarning}</p>}
+          {error && <div className={`${styles.error} ${notConfigured ? styles.configurationError : ""}`} role="alert">
+            <strong>{notConfigured ? "Assistant non configuré" : activeId && conversationLoadErrorId === activeId ? "Conversation indisponible" : "Envoi impossible"}</strong>
+            <span>{error}</span>
+            {activeId && conversationLoadErrorId === activeId && <button className={styles.retryConversation} type="button" onClick={() => void openConversation(activeId)}>Réessayer</button>}
+          </div>}
           <form className={styles.composer} onSubmit={(event) => void sendMessage(event)}>
             {photos.length > 0 && <ul className={styles.photoList} aria-label="Photos à joindre">{photos.map((photo) => (
               <li key={photo.id}>

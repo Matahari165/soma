@@ -50,13 +50,13 @@ describe("buildMealScoreOverview", () => {
 
     expect(overview.balanceScore?.score).toEqual(expect.any(Number));
     expect(Object.keys(overview.dimensionScores)).toHaveLength(5);
-    expect(overview.scoreTrend).toHaveLength(28);
+    expect(overview.scoreTrend).toHaveLength(30);
     expect(overview.scoreTrend.at(-1)?.balanceScore).toEqual(expect.any(Number));
     expect(overview.scoreTrend.at(-2)?.balanceScore).toBeNull();
     expect(overview.scoreTrend.at(-2)?.dimensionScores).toEqual({});
     expect(overview.rolling).toEqual([
       expect.objectContaining({ days: 14, observedDays: 1, readyDays: 1, totalDays: 14 }),
-      expect.objectContaining({ days: 28, observedDays: 1, readyDays: 1, totalDays: 28 }),
+      expect.objectContaining({ days: 30, observedDays: 1, readyDays: 1, totalDays: 30 }),
     ]);
   });
 

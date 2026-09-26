@@ -111,6 +111,32 @@ canonical Soma services. Every result declares:
 to nutrition. Existing Soma scores and calculations remain authoritative; the
 LLM explains and connects them but does not replace them.
 
+Each text turn also receives a server-generated UTC instant, the local date and
+time in the profile timezone, and whether that timezone came from the profile
+or the Soma default. The model uses this clock to interpret relative dates, then
+checks the dates of returned records before assessing a specific event. It must
+not silently substitute an older event when the requested one is absent.
+
+`querySomaData` exposes targeted, paginated periods for daily health, scores,
+daily confirmed nutrition, individual activities, sleep sessions, and individual
+meals. Activity and sleep lookups restrict the health-record read to the
+requested dates. Session results carry an ID, start/end times and source
+metadata; raw provider payloads are not sent to the model. Meal results omit
+photos and storage paths, identify draft or skipped entries, and exclude their
+estimates from nutrition conclusions. Recovery is read from the canonical
+recovery score together with same-day health metrics; the assistant does not
+invent a second recovery calculation.
+Activity records flag zone or active minutes that exceed the recorded session
+duration; the source values are retained and cannot be used as an intensity
+judgement without clarification.
+
+The conversation evidence panel distinguishes the period searched from the
+dates containing records. A zero-result search is shown as such, not as a
+period of observed data. These checks establish data access and presentation;
+they do not by themselves prove a live model will select the correct records
+for every phrasing, so date-relative and cross-domain questions remain part of
+release evaluation.
+
 ## Agent architecture
 
 One controlled `ToolLoopAgent` orchestrates typed tools. Separate logical roles
@@ -121,6 +147,10 @@ sub-agents. Model selection is deterministic and quality-adaptive:
 - `balanced`: comparisons and ordinary multi-domain analysis;
 - `deep`: longitudinal analysis, plan creation and explicit `analyse en
   profondeur` requests.
+
+All tiers use GPT-6 Luna. Reasoning effort is `medium` for `fast`, `high` for
+`balanced`, and `xhigh` for `deep`. Step and output limits remain smaller for
+simple turns.
 
 The assistant uses the explicit OpenAI model identifier `gpt-6-luna`.
 Step, token, duration and cost budgets are finite. The

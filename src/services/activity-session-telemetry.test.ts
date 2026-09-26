@@ -165,3 +165,19 @@ it("skips an already completed raw fetch when resuming the final rollup", async 
   expect(state.fetch).not.toHaveBeenCalled();
   expect(result.coverage.percent).toBeLessThan(100);
 });
+
+it("refuses writes and checkpoints from a provider callback after cancellation", async () => {
+  state.rows = [];
+  state.stored = [];
+  state.connected = true;
+  const controller = new AbortController();
+  const checkpoint = vi.fn();
+  state.fetch.mockImplementationOnce(async (options) => {
+    controller.abort(new Error("synthetic cancelled"));
+    await options.onPage([row(0)], "page-two");
+    return { dataPoints: [row(0)], limited: false };
+  });
+  await expect(getActivitySessionTelemetry("synthetic-user", range, { signal: controller.signal, onHeartRatePage: checkpoint })).rejects.toThrow("synthetic cancelled");
+  expect(state.stored).toEqual([]);
+  expect(checkpoint).not.toHaveBeenCalled();
+});

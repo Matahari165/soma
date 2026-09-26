@@ -3,7 +3,7 @@ import "server-only";
 import type { ModelMessage } from "ai";
 import { z } from "zod";
 
-import type { AssistantMessagePart } from "./contracts";
+import { assistantDataSummaryPartSchema, type AssistantMessagePart } from "./contracts";
 
 export const ASSISTANT_MEMORY_MAX_BYTES = 7_000;
 export const ASSISTANT_HISTORY_MAX_TOKENS = 16_000;
@@ -17,12 +17,7 @@ const sourceSchema = z.object({
   role: z.enum(["user", "assistant"]),
 });
 
-const dataEvidenceSchema = z.object({
-  label: z.string().min(1).max(120),
-  period: z.object({ from: z.iso.date(), to: z.iso.date() }).nullable(),
-  itemCount: z.number().int().nonnegative(),
-  domains: z.array(z.enum(["nutrition", "sleep", "recovery", "effort"])).max(4),
-});
+const dataEvidenceSchema = assistantDataSummaryPartSchema.omit({ type: true });
 
 const summaryItemSchema = z.object({
   kind: z.enum(["user_claim", "user_request", "user_correction", "open_topic", "assistant_context", "verified_result", "attachment_reference"]),

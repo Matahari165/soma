@@ -174,7 +174,7 @@ function deduplicateRows(rows: HealthRow[]) {
   });
 }
 
-async function googleHealthAccessToken(userId: string): Promise<string | null> {
+async function googleHealthAccessToken(userId: string, signal?: AbortSignal): Promise<string | null> {
   const admin = createCloudflareAdminClient();
   const result = await admin.from("provider_connections")
     .select("id,status,scopes,access_token_ciphertext,refresh_token_ciphertext,token_expires_at")
@@ -190,13 +190,16 @@ async function googleHealthAccessToken(userId: string): Promise<string | null> {
   if (expiresAt > Date.now() + 60_000) return decryptSecret(connection.access_token_ciphertext);
   if (!connection.refresh_token_ciphertext) return null;
 
-  const tokens = await refreshGoogleHealthToken(decryptSecret(connection.refresh_token_ciphertext));
-  const refreshed = await admin.from("provider_connections").update({
+  signal?.throwIfAborted();
+  const tokens = await abortable(refreshGoogleHealthToken(decryptSecret(connection.refresh_token_ciphertext), { signal }), signal);
+  signal?.throwIfAborted();
+  const refreshed = await abortable(admin.from("provider_connections").update({
     access_token_ciphertext: encryptSecret(tokens.access_token),
     token_expires_at: new Date(Date.now() + tokens.expires_in * 1_000).toISOString(),
     status: "connected",
     last_error_code: null,
-  }).eq("id", connection.id);
+  }).eq("id", connection.id), signal);
+  signal?.throwIfAborted();
   if (refreshed.error) throw new Error("Google Health session token could not be refreshed.");
   return tokens.access_token;
 }
@@ -211,6 +214,7 @@ async function fetchAndStoreSessionHeartRate(userId: string, startTime: string, 
   });
   let persistedPages = false;
   const persistPage = async (points: Record<string, unknown>[], nextPageToken: string | null) => {
+    options.signal?.throwIfAborted();
     const rows = matchingRows(points);
     for (let offset = 0; offset < rows.length; offset += 500) {
       options.signal?.throwIfAborted();
@@ -288,7 +292,7 @@ export async function getActivitySessionTelemetry(
   // missing coverage too, while keeping every previously imported sample.
   if (!options.skipHeartRateFetch && (options.heartRatePageToken || !telemetry.heartRateSampleCount || telemetry.coverage.gapCount > 0)) {
     try {
-      accessToken = await abortable(googleHealthAccessToken(userId), options.signal);
+      accessToken = await abortable(googleHealthAccessToken(userId, options.signal), options.signal);
       if (!accessToken) {
         heartRateFetchStatus = "unavailable";
       } else {
@@ -336,7 +340,7 @@ export async function getActivitySessionTelemetry(
   });
   result.maxHeartRateSource = result.maxHeartRateBpm === null ? "none" : "recorded_samples";
   try {
-    accessToken ??= await abortable(googleHealthAccessToken(userId), options.signal);
+    accessToken ??= await abortable(googleHealthAccessToken(userId, options.signal), options.signal);
     if (accessToken) {
       const rollup = await abortable(rollUpGoogleHealthSessionHeartRate({ accessToken, start: new Date(startTime), end: new Date(endTime), signal: options.signal }), options.signal);
       const maximum = rollup.rollupDataPoints?.[0]?.heartRate?.beatsPerMinuteMax;

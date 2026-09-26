@@ -84,7 +84,9 @@ function wrapLabel(label: string, maxCharacters = 20) {
 function readableDimension(dimension: RecoveryRadarDimension) {
   const value = dimension.valueLabel?.trim() ?? (isMeasured(dimension.score) ? `${formatNumber(dimension.score)} sur 100` : "indisponible");
   const weight = formatWeight(dimension.weight);
-  return `${dimension.label || "Dimension"} : ${value}${weight === null ? "" : `. Pondération ${weight}`}`;
+  const average = dimension.averageLabel?.trim() ? `. ${dimension.averageLabel}` : "";
+  const comparison = dimension.comparisonLabel?.trim() ? `. ${dimension.comparisonLabel}` : "";
+  return `${dimension.label || "Dimension"} : ${value}${average}${comparison}${weight === null ? "" : `. Pondération ${weight}`}`;
 }
 
 function pointFor(index: number, count: number, distance: number): [number, number] {

@@ -5,8 +5,9 @@ type Step = { toolResults: ReadonlyArray<ToolResult> };
 type Domain = Extract<AssistantMessagePart, { type: "data-summary" }>["domains"][number];
 
 function domainsFor(dataset: string, input: unknown): Domain[] {
-  if (dataset === "nutrition_daily") return ["nutrition"];
+  if (dataset === "nutrition_daily" || dataset === "meals") return ["nutrition"];
   if (dataset === "activities") return ["effort"];
+  if (dataset === "sleep_sessions") return ["sleep"];
   if (!input || typeof input !== "object") return [];
   const value = input as Record<string, unknown>;
   if (dataset === "scores") {
@@ -27,6 +28,7 @@ function domainsFor(dataset: string, input: unknown): Domain[] {
 
 export function dataSummaryFromSteps(steps: ReadonlyArray<Step> | undefined): Extract<AssistantMessagePart, { type: "data-summary" }> | null {
   const results = (steps ?? []).flatMap((step) => step.toolResults);
+  const toolStats = analysisStats(results);
   const completedJobs = new Map<string, ToolResult>();
   for (const result of results) if (result.toolName === "summarizeSomaData") {
     const output = result.output as { jobId?: unknown } | null;
@@ -51,11 +53,12 @@ export function dataSummaryFromSteps(steps: ReadonlyArray<Step> | undefined): Ex
   }
   const summaryByQuery = new Map(summaries.map((result) => [identity(result.input), result]));
   const queries = [...results.filter((result) => result.toolName === "querySomaData" && !summaryByQuery.has(identity(result.input))), ...summaryByQuery.values()];
-  if (!queries.length) return null;
+  if (!queries.length && !toolStats.length) return null;
   const domains = new Set<Domain>();
   const latestByQuery = new Map<string, boolean>();
   const seenPages = new Set<string>();
   const periods: Array<{ from: string; to: string }> = [];
+  const coveredPeriods: Array<{ from: string; to: string }> = [];
   let itemCount = 0;
   for (const query of queries) {
     const output = query.output && typeof query.output === "object" ? query.output as Record<string, unknown> : null;
@@ -63,6 +66,7 @@ export function dataSummaryFromSteps(steps: ReadonlyArray<Step> | undefined): Ex
     if (!parsed.success) continue;
     const manifest = parsed.data;
     periods.push(manifest.requestedPeriod);
+    if (manifest.coveredPeriod) coveredPeriods.push(manifest.coveredPeriod);
     for (const domain of domainsFor(manifest.dataset, query.input)) domains.add(domain);
     const input = query.input && typeof query.input === "object" ? query.input as Record<string, unknown> : {};
     const queryWithoutPagination = Object.fromEntries(Object.entries(input).filter(([key]) => key !== "pagination"));
@@ -75,15 +79,66 @@ export function dataSummaryFromSteps(steps: ReadonlyArray<Step> | undefined): Ex
     }
     latestByQuery.set(queryKey, manifest.complete);
   }
-  if (!periods.length) return null;
+  if (!periods.length) return toolStats.length ? {
+    type: "data-summary", label: toolStats.every((stat) => stat.complete) ? "Analyses Soma consultées" : "Analyses Soma consultées · analyse partielle",
+    period: null, coveredPeriod: null, itemCount: 0, domains: [], toolStats,
+  } : null;
   const from = periods.map((period) => period.from).sort()[0];
   const to = periods.map((period) => period.to).sort().at(-1)!;
-  const complete = [...latestByQuery.values()].every(Boolean);
+  const coveredPeriod = coveredPeriods.length ? {
+    from: coveredPeriods.map((period) => period.from).sort()[0],
+    to: coveredPeriods.map((period) => period.to).sort().at(-1)!,
+  } : null;
+  const complete = [...latestByQuery.values()].every(Boolean) && toolStats.every((stat) => stat.complete);
   return {
     type: "data-summary",
     label: complete ? "Données Soma consultées" : "Données Soma consultées · analyse partielle",
     period: { from, to },
+    coveredPeriod,
     itemCount,
     domains: [...domains],
+    ...(toolStats.length ? { toolStats } : {}),
   };
+}
+
+/** Counts the bounded pages returned by analysis tools, never the underlying health samples. */
+function analysisStats(results: ReadonlyArray<ToolResult>) {
+  const stats = new Map<string, { toolName: "queryLabAnalyses" | "getStrongestEffects"; itemCount: number; complete: boolean; periods: Array<"15" | "30" | "90" | "all"> }>();
+  const pages = new Set<string>();
+  const ranges = new Map<string, Map<number, { length: number; last: boolean }>>();
+  for (const result of results) {
+    if (result.toolName !== "queryLabAnalyses" && result.toolName !== "getStrongestEffects") continue;
+    if (!result.output || typeof result.output !== "object") continue;
+    const output = result.output as Record<string, unknown>;
+    const input = result.input && typeof result.input === "object" ? result.input as Record<string, unknown> : {};
+    const items = Array.isArray(output.relations) ? output.relations : Array.isArray(output.comparisons) ? output.comparisons : null;
+    if (!items) continue;
+    const key = JSON.stringify([result.toolName, Object.fromEntries(Object.entries(input).filter(([name]) => name !== "offset" && name !== "limit"))]);
+    if (!stats.has(key) && stats.size >= 8) continue;
+    const pagination = output.pagination && typeof output.pagination === "object" ? output.pagination as Record<string, unknown> : null;
+    // A malformed paginated result cannot establish complete coverage.
+    const complete = result.toolName === "getStrongestEffects" || pagination?.hasMore === false;
+    const requestedPeriods = Array.isArray(output.periods) ? output.periods : [output.period];
+    const periods = [...new Set(requestedPeriods.filter((period): period is 15 | 30 | 90 | "all" => period === 15 || period === 30 || period === 90 || period === "all"))].slice(0, 4).map((period) => String(period) as "15" | "30" | "90" | "all");
+    const stat = stats.get(key) ?? { toolName: result.toolName, itemCount: 0, complete: false, periods };
+    const pageKey = JSON.stringify([key, input.offset ?? 0]);
+    if (!pages.has(pageKey)) { stat.itemCount += Math.min(items.length, 100); pages.add(pageKey); }
+    if (result.toolName === "getStrongestEffects") stat.complete = complete;
+    else {
+      const queryRanges = ranges.get(key) ?? new Map<number, { length: number; last: boolean }>();
+      const offset = typeof input.offset === "number" && Number.isInteger(input.offset) && input.offset >= 0 ? input.offset : 0;
+      queryRanges.set(offset, { length: Math.min(items.length, 100), last: complete });
+      ranges.set(key, queryRanges);
+      let through = 0;
+      let reachedLast = false;
+      for (const [start, page] of [...queryRanges.entries()].sort(([left], [right]) => left - right)) {
+        if (start > through) break;
+        through = Math.max(through, start + page.length);
+        reachedLast ||= page.last;
+      }
+      stat.complete = reachedLast;
+    }
+    stats.set(key, stat);
+  }
+  return [...stats.values()];
 }

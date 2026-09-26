@@ -35,7 +35,7 @@ describe("targeted raw health", () => {
     expect(first.items[0].payloadComplete).toBe(false);
     expect(first.manifest.payloadsComplete).toBe(false);
     await queryAssistantRawHealth("test-user", { ...query, cursor: first.manifest.nextCursor }, { readDay, cursorSecret });
-    expect(readDay.mock.calls[1][4]).toBe("2020-01-01T00:01:00Z|sample-b");
+    expect(readDay.mock.calls[1][4]).toBe("2020-01-01T00:01:00.000Z|sample-b");
   });
 
   it("removes credential-like fields recursively without losing health measurements", () => {
@@ -231,4 +231,62 @@ it("rejects oversized timestamp groups instead of claiming exhaustive pagination
   rawStorage.records = Array.from({ length: 2_001 }, (_, index) => liveRecord(`sample-${index}`, "heart-rate", { measured_at: "2020-01-01T12:00:00.000Z" }));
   await expect(queryAssistantRawHealth("test-user", query, { cursorSecret })).rejects.toThrow(/timestamp group exceeds the safe pagination budget/);
   expect(rawStorage.requests.filter((request) => request.table === "health_records").every((request) => request.limit !== null && request.limit <= 200)).toBe(true);
+});
+
+ it("exhausts the date envelope before applying chronological cursors to mixed timestamp formats", async () => {
+   rawStorage.idOrder = "reverse";
+   rawStorage.records = [
+     liveRecord("lower-z", "heart-rate", { measured_at: "2020-01-01T00:00:00Z" }),
+     liveRecord("lower-precise", "heart-rate", { measured_at: "2020-01-01T00:00:00.000000Z" }),
+     liveRecord("lower-negative", "heart-rate", { measured_at: "2019-12-31T19:00:00-05:00" }),
+     liveRecord("lower-positive", "heart-rate", { measured_at: "2020-01-01T14:00:00+14:00" }),
+     liveRecord("later-positive", "heart-rate", { measured_at: "2020-01-02T13:59:59+14:00" }),
+     liveRecord("before", "heart-rate", { measured_at: "2020-01-01T00:30:00+01:00" }),
+     liveRecord("upper", "heart-rate", { measured_at: "2020-01-01T19:00:00-05:00" }),
+     liveRecord("start-fallback", "heart-rate", { start_time: "2019-12-31T20:00:00-05:00" }),
+     ...Array.from({ length: 205 }, (_, index) => liveRecord(`middle-${String(index).padStart(3, "0")}`, "heart-rate", { measured_at: "2020-01-01T12:00:00Z" })),
+   ];
+   const archived = liveRecord("lower-archived", "heart-rate", { measured_at: "2019-12-31T19:00:00-05:00" });
+   await addArchive([archived]);
+   const result = await collectDefault("heart-rate", 200);
+   expect(result.ids.slice(0, 5)).toEqual(["lower-archived", "lower-negative", "lower-positive", "lower-precise", "lower-z"]);
+   expect(result.ids[5]).toBe("start-fallback");
+   expect(result.ids.at(-1)).toBe("later-positive");
+   expect(result.ids).toHaveLength(212);
+   expect(new Set(result.ids).size).toBe(212);
+   expect(result.pages).toHaveLength(2);
+   expect(result.pages.at(-1)?.manifest.complete).toBe(true);
+   expect(result.ids).not.toContain("upper");
+   expect(result.ids).not.toContain("before");
+   const requests = rawStorage.requests.filter((request) => request.table === "health_records");
+   expect(requests.every((request) => request.limit === 200)).toBe(true);
+   expect(requests.every((request) => request.filters.some((filter) => filter.field === "user_id" && filter.value === "test-user"))).toBe(true);
+ });
+
+it("filters partial-day boundaries numerically for offsets and fractional precision", async () => {
+  rawStorage.records = [
+    liveRecord("inside", "heart-rate", { measured_at: "2020-01-01T13:00:00+01:00" }),
+    liveRecord("offset-extreme", "heart-rate", { measured_at: "2020-01-02T11:59:00+23:59" }),
+    liveRecord("before", "heart-rate", { measured_at: "2020-01-01T11:59:59.999Z" }),
+    liveRecord("upper", "heart-rate", { measured_at: "2020-01-01T08:00:00-05:00" }),
+  ];
+  const result = await queryAssistantRawHealth("test-user", { dataType: "heart-rate", period: {
+    from: "2020-01-01T12:00:00Z", to: "2020-01-01T13:00:00.000Z",
+  } }, { cursorSecret });
+  expect(result.items.map((item) => item.recordId)).toEqual(["inside", "offset-extreme"]);
+  expect(result.manifest.complete).toBe(true);
+});
+
+it("rejects a large date envelope instead of claiming a lexically truncated page complete", async () => {
+  rawStorage.records = Array.from({ length: 20_001 }, (_, index) => liveRecord(`sample-${index}`, "heart-rate", {
+    measured_at: new Date(Date.parse("2020-01-01T00:00:00Z") + index).toISOString(),
+  }));
+  await expect(queryAssistantRawHealth("test-user", query, { cursorSecret })).rejects.toThrow(/date envelope exceeds the safe pagination budget/);
+  expect(rawStorage.requests.filter((request) => request.table === "health_records").every((request) => request.limit === 200)).toBe(true);
+}, 30_000);
+
+it("rejects an archive over the shared row budget before downloading it", async () => {
+  await addArchive([liveRecord("sample", "heart-rate", { measured_at: "2020-01-01T12:00:00Z" })], { row_count: 20_001 });
+  rawStorage.objects.clear();
+  await expect(queryAssistantRawHealth("test-user", query, { cursorSecret })).rejects.toThrow(/archives exceed the safe pagination budget/);
 });

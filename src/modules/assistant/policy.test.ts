@@ -14,10 +14,14 @@ describe("assistant quality policy", () => {
     expect(classifyAssistantQuality({ text: "Compare mes deux dernières semaines." })).toBe("balanced");
     expect(classifyAssistantQuality({ text: "Qu’est-ce que tu penses de mes données de course sur les trois dernières semaines ?" })).toBe("balanced");
     expect(classifyAssistantQuality({ text: "Analyse mes séances de course des 3 dernières semaines." })).toBe("balanced");
+    expect(classifyAssistantQuality({ text: "Quelle allure et quelle fréquence cardiaque viser ?" })).toBe("balanced");
+    expect(classifyAssistantQuality({ text: "Analyse ma dernière sortie." })).toBe("balanced");
   });
   it("routes plans and explicit deep analysis to deep quality", () => {
     expect(classifyAssistantQuality({ text: "Fais-moi un plan pour courir 30 kilomètres." })).toBe("deep");
     expect(classifyAssistantQuality({ text: "Analyse en profondeur mon historique des six derniers mois." })).toBe("deep");
+    expect(classifyAssistantQuality({ text: "Prépare-moi pour un semi-marathon." })).toBe("deep");
+    expect(classifyAssistantQuality({ text: "Quel programme de musculation cette semaine ?" })).toBe("deep");
   });
   it("reserves enough steps for targeted metrics, zones and temporal comparisons", () => {
     expect(classifyAssistantQuality({ text: "Mes séances de boxe depuis un mois" })).toBe("balanced");

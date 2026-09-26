@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { MetricTrendCard } from "./metric-trend-card";
-import { aggregateBarPoints, ChartHoverTooltip } from "./health-charts";
+import { aggregateBarPoints, BarTrendChart, ChartHoverTooltip } from "./health-charts";
 
 describe("MetricTrendCard", () => {
   it("makes overview cards directly navigable without exposing secondary variability copy", () => {
@@ -190,8 +190,22 @@ describe("MetricTrendCard", () => {
     expect(markup).toContain('role="status"');
     expect(markup).toContain('aria-live="polite"');
     expect(markup).toContain('data-align="start"');
-    expect(markup).toContain("9 sept.");
+    expect(markup).toContain("Sep 9");
     expect(markup).toContain("76 /100");
+  });
+
+  it("keeps workout start times in the accessible chart description and tooltip labels", () => {
+    const markup = renderToStaticMarkup(createElement(BarTrendChart, {
+      label: "Distance",
+      valueFormat: "pace",
+      points: [
+        { date: "2026-09-21", label: "2026-09-21 · 08:30 AM", value: 360 },
+        { date: "2026-09-21", label: "2026-09-21 · 06:15 PM", value: 420 },
+      ],
+    }));
+
+    expect(markup).toContain("2026-09-21 · 08:30 AM : 6:00 min/km");
+    expect(markup).toContain("2026-09-21 · 06:15 PM : 7:00 min/km");
   });
 
   it("aggregates weekly bars without converting missing or zero values", () => {

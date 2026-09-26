@@ -1,4 +1,59 @@
-export const SOMA_ASSISTANT_PROMPT_VERSION = "soma-assistant-v1.13";
+export const SOMA_ASSISTANT_PROMPT_VERSION = "soma-assistant-v1.14";
+
+export type AssistantTemporalContext = {
+  instantUtc: string;
+  localDate: string;
+  localTime: string;
+  weekday: string;
+  timezone: string;
+  timezoneSource: "profile" | "default";
+};
+
+const DEFAULT_TIMEZONE = "Europe/Paris";
+
+export function createAssistantTemporalContext(input: { now: Date; profileTimezone: string | null }): AssistantTemporalContext {
+  let timezone = input.profileTimezone?.trim() || DEFAULT_TIMEZONE;
+  let timezoneSource: AssistantTemporalContext["timezoneSource"] = timezone === DEFAULT_TIMEZONE && !input.profileTimezone?.trim()
+    ? "default"
+    : "profile";
+
+  let parts: Record<string, string>;
+  try {
+    parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(input.now).map((part) => [part.type, part.value]));
+  } catch {
+    timezone = DEFAULT_TIMEZONE;
+    timezoneSource = "default";
+    parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(input.now).map((part) => [part.type, part.value]));
+  }
+
+  const weekday = new Intl.DateTimeFormat("fr-FR", { timeZone: timezone, weekday: "long" }).format(input.now);
+  return {
+    instantUtc: input.now.toISOString(),
+    localDate: `${parts.year}-${parts.month}-${parts.day}`,
+    localTime: `${parts.hour}:${parts.minute}:${parts.second}`,
+    weekday,
+    timezone,
+    timezoneSource,
+  };
+}
 
 export const SOMA_ASSISTANT_INSTRUCTIONS = `Tu es Soma, le coach personnel intégré à l'application Soma.
 
@@ -48,8 +103,36 @@ MÉTHODE
   interface copiait automatiquement la cible et la provenance de ce champ n'est pas vérifiable.
   Parle de répétitions consignées, et distingue-les de targetReps.
   Si getWorkoutHistory renvoie complete=false, précise que certaines séries manquent au résultat.
+- Pour toute question sur une activité personnelle ou une séance, consulte querySomaData avant de
+  répondre. Choisis la période à partir de la date explicitement citée ou de l'horloge de ce tour,
+  puis vérifie les dates et détails des activités réellement renvoyées.
+- Si une activité porte un qualityFlag, signale la mesure concernée et ne l'utilise pas pour juger
+  l'intensité sans clarification. Une durée de zone supérieure à la durée de séance n'est pas une
+  preuve d'une séance plus longue.
+- Pour évaluer la récupération d'une journée, consulte dans scores le kind recovery et, dans
+  daily_health, les métriques hrv_ms, resting_heart_rate, respiratory_rate, oxygen_saturation et
+  skin_temperature_delta pour cette même date. Pour le sommeil, consulte sleep_sessions puis, selon
+  la question, scores avec le kind sleep et les métriques daily_health de cette nuit. Pour un repas
+  précis, lis meals; pour un bilan journalier, lis nutrition_daily. N'assemble pas des jours différents
+  comme s'ils décrivaient le même épisode.
+- Utilise l'horloge de ce tour et le fuseau du profil comme repère pour comprendre les dates relatives.
+  Ne donne pas une interprétation unique à une phrase qui reste ambiguë : pose une question courte.
+  Ne remplace jamais silencieusement l'activité demandée par une séance plus ancienne. Si aucune
+  activité ne correspond à la période visée, dis-le clairement; toute séance plus ancienne consultée
+  pour contexte doit être identifiée comme telle et ne peut pas être évaluée à sa place.
 - Pour parler des liens entre habitudes et résultats, consulte getStrongestEffects ; ce sont des
   associations personnelles, jamais une preuve de causalité. Ne calcule pas d'effets à partir du chat.
+- Pour une analyse ou un plan personnel, consulte d'abord les mesures utiles à la décision : durée,
+  fréquence, distance, allure ou vitesse, fréquence cardiaque, charge, répétitions, récupération,
+  sommeil ou nutrition selon le sujet. Ne déroule pas toutes les métriques disponibles.
+- Donne les valeurs avec unités, période et point de départ quand ils sont connus. Pour une séance,
+  précise si utile sa durée, son intensité et une plage cible ; pour un plan, sa fréquence, sa
+  progression, son échéance et son critère de réussite. Toute conversion simple doit partir de
+  valeurs fiables et être présentée comme un calcul.
+- Distingue mesure observée, score calculé par Soma, cible confirmée et proposition de coaching. Si
+  les données ne permettent pas de personnaliser une charge, une zone cardiaque, une allure ou un
+  apport, évite la précision trompeuse : propose une plage provisoire avec son repère, ou demande
+  l'unique donnée décisive. N'invente ni poids de travail, ni fréquence cardiaque maximale, ni seuil.
 - Commence par getUserContext pour toute calibration, planification, évaluation ou comparaison personnelle.
 - Pour une question sur un plan déjà confirmé, consulte activePlans dans getUserContext puis getPlanDetails
   pour les sections pertinentes. Un résumé de plan ne suffit pas à connaître ses séances.
@@ -113,6 +196,9 @@ RÉPONSE
 - L'interface joint séparément le récapitulatif des données consultées. N'écris pas de ligne
   « Analyse : » dans le texte de réponse. N'invente ni période, ni volume, ni source.
 - Explique seulement les facteurs déterminants, puis propose la prochaine action concrète.
+- Quand plusieurs facteurs comptent, résume-les en deux ou trois puces courtes, une mesure ou
+  tendance par puce, avec sa période et son effet sur la décision. Termine par une action mesurable
+  et un moment de réévaluation. Pour une question simple, réponds sans titres ni liste superflus.
   Ne commence pas par « attention », « je ne sais pas » ou une réserve automatique. Ne répète pas
   les incertitudes. Si une limite des données change vraiment le verdict ou la prochaine action,
   nomme précisément ce qui manque en une phrase courte et dis ce que tu peux quand même conclure.
@@ -164,3 +250,19 @@ CALIBRATION INITIALE
 - Avant la confirmation finale, propose un cadre synthétique avec des objectifs distincts, mesurables
   lorsque les informations le permettent, et explique brièvement ce qui reste à préciser.
 `;
+
+export function assistantInstructionsForTurn(temporalContext?: AssistantTemporalContext) {
+  if (!temporalContext) return SOMA_ASSISTANT_INSTRUCTIONS;
+  const timezoneLabel = temporalContext.timezoneSource === "profile" ? "fuseau du profil" : "fuseau par défaut de Soma";
+  return `${SOMA_ASSISTANT_INSTRUCTIONS}
+
+HORLOGE DU TOUR EN COURS
+- Instant de référence UTC : ${temporalContext.instantUtc}
+- Date locale : ${temporalContext.weekday} ${temporalContext.localDate}
+- Heure locale : ${temporalContext.localTime}
+- Fuseau : ${temporalContext.timezone} (${timezoneLabel})
+- Cette horloge est calculée par le serveur pour ce tour. Elle sert à ancrer les expressions
+  temporelles de la demande actuelle; elle ne remplace pas le contexte explicite de la conversation.
+- Si le fuseau par défaut a été utilisé et que cela peut changer la date visée, demande une précision
+  avant de choisir une période de données.`;
+}

@@ -26,7 +26,10 @@ type ReadDay = { rows: RawRow[]; hasMore: boolean; archivesIncluded: boolean };
 function timestamp(row: RawRow) { return row.measured_at ?? row.start_time ?? (row.civil_date ? `${row.civil_date}T00:00:00.000Z` : null); }
 // Use one ordinal order locally; database ID collation must not decide which rows are eligible.
 function comparePositions(first: string, second: string) { return first < second ? -1 : first > second ? 1 : 0; }
-function position(row: RawRow) { return `${timestamp(row) ?? ""}|${row.source_record_id ?? ""}`; }
+function position(row: RawRow) {
+  const time = timestamp(row);
+  return `${time ? new Date(time).toISOString() : ""}|${row.source_record_id ?? ""}`;
+}
 
 // Keep health payloads, excluding internal identifiers/credentials even if a source adds them.
 export function safeHealthPayload(value: unknown, depth = 0): unknown {
@@ -44,53 +47,43 @@ async function readRawDay(userId: string, dataType: string, from: string, to: st
     || (GOOGLE_HEALTH_DAILY_ROLLUP_TYPES as readonly string[]).includes(dataType);
   // A rollup type may also contain historical hourly points. Read disjoint,
   // bounded streams instead of choosing one timestamp column for the type.
-  const fields = ["measured_at", "start_time", ...(hasCivilRecords ? ["civil_date"] : [])] as const;
-  const separator = after?.indexOf("|") ?? -1;
-  const afterTime = after && separator >= 0 ? after.slice(0, separator) : null;
+  const fields: ("measured_at" | "start_time" | "civil_date")[] = ["measured_at", "start_time"];
+  if (hasCivilRecords) fields.push("civil_date");
+  // Historical sources used both offsets and variable fractional precision.
+  // Text comparisons cannot represent instant ordering. Any valid ISO offset
+  // is less than 24 hours, so this date envelope contains every eligible row.
+  // Exhaust the bounded envelope before applying the instant cursor locally;
+  // stopping at a lexical frontier could silently omit an earlier UTC instant.
+  let scannedRows = 0;
+  const maximumRows = 20_000;
   const readStream = async (dateField: typeof fields[number]) => {
     const civil = dateField === "civil_date";
-    const lower = civil ? from.slice(0, 10) : from;
-    const upper = civil ? utcDayRange(new Date(Date.parse(to) - 1)).end.slice(0, 10) : to;
-    const base = () => {
+    const lower = civil ? from.slice(0, 10) : new Date(Date.parse(from) - 86_400_000).toISOString().slice(0, 10);
+    const upper = civil ? utcDayRange(new Date(Date.parse(to) - 1)).end.slice(0, 10)
+      : utcDayRange(new Date(Date.parse(to) - 1 + 86_400_000)).end.slice(0, 10);
+    const rows: RawRow[] = [];
+    const ties = new Map<string, number>();
+    for (let offset = 0; ; offset += 200) {
       let builder = admin.from("health_records").select("source_record_id,measured_at,start_time,end_time,civil_date,payload")
         .eq("user_id", userId).eq("provider", "google_health").eq("data_type", dataType);
       if (dateField !== "measured_at") builder = builder.is("measured_at", null);
       if (civil) builder = builder.is("start_time", null);
-      return builder.gte(dateField, lower).lt(dateField, upper)
-        .order(dateField, { ascending: true }).order("source_record_id", { ascending: true });
-    };
-    const civilTime = `${lower}T00:00:00.000Z`;
-    // Civil rows belong to midnight. Once a cursor has passed it, there is
-    // nothing left in this day's civil stream, even if hourly rows remain.
-    if (civil && (Date.parse(civilTime) < Date.parse(from) || (afterTime && comparePositions(civilTime, afterTime) < 0))) return [];
-    const bound = civil ? (afterTime && civilTime === afterTime ? lower : null) : afterTime;
-    // The prefix may stop inside a tie whose database order differs from our
-    // local order (case, accents, supplementary Unicode, etc.). Complete that
-    // timestamp group before sorting or applying an ID cursor locally.
-    const readTie = async (value: string) => {
-      const rows: RawRow[] = [];
-      const maximumTieRows = 2_000;
-      const pageSize = 200;
-      for (let offset = 0; offset <= maximumTieRows; offset += pageSize) {
-        const count = Math.min(pageSize, maximumTieRows - offset + 1);
-        const result = await base().eq(dateField, value).range(offset, offset + count - 1);
-        if (result.error) throw new Error("Raw health records could not be loaded.");
-        const page = (result.data ?? []) as RawRow[];
-        rows.push(...page);
-        if (rows.length > maximumTieRows) throw new Error("Raw health timestamp group exceeds the safe pagination budget.");
-        if (page.length < count) return rows;
+      const result = await builder.gte(dateField, lower).lt(dateField, upper)
+        .order(dateField, { ascending: true }).order("source_record_id", { ascending: true })
+        .range(offset, offset + 199);
+      if (result.error) throw new Error("Raw health records could not be loaded.");
+      const page = (result.data ?? []) as RawRow[];
+      scannedRows += page.length;
+      if (scannedRows > maximumRows) throw new Error("Raw health date envelope exceeds the safe pagination budget.");
+      for (const row of page) {
+        const key = String(row[dateField]);
+        const count = (ties.get(key) ?? 0) + 1;
+        if (count > 2_000) throw new Error("Raw health timestamp group exceeds the safe pagination budget.");
+        ties.set(key, count);
       }
-      throw new Error("Raw health timestamp group could not be completed.");
-    };
-    const [later, tied] = await Promise.all([
-      (bound ? base().gt(dateField, bound) : base()).limit(limit + 1),
-      bound ? readTie(bound) : Promise.resolve([] as RawRow[]),
-    ]);
-    if (later.error) throw new Error("Raw health records could not be loaded.");
-    const prefix = (later.data ?? []) as RawRow[];
-    const frontier = prefix.at(-1)?.[dateField as keyof RawRow];
-    const frontierRows = typeof frontier === "string" ? await readTie(frontier) : [];
-    return [...tied, ...prefix, ...frontierRows];
+      rows.push(...page);
+      if (page.length < 200) return rows;
+    }
   };
   const [streams, archiveResult] = await Promise.all([
     Promise.all(fields.map(readStream)),
@@ -106,6 +99,9 @@ async function readRawDay(userId: string, dataType: string, from: string, to: st
       if (manifest.reclaimed_at) throw new Error("The required health archive is unavailable.");
       continue;
     }
+    if (!Number.isSafeInteger(manifest.row_count) || manifest.row_count < 0) throw new Error("Health archive integrity verification failed.");
+    if (scannedRows + manifest.row_count > maximumRows) throw new Error("Raw health archives exceed the safe pagination budget.");
+    scannedRows += manifest.row_count;
     const decoded = await decodeHealthArchive(await getR2ArchiveObject(manifest.object_path));
     if (decoded.header.userId !== userId || decoded.header.provider !== "google_health" || decoded.header.dataType !== dataType
       || decoded.rows.length !== manifest.row_count || decoded.contentSha256 !== manifest.content_sha256
@@ -129,7 +125,7 @@ export async function queryAssistantRawHealth(userId: string, input: unknown, op
   const query = assistantRawHealthSchema.parse(input);
   const range = { from: new Date(query.period.from).toISOString(), to: new Date(query.period.to).toISOString() };
   if (Date.parse(range.to) - Date.parse(range.from) > 3660 * 86_400_000) throw new Error("Raw health ranges are limited to 3660 days.");
-  const scope = queryFingerprint(userId, { raw: query.dataType, range });
+  const scope = queryFingerprint(userId, { raw: query.dataType, range, ordering: "utc-ms-v2" });
   const cursor = query.cursor ? readScopedCursor<RawCursor>(query.cursor, scope, options.cursorSecret) : { day: range.from, after: null };
   if (!cursor || typeof cursor.day !== "string" || (cursor.after !== null && typeof cursor.after !== "string")
     || Date.parse(cursor.day) < Date.parse(range.from) || Date.parse(cursor.day) >= Date.parse(range.to)) throw new Error("Invalid raw health cursor.");

@@ -320,7 +320,8 @@ export class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
     let rows = storageResult.rows;
     rows = rows.filter((row) => this.filters.every((filter) => matches(row, filter)));
     rows = rows.filter((row) => this.orFilters.every((expressions) => matchesOr(row, expressions)));
-    sortRows(rows, this.sorts);
+    // Keep database order once offsets were applied: JS collation can differ.
+    if (!storageResult.paginationPushed) sortRows(rows, this.sorts);
     return { rows, paginationPushed: storageResult.paginationPushed };
   }
 

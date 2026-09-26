@@ -334,6 +334,9 @@
 .activityFilters button[aria-pressed="true"] { border-color: var(--effort-rule-strong); background: var(--lab-surface-selected, #222); color: var(--effort-text); }
 .activityFilters button:hover { color: var(--effort-text); border-color: var(--effort-rule-strong); }
 .activityFilters button:focus-visible { outline: 2px solid var(--effort-accent); outline-offset: 3px; }
+.activitySportSelect { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; color: var(--effort-muted); font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif; }
+.activitySportSelect select { min-height: 44px; max-width: 190px; padding: 7px 28px 7px 9px; border: 1px solid var(--effort-rule); border-radius: 4px; background: var(--lab-canvas, #050505); color: var(--effort-text); font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif; }
+.activitySportSelect select:focus-visible { outline: 2px solid var(--effort-accent); outline-offset: 3px; }
 .periodPicker { position: relative; flex: 0 0 auto; }
 .periodTrigger { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid var(--effort-rule); border-radius: 4px; background: transparent; color: var(--effort-text); font: 400 13px/18px var(--font-soma-ui), system-ui, sans-serif; cursor: pointer; }
 .periodTrigger svg:last-child { transition: transform 220ms cubic-bezier(.16, 1, .3, 1); }
@@ -343,7 +346,7 @@
 .periodPanel { position: absolute; z-index: 8; top: calc(100% + 8px); right: 0; width: min(280px, calc(100vw - 32px)); overflow: hidden; padding: 0 8px; border: 1px solid transparent; border-radius: 4px; background: var(--lab-canvas, #050505); opacity: 0; visibility: hidden; transform: translateY(-8px); clip-path: inset(0 0 100% 0); transition: opacity 240ms cubic-bezier(.16, 1, .3, 1), transform 240ms cubic-bezier(.16, 1, .3, 1), clip-path 300ms cubic-bezier(.16, 1, .3, 1), visibility 0s linear 300ms, border-color 240ms ease; }
 .periodPanel[data-open="true"] { padding-block: 8px; border-color: var(--effort-rule); opacity: 1; visibility: visible; transform: translateY(0); clip-path: inset(0); transition-delay: 0s; }
 .periodOptions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
-.periodOptions button { min-height: 40px; padding: 7px 9px; border: 0; border-radius: 3px; background: transparent; color: var(--effort-muted); text-align: left; font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif; cursor: pointer; }
+.periodOptions button { min-height: 44px; padding: 7px 9px; border: 0; border-radius: 3px; background: transparent; color: var(--effort-muted); text-align: left; font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif; cursor: pointer; }
 .periodOptions button:hover,
 .periodOptions button[aria-pressed="true"] { background: var(--lab-surface-selected, #222); color: var(--effort-text); }
 .periodOptions button:focus-visible { outline: 2px solid var(--effort-accent); outline-offset: -2px; }
@@ -397,6 +400,39 @@
 .activityAverageRow .activityHistoryIdentity,
 .activityAverageRow .activityHistoryMetrics { padding-block: 2px; }
 .activityHistoryEmpty { margin: 0; padding: 16px 0; color: var(--effort-muted); font: 400 14px/21px var(--font-soma-ui), system-ui, sans-serif; }
+.activitySportOverview,
+.activitySportDetail { margin: 4px 0 32px; padding: 22px 0 26px; border-block: 1px solid var(--effort-rule); }
+.activitySportOverview > p:first-child { margin: 0 0 12px; color: var(--effort-muted); font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif; }
+.activitySportOverview ul { margin: 0; padding: 0; list-style: none; }
+.activitySportOverview li { border-top: 1px solid var(--effort-rule); }
+.activitySportOverview li:last-child { border-bottom: 1px solid var(--effort-rule); }
+.activitySportOverview li button { display: flex; width: 100%; min-height: 68px; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 4px; border: 0; background: transparent; color: var(--effort-text); text-align: left; cursor: pointer; }
+.activitySportOverview li button:hover strong,
+.activitySportOverview li button:hover > span:last-child { color: var(--effort-positive); }
+.activitySportOverview li button:focus-visible { outline: 2px solid var(--effort-accent); outline-offset: 2px; }
+.activitySportOverview li button > span:first-child { display: grid; gap: 4px; min-width: 0; }
+.activitySportOverview li strong { font: 500 15px/20px var(--font-soma-ui), system-ui, sans-serif; }
+.activitySportOverview li small,
+.activitySportOverview li button > span:last-child { color: var(--effort-muted); font: 400 11px/16px var(--font-soma-mono), ui-monospace, monospace; }
+.activitySportOverview li button > span:last-child { flex: 0 0 auto; }
+.activitySportSource,
+.activitySportEmpty { margin: 14px 0 0; color: var(--effort-muted); font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif; }
+.activitySportReadings { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px 24px; margin: 0 0 12px; }
+.activitySportReadings > div { min-width: 0; }
+.activitySportReadings dt { color: var(--effort-muted); font: 400 12px/17px var(--font-soma-ui), system-ui, sans-serif; }
+.activitySportReadings dd { margin: 6px 0 0; color: var(--effort-text); font: 500 18px/24px var(--font-soma-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.activitySportReadings dd[data-tone="positive"] { color: var(--lab-signal); }
+.activitySportReadings dd[data-tone="negative"] { color: var(--lab-error, #dfaaa4); }
+.activitySportReadings small { display: block; margin-top: 4px; color: var(--effort-muted); font: 400 11px/16px var(--font-soma-ui), system-ui, sans-serif; }
+.activitySportDetail > .activitySportSource { margin-bottom: 24px; }
+.activitySportDetail .trendGrid :global(.metric-trend-card) :global(header) { align-items: flex-start; justify-content: center; gap: 4px; }
+.activitySportDetail .trendGrid :global(.metric-trend-card) :global(header > div) { width: 100%; margin: 0; justify-items: center; }
+.activitySportDetail .trendGrid :global(.metric-trend-card) :global(header .metric-trend-card__average) { width: 100%; min-height: 16px; color: var(--effort-muted); font: 400 11px/16px var(--font-soma-mono), ui-monospace, monospace; text-align: center; white-space: normal; }
+.activitySportDetail .trendGrid :global(.metric-trend-card__current[data-tone="positive"] .metric-reading > span),
+.activitySportDetail .trendGrid :global(.metric-trend-card__reference-delta[data-tone="positive"]) { color: var(--lab-signal); }
+.activitySportDetail .trendGrid :global(.metric-trend-card__current[data-tone="negative"] .metric-reading > span),
+.activitySportDetail .trendGrid :global(.metric-trend-card__reference-delta[data-tone="negative"]) { color: var(--lab-error, #dfaaa4); }
+.activitySportDetail .trendGrid :global(.metric-trend-card__reference-delta[data-tone="neutral"]) { color: inherit; }
 .empty { display: flex; min-height: 180px; align-items: center; gap: 16px; color: var(--effort-muted); }
 .empty h2 { margin: 0; color: var(--effort-text); font: 400 22px/28px Georgia, "Times New Roman", serif; }
 .empty p { margin: 4px 0 0; color: var(--effort-muted); font: 400 14px/20px var(--font-soma-ui), system-ui, sans-serif; }
@@ -406,6 +442,7 @@
   .trendGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .exerciseDetailGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .activityHistoryMetrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .activitySportReadings { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 16px; }
 }
 
 @media (max-width: 720px) {
@@ -453,6 +490,8 @@
   .trendGrid :global(.chart-axis) { padding-inline-start: calc((100% - 64px) * .04); padding-inline-end: calc(64px + (100% - 64px) * .04); }
   .activityFilters { width: 100%; flex-wrap: nowrap; justify-content: space-between; gap: 3px; }
   .activityFilters button { min-width: 44px; padding-inline: 4px; font-size: clamp(11px, 3.1vw, 12px); white-space: nowrap; }
+  .activityFilters { overflow-x: auto; justify-content: flex-start; }
+  .activitySportSelect { flex: 0 0 auto; }
   :global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.metric-trend-card) :global(.chart-frame) { height: 187px; }
   :global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-line-chart-wrap) { height: 187px; }
   .featuredActivityMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
@@ -473,6 +512,10 @@
   }
   .activityHistoryIdentity strong { font-size: 17px; line-height: 23px; }
   .activityHistoryIdentity span { line-height: 19px; }
+  .activitySportOverview,
+  .activitySportDetail { margin-block: 0 28px; padding-block: 20px 22px; }
+  .activitySportOverview li button { min-height: 72px; }
+  .activitySportReadings dd { font-size: 16px; }
   .activityHistoryMetrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 18px 20px;
@@ -530,6 +573,15 @@
 
 /* IntersectionObserver must see the section before its entrance can run. */
 .content [data-scroll-reveal][data-reveal="pending"] { clip-path: none; }
+
+/* The period menu escapes the history section while it is open. */
+.content .activityHistorySection[data-period-open="true"] {
+  position: relative;
+  z-index: 9;
+  opacity: 1;
+  transform: none;
+  clip-path: none;
+}
 
 @keyframes soma-measurement-arrive {
   from { opacity: .2; transform: translate3d(0, 14px, 0) scale(.985); }

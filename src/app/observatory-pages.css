@@ -194,13 +194,14 @@ html[data-lab-theme="observatory"] .health-detail-page .health-observatory-recom
 /* One viewport budget for every mobile surface, including the measured dock. */
 @media (max-width: 700px) {
   html[data-lab-theme="observatory"] body.observatory-mode {
-    --soma-mobile-top-space: env(safe-area-inset-top, 0px);
-    --soma-mobile-bottom-space: var(--soma-mobile-nav-height, calc(64px + env(safe-area-inset-bottom, 0px)));
+    --soma-mobile-top-space: calc(16px + env(safe-area-inset-top, 0px));
+    --soma-mobile-nav-gap: calc(max(12px, env(safe-area-inset-bottom, 0px)) + 8px);
+    --soma-mobile-bottom-space: calc(var(--soma-mobile-nav-height, 64px) + var(--soma-mobile-nav-gap) + 8px);
     --soma-mobile-content-height: calc(100svh - var(--soma-mobile-top-space) - var(--soma-mobile-bottom-space));
     --soma-mobile-live-content-height: calc(100dvh - var(--soma-mobile-top-space) - var(--soma-mobile-bottom-space));
   }
   html[data-lab-theme="observatory"] body.local-preview.observatory-mode {
-    --soma-mobile-top-space: calc(28px + env(safe-area-inset-top, 0px));
+    --soma-mobile-top-space: calc(44px + env(safe-area-inset-top, 0px));
   }
   html[data-lab-theme="observatory"] body.observatory-mode .app-shell .main-content,
   html[data-lab-theme="observatory"] body.observatory-mode .app-shell:has(.lab-continuous) .main-content,

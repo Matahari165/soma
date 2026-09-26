@@ -2,12 +2,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type MouseEvent, useEffect, useId, useRef, useState } from "react";
-import { Activity, ChartNoAxesCombined, Ellipsis, HeartPulse, House, MessageCircle, Moon, Settings, Utensils } from "lucide-react";
+import { Activity, Ellipsis, FlaskConical, HeartPulse, House, MessageCircle, Moon, Settings, Utensils } from "lucide-react";
 
 const destinations = [
   { href: "/", label: "Personal Lab", mobileLabel: "Lab", icon: House },
   { href: "/assistant", label: "Soma", icon: MessageCircle },
-  { href: "/analysis", label: "Analysis", icon: ChartNoAxesCombined },
+  { href: "/analysis", label: "Analysis", icon: FlaskConical },
   { href: "/meals", label: "Nutrition", icon: Utensils },
   { href: "/sleep", label: "Sleep", icon: Moon },
   { href: "/recovery", label: "Recovery", icon: HeartPulse },

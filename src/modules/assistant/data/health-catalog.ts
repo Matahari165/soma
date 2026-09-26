@@ -148,7 +148,7 @@ export function getAssistantDataCatalog() {
     healthMetrics: assistantHealthMetricCatalog,
     derivedMetrics: assistantDerivedMetricCatalog,
     activityTypes: assistantActivityTypeCatalog,
-    datasets: ["daily_health", "scores", "nutrition_daily", "activities"] as const,
+    datasets: ["daily_health", "scores", "nutrition_daily", "activities", "sleep_sessions", "meals"] as const,
     defaultAnalysisPeriodDays: 90,
   };
 }

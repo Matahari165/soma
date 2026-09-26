@@ -77,14 +77,14 @@ describe("conversation memory", () => {
       text: "La récupération est associée à la qualité du sommeil.",
       parts: [
         { type: "text", text: "La récupération est associée à la qualité du sommeil." },
-        { type: "data-summary", label: "Données Soma consultées", period: { from: "2026-06-01", to: "2026-08-30" }, itemCount: 91, domains: ["sleep", "recovery"] },
+        { type: "data-summary", label: "Données Soma consultées", period: { from: "2026-06-01", to: "2026-08-30" }, itemCount: 91, domains: ["sleep", "recovery"], toolStats: [{ toolName: "queryLabAnalyses", itemCount: 2, complete: true, periods: ["90"] }] },
       ],
     });
     const result = await createConversationSummary({ storedSummary: null, summaryThroughSequence: 0, throughSequence: 4, rows: [assistant] });
 
     expect(JSON.parse(result.serialized).items).toContainEqual(expect.objectContaining({
       kind: "verified_result",
-      evidence: expect.objectContaining({ period: { from: "2026-06-01", to: "2026-08-30" }, itemCount: 91 }),
+      evidence: expect.objectContaining({ period: { from: "2026-06-01", to: "2026-08-30" }, itemCount: 91, toolStats: [{ toolName: "queryLabAnalyses", itemCount: 2, complete: true, periods: ["90"] }] }),
     }));
     expect(JSON.parse(result.serialized).items).not.toContainEqual(expect.objectContaining({ kind: "user_claim" }));
   });

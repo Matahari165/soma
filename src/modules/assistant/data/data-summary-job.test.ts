@@ -229,3 +229,26 @@ it("preserves an unfinished continuation when the provider connection becomes un
   expect(result).toMatchObject({ status: "running", pauseReason: "source_unavailable", manifest: { processedItems: 0 } });
   expect(repository.jobs.get(first.jobId)?.telemetry_progress?.nextPageToken).toBe("page-two");
 });
+
+
+describe("summary integration with detailed source records", () => {
+  it("summarizes sleep observations and excludes skipped meals from nutritional statistics", async () => {
+    const observation = { metric: "sleep_minutes", value: 420, unit: "min", availability: "observed", coverage: 1,
+      measuredAt: null, importedAt: null, freshness: "current", provenance: { source: "health_source", provider: "synthetic", algorithmVersion: null } };
+    const baseManifest = { requestedPeriod: query.period, coveredPeriod: query.period, timezone: "UTC", totalItems: 1,
+      totalKnown: true, returnedItems: 1, hasMore: false, nextCursor: null, complete: true, generatedAt: "2020-01-07T00:00:00.000Z" };
+    const sleep = await summarizeAssistantData("synthetic-user", { query: { dataset: "sleep_sessions", period: query.period } }, {
+      store: store(), queryPage: async () => ({ items: [{ type: "sleep_session", date: "2020-01-01", session: {}, observations: [observation] }],
+        manifest: { ...baseManifest, dataset: "sleep_sessions" } } as AssistantSemanticResult),
+    });
+    expect(sleep.statistics.sleep_minutes).toMatchObject({ observations: 1, mean: 420, sources: ["health_source"] });
+    const meals = await summarizeAssistantData("synthetic-user", { query: { dataset: "meals", period: query.period } }, {
+      store: store(), queryPage: async () => ({ items: [
+        { type: "meal", date: "2020-01-01", meal: { nutritionEligible: false }, observations: [{ ...observation, metric: "calories_kcal", value: 900 }] },
+        { type: "meal", date: "2020-01-02", meal: { nutritionEligible: true }, observations: [{ ...observation, metric: "calories_kcal", value: 450, unit: "kcal", provenance: { source: "confirmed_meals", provider: null, algorithmVersion: null } }] },
+      ], manifest: { ...baseManifest, dataset: "meals", returnedItems: 2, totalItems: 2 } } as AssistantSemanticResult),
+    });
+    expect(meals.manifest.processedItems).toBe(2);
+    expect(meals.statistics.calories_kcal).toMatchObject({ observations: 1, sum: 450, sources: ["confirmed_meals"] });
+  });
+});

@@ -23,6 +23,7 @@ describe("assistant evidence summary", () => {
     ]);
     expect(summary).toEqual({
       type: "data-summary", label: "Données Soma consultées", period: { from: "2026-01-01", to: "2026-04-30" },
+      coveredPeriod: { from: "2026-01-01", to: "2026-04-30" },
       itemCount: 120, domains: ["sleep", "recovery", "effort"],
     });
   });
@@ -40,6 +41,14 @@ describe("assistant evidence summary", () => {
     expect(dataSummaryFromSteps([{ toolResults: [{ toolName: "getUserContext", input: {}, output: {} }] }])).toBeNull();
     expect(dataSummaryFromSteps([{ toolResults: [{ toolName: "querySomaData", input: {}, output: { manifest: { dataset: "scores" } } }] }])).toBeNull();
   });
+
+  it("keeps an empty result distinct from the period searched", () => {
+    const original = result(null, 0, true);
+    const empty = { ...original, output: { manifest: { ...original.output.manifest, coveredPeriod: null } } };
+    expect(dataSummaryFromSteps([{ toolResults: [empty] }])).toMatchObject({
+      period: { from: "2026-01-01", to: "2026-04-30" }, coveredPeriod: null, itemCount: 0,
+    });
+  });
 });
 
 it("uses only the latest persisted summary checkpoint when counting an exhaustive history", () => {
@@ -50,4 +59,18 @@ it("uses only the latest persisted summary checkpoint when counting an exhaustiv
   }
   expect(dataSummaryFromSteps([{ toolResults: [job(200, false)] }, { toolResults: [job(600, true)] }]))
     .toMatchObject({ itemCount: 600, label: "Données Soma consultées", domains: ["effort"] });
+});
+
+it("preserves bounded analysis evidence without inventing source samples or dates", () => {
+  const page = (offset: number, hasMore: boolean) => ({ toolName: "queryLabAnalyses", input: { periods: [90, "all"], offset }, output: { periods: [90, "all"], relations: [{}, {}], pagination: { hasMore } } });
+  const summary = dataSummaryFromSteps([{ toolResults: [page(0, true), page(0, true), page(2, false), { toolName: "getStrongestEffects", input: { period: 30 }, output: { period: 30, relations: [{}] } }] }]);
+  expect(summary).toMatchObject({ period: null, coveredPeriod: null, itemCount: 0, domains: [], toolStats: [
+    { toolName: "queryLabAnalyses", itemCount: 4, complete: true, periods: ["90", "all"] },
+    { toolName: "getStrongestEffects", itemCount: 1, complete: true, periods: ["30"] },
+  ] });
+});
+
+it("does not imply exhaustive analysis coverage when only a final offset page was read", () => {
+  const result = { toolName: "queryLabAnalyses", input: { periods: [90], offset: 40 }, output: { periods: [90], relations: [{}], pagination: { hasMore: false } } };
+  expect(dataSummaryFromSteps([{ toolResults: [result] }])).toMatchObject({ label: "Analyses Soma consultées · analyse partielle", toolStats: [{ complete: false }] });
 });

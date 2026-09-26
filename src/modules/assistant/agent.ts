@@ -4,7 +4,7 @@ import { openai, type OpenAILanguageModelResponsesOptions } from "@ai-sdk/openai
 import { isStepCount, ToolLoopAgent, type ModelMessage, type ToolSet } from "ai";
 
 import type { AssistantQuality } from "./contracts";
-import { SOMA_ASSISTANT_INSTRUCTIONS } from "./prompt";
+import { assistantInstructionsForTurn, createAssistantTemporalContext, type AssistantTemporalContext } from "./prompt";
 import { createGetUserContextTool } from "./tools/get-user-context";
 import { createGetPlanDetailsTool } from "./tools/get-plan-details";
 import { createGetStrongestEffectsTool } from "./tools/get-strongest-effects";
@@ -33,8 +33,8 @@ const qualitySettings: Record<AssistantQuality, {
   reasoningEffort: OpenAILanguageModelResponsesOptions["reasoningEffort"];
 }> = {
   fast: { maxOutputTokens: 1_200, maxSteps: 6, reasoningEffort: "medium" },
-  balanced: { maxOutputTokens: 2_400, maxSteps: 10, reasoningEffort: "medium" },
-  deep: { maxOutputTokens: 4_000, maxSteps: 14, reasoningEffort: "high" },
+  balanced: { maxOutputTokens: 2_400, maxSteps: 10, reasoningEffort: "high" },
+  deep: { maxOutputTokens: 4_000, maxSteps: 14, reasoningEffort: "xhigh" },
 };
 
 export type SomaAssistantAgent = {
@@ -53,8 +53,10 @@ export function createSomaAssistantAgent(input: {
   triggeringMessageId: string;
   triggeringUserText: string;
   conversationId: string;
+  temporalContext?: AssistantTemporalContext;
 }): SomaAssistantAgent {
   const settings = qualitySettings[input.quality];
+  const temporalContext = input.temporalContext ?? createAssistantTemporalContext({ now: new Date(), profileTimezone: null });
   const tools: ToolSet = {
     getUserContext: createGetUserContextTool(input),
     getPlanDetails: createGetPlanDetailsTool(input),
@@ -76,7 +78,7 @@ export function createSomaAssistantAgent(input: {
   };
   return new ToolLoopAgent({
     model: openai.responses(SOMA_ASSISTANT_MODEL),
-    instructions: `${SOMA_ASSISTANT_INSTRUCTIONS}\n\nHORLOGE SERVEUR : ${new Date().toISOString()} (UTC). Utilise le fuseau renvoyé par les outils Soma pour interpréter « aujourd'hui » et « hier ».`,
+    instructions: assistantInstructionsForTurn(temporalContext),
     tools,
     stopWhen: isStepCount(settings.maxSteps),
     maxOutputTokens: settings.maxOutputTokens,

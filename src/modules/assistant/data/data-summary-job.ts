@@ -91,10 +91,18 @@ function accumulate(job: AssistantDataSummaryJob, result: AssistantSemanticResul
     else if (item.type === "score") {
       observe(job, item.kind, item.observation.value, item.date, item.observation.unit, "soma_calculation");
     }
-    else {
+    else if (item.type === "activity") {
       job.activity_types[item.activity.type] = (job.activity_types[item.activity.type] ?? 0) + 1;
       const fields = { durationMinutes: "min", activeMinutes: "min", calories: "kcal", distanceKm: "km", averageHeartRate: "bpm", maximumHeartRate: "bpm", zoneMinutes: "min", averagePaceSecondsPerKm: "s/km", elevationGainMeters: "m", steps: "steps" };
-      for (const [field, unit] of Object.entries(fields)) observe(job, field, item.activity[field as keyof typeof item.activity], item.date, unit, "health_source");
+      const sourceMetrics: Record<string, string> = { durationMinutes: "duration_minutes", activeMinutes: "active_minutes", calories: "calories_kcal", distanceKm: "distance_km", averageHeartRate: "average_heart_rate", maximumHeartRate: "maximum_heart_rate", zoneMinutes: "zone_minutes", averagePaceSecondsPerKm: "average_pace_seconds_per_km", elevationGainMeters: "elevation_gain_meters", steps: "steps" };
+      for (const [field, unit] of Object.entries(fields)) {
+        const observation = item.observations?.find((value) => value.metric === sourceMetrics[field]);
+        observe(job, field, item.activity[field as keyof typeof item.activity], item.date, unit,
+          observation?.provenance.source ?? (field === "durationMinutes" ? "soma_calculation" : "health_source"), observation?.availability === "partial");
+      }
+    } else if (item.type === "sleep_session" || (item.type === "meal" && item.meal.nutritionEligible)) {
+      for (const observation of item.observations) observe(job, observation.metric, observation.value, item.date,
+        observation.unit, observation.provenance.source, observation.availability === "partial");
     }
   }
   job.total = result.manifest.hasMore ? result.manifest.totalItems : job.processed;

@@ -33,8 +33,15 @@ export const assistantDataSummaryPartSchema = z.object({
   type: z.literal("data-summary"),
   label: z.string().min(1).max(120),
   period: z.object({ from: z.iso.date(), to: z.iso.date() }).nullable(),
+  coveredPeriod: z.object({ from: z.iso.date(), to: z.iso.date() }).nullable().optional(),
   itemCount: z.number().int().nonnegative(),
   domains: z.array(z.enum(["nutrition", "sleep", "recovery", "effort"])).max(4),
+  toolStats: z.array(z.object({
+    toolName: z.enum(["queryLabAnalyses", "getStrongestEffects"]),
+    itemCount: z.number().int().nonnegative(),
+    complete: z.boolean(),
+    periods: z.array(z.enum(["15", "30", "90", "all"])).max(4),
+  })).max(8).optional(),
 });
 export const assistantActionPartSchema = z.object({
   type: z.literal("action"),
@@ -140,11 +147,14 @@ const paginationSchema = z.object({
   limit: z.number().int().min(1).max(200).default(100), cursor: z.string().max(1_024).nullable().default(null),
   order: z.enum(["asc", "desc"]).default("asc"),
 });
+const mealTypeSchema = z.enum(["breakfast", "lunch", "snack", "dinner"]);
 export const assistantSemanticQuerySchema = z.discriminatedUnion("dataset", [
   z.object({ dataset: z.literal("daily_health"), period: assistantPeriodSchema, metrics: z.array(healthDailyMetricSchema).min(1).max(assistantHealthMetricFields.length), pagination: paginationSchema.default({ limit: 100, cursor: null, order: "asc" }) }),
   z.object({ dataset: z.literal("scores"), period: assistantPeriodSchema, kinds: z.array(z.enum(["sleep", "recovery", "effort"])).min(1).max(3), pagination: paginationSchema.default({ limit: 100, cursor: null, order: "asc" }) }),
   z.object({ dataset: z.literal("nutrition_daily"), period: assistantPeriodSchema, metrics: z.array(nutritionDailyMetricSchema).min(1).max(13), pagination: paginationSchema.default({ limit: 100, cursor: null, order: "asc" }) }),
   z.object({ dataset: z.literal("activities"), period: assistantPeriodSchema, activityTypes: z.array(z.string().trim().min(1).max(80)).max(20).default([]), pagination: paginationSchema.default({ limit: 100, cursor: null, order: "desc" }) }),
+  z.object({ dataset: z.literal("sleep_sessions"), period: assistantPeriodSchema, pagination: paginationSchema.default({ limit: 100, cursor: null, order: "desc" }) }),
+  z.object({ dataset: z.literal("meals"), period: assistantPeriodSchema, mealTypes: z.array(mealTypeSchema).max(4).default([]), pagination: paginationSchema.default({ limit: 100, cursor: null, order: "desc" }) }),
 ]);
 export type AssistantSemanticQuery = z.infer<typeof assistantSemanticQuerySchema>;
 
@@ -162,7 +172,7 @@ export const assistantObservationSchema = z.object({
   if (value.availability === "missing" && value.freshness !== "missing") context.addIssue({ code: "custom", message: "Missing observations must have missing freshness.", path: ["freshness"] });
 });
 export const assistantQueryManifestSchema = z.object({
-  dataset: z.enum(["daily_health", "scores", "nutrition_daily", "activities"]), requestedPeriod: assistantPeriodSchema,
+  dataset: z.enum(["daily_health", "scores", "nutrition_daily", "activities", "sleep_sessions", "meals"]), requestedPeriod: assistantPeriodSchema,
   coveredPeriod: assistantPeriodSchema.nullable(), timezone: z.string().min(1).max(100), totalItems: z.number().int().nonnegative().nullable(), totalKnown: z.boolean(),
   returnedItems: z.number().int().nonnegative(), hasMore: z.boolean(), nextCursor: z.string().nullable(), complete: z.boolean(),
   generatedAt: z.iso.datetime(),

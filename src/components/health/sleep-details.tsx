@@ -8,9 +8,10 @@ import styles from "./sleep-redesign.module.css";
 import { HealthPageShell } from "./health-page-shell";
 import { HealthScrollReveal } from "./health-scroll-reveal";
 import { SleepStageDistribution } from "./health-charts";
-import { averageLast30Measured, formatDurationMinutes, healthSourceLabel, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
+import { averageLast30MeasuredWithCount, formatDurationMinutes, healthSourceLabel, latestSourceMeasuredAt, measuredCoverage } from "./health-metric-utils";
 import { MetricTrendCard } from "./metric-trend-card";
 import { SleepScoreOverview, type SleepScoreBreakdown, type SleepScoreComponent } from "./sleep-score-overview";
+import { sleepMetricComparisonLabel, sleepMetricTone, sleepNeedComparisonLabel, sleepNeedTone } from "./sleep-comparison";
 import type { SleepRadarDimension } from "./sleep-radar";
 
 const SLEEP_RADAR_DURATION_UPPER_MINUTES = 8 * 60 + 30;
@@ -72,16 +73,19 @@ function clock(value: string | null, timeZone: string) {
 }
 
 function averageScoreLast30(scores: HealthAnalytics["scores"], endDate: string | undefined, algorithmVersion: string | null | undefined) {
-  if (!endDate || !algorithmVersion) return null;
+  if (!endDate) return { value: null, measuredNights: 0 };
   const end = new Date(`${endDate}T12:00:00.000Z`);
-  if (!Number.isFinite(end.getTime())) return null;
+  if (!Number.isFinite(end.getTime())) return { value: null, measuredNights: 0 };
   end.setUTCDate(end.getUTCDate() - 29);
   const startDate = end.toISOString().slice(0, 10);
-  const values = scores
-    .filter((item) => item.kind === "sleep" && item.algorithm_version === algorithmVersion && item.score_date >= startDate && item.score_date <= endDate)
-    .map((item) => item.score)
-    .filter(measured);
-  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+  const version = algorithmVersion ?? SLEEP_SCORE_ALGORITHM_VERSION;
+  const byDate = new Map<string, number>();
+  for (const item of scores) {
+    if (item.kind !== "sleep" || item.algorithm_version !== version || item.score_date < startDate || item.score_date > endDate || !measured(item.score)) continue;
+    byDate.set(item.score_date, item.score);
+  }
+  const values = [...byDate.values()];
+  return { value: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null, measuredNights: values.length };
 }
 
 function formatPercent(value: number | null) {
@@ -104,16 +108,18 @@ function invertedObservedRatio(value: number | null | undefined, values: Array<n
 
 function comparison(value: number | null | undefined, average: number | null | undefined): RadarComparison {
   if (!measured(value) || !measured(average)) return null;
-  if (value === average) return "equal";
-  return value > average ? "up" : "down";
-}
-
-function comparisonLabel(value: number | null, format: (value: number | null) => string) {
-  return measured(value) ? `30-day avg · ${format(value)}` : undefined;
+  const shownValue = Math.round(value);
+  const shownAverage = Math.round(average);
+  if (shownValue === shownAverage) return "equal";
+  return shownValue > shownAverage ? "up" : "down";
 }
 
 function averageValueLabel(value: number | null, format: (value: number | null) => string) {
   return measured(value) ? format(value) : undefined;
+}
+
+function averageContext(value: number | null, count: number, format: (value: number | null) => string) {
+  return measured(value) ? `30-day avg · ${format(value)} · n=${count} nights` : "30-day avg unavailable";
 }
 
 function normalizedDriver(value: unknown) {
@@ -161,11 +167,11 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const score = scoreEntry?.score ?? null;
   const scoreBreakdown = sleepScoreBreakdown(latest, scoreEntry);
   const scoreComponent = (id: SleepScoreComponent["id"]) => scoreBreakdown?.components.find((component) => component.id === id);
-  const averageScore = latest ? averageScoreLast30(data.scores, latest.metric_date, scoreEntry?.algorithm_version) : null;
-  const averageSleep = latest ? averageLast30Measured(data.days, "sleep_minutes", latest.metric_date) : null;
-  const averageRegularity = latest ? averageLast30Measured(data.days, "sleep_regularity", latest.metric_date) : null;
-  const averageEfficiency = latest ? averageLast30Measured(data.days, "sleep_efficiency", latest.metric_date) : null;
-  const averageDebt = latest ? averageLast30Measured(data.days, "cumulative_sleep_debt_minutes", latest.metric_date) : null;
+  const averageScore = latest ? averageScoreLast30(data.scores, latest.metric_date, scoreEntry?.algorithm_version) : { value: null, measuredNights: 0 };
+  const averageSleep = latest ? averageLast30MeasuredWithCount(data.days, "sleep_minutes", latest.metric_date) : { value: null, measuredDays: 0 };
+  const averageRegularity = latest ? averageLast30MeasuredWithCount(data.days, "sleep_regularity", latest.metric_date) : { value: null, measuredDays: 0 };
+  const averageEfficiency = latest ? averageLast30MeasuredWithCount(data.days, "sleep_efficiency", latest.metric_date) : { value: null, measuredDays: 0 };
+  const averageDebt = latest ? averageLast30MeasuredWithCount(data.days, "cumulative_sleep_debt_minutes", latest.metric_date) : { value: null, measuredDays: 0 };
   const recentDays = data.days.slice(-30);
   const sourceLabel = healthSourceLabel(latest);
   const freshness = calculateSignalFreshness({ measuredAt: latestSourceMeasuredAt(latest), importedAt: data.importedAt, coverage: latest ? measuredCoverage([latest.sleep_minutes, latest.sleep_efficiency, latest.sleep_regularity]) : 0 });
@@ -175,18 +181,19 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
       label: "Duration",
       normalizedValue: normalizedRange(latest.sleep_minutes, SLEEP_RADAR_DURATION_LOWER_MINUTES, SLEEP_RADAR_DURATION_UPPER_MINUTES),
       valueLabel: formatDurationMinutes(latest.sleep_minutes),
-      averageLabel: averageValueLabel(averageSleep, formatDurationMinutes),
+      averageLabel: averageValueLabel(averageSleep.value, formatDurationMinutes),
+      averageMeasuredNights: averageSleep.measuredDays,
       chartRangeLabel: "5 h – 8 h 30 min",
       definition: "Measured sleep duration compared to estimated need for this night.",
-      readingDirection: "Closer to estimated need = better",
+      readingDirection: "Estimated sleep need met; extra duration adds no score credit",
       scoreRole: "Sleep score component · 70%",
       scoreWeight: 70,
       scoreFormula: "duration ÷ estimated need",
       scoreNormalization: "clamp(0, 1, duration ÷ need)",
       scoreContribution: scoreComponent("duration")?.contribution ?? null,
-      comparison: comparison(latest.sleep_minutes, averageSleep),
-      comparisonLabel: comparisonLabel(averageSleep, formatDurationMinutes),
-      comparisonTone: metricTone(latest.sleep_minutes, averageSleep, "higher_is_better"),
+      comparison: comparison(latest.sleep_minutes, latest.sleep_need_minutes),
+      comparisonLabel: sleepNeedComparisonLabel(latest.sleep_minutes, latest.sleep_need_minutes),
+      comparisonTone: sleepNeedTone(latest.sleep_minutes, latest.sleep_need_minutes),
       sourceLabel,
     },
     {
@@ -194,7 +201,8 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
       label: "Efficiency",
       normalizedValue: normalizedRange(latest.sleep_efficiency, SLEEP_RADAR_EFFICIENCY_LOWER_PERCENT, SLEEP_RADAR_EFFICIENCY_UPPER_PERCENT),
       valueLabel: formatPercent(latest.sleep_efficiency),
-      averageLabel: averageValueLabel(averageEfficiency, formatPercent),
+      averageLabel: averageValueLabel(averageEfficiency.value, formatPercent),
+      averageMeasuredNights: averageEfficiency.measuredDays,
       chartRangeLabel: "70 % – 100 %",
       definition: "Proportion of time in bed spent asleep, provided by health source.",
       readingDirection: "Higher = better",
@@ -203,9 +211,9 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
       scoreFormula: "source efficiency ÷ 100",
       scoreNormalization: "clamp(0, 1, value ÷ 100)",
       scoreContribution: scoreComponent("efficiency")?.contribution ?? null,
-      comparison: comparison(latest.sleep_efficiency, averageEfficiency),
-      comparisonLabel: comparisonLabel(averageEfficiency, formatPercent),
-      comparisonTone: metricTone(latest.sleep_efficiency, averageEfficiency, "higher_is_better"),
+      comparison: comparison(latest.sleep_efficiency, averageEfficiency.value),
+      comparisonLabel: sleepMetricComparisonLabel(latest.sleep_efficiency, averageEfficiency.value, "higher_is_better"),
+      comparisonTone: sleepMetricTone(latest.sleep_efficiency, averageEfficiency.value, "higher_is_better"),
       sourceLabel,
     },
     {
@@ -213,7 +221,8 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
       label: "Regularity",
       normalizedValue: normalizedRange(latest.sleep_regularity, SLEEP_RADAR_REGULARITY_LOWER_PERCENT, SLEEP_RADAR_REGULARITY_UPPER_PERCENT),
       valueLabel: formatPercent(latest.sleep_regularity),
-      averageLabel: averageValueLabel(averageRegularity, formatPercent),
+      averageLabel: averageValueLabel(averageRegularity.value, formatPercent),
+      averageMeasuredNights: averageRegularity.measuredDays,
       chartRangeLabel: "50 % – 100 %",
       definition: "Consistency of sleep schedule relative to observed rhythm.",
       readingDirection: "Higher = better",
@@ -222,9 +231,9 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
       scoreFormula: "source regularity ÷ 100",
       scoreNormalization: "clamp(0, 1, value ÷ 100)",
       scoreContribution: scoreComponent("regularity")?.contribution ?? null,
-      comparison: comparison(latest.sleep_regularity, averageRegularity),
-      comparisonLabel: comparisonLabel(averageRegularity, formatPercent),
-      comparisonTone: metricTone(latest.sleep_regularity, averageRegularity, "higher_is_better"),
+      comparison: comparison(latest.sleep_regularity, averageRegularity.value),
+      comparisonLabel: sleepMetricComparisonLabel(latest.sleep_regularity, averageRegularity.value, "higher_is_better"),
+      comparisonTone: sleepMetricTone(latest.sleep_regularity, averageRegularity.value, "higher_is_better"),
       sourceLabel,
     },
     {
@@ -232,13 +241,14 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
       label: "Debt",
       normalizedValue: invertedObservedRatio(latest.cumulative_sleep_debt_minutes, recentDays.map((day) => day.cumulative_sleep_debt_minutes)),
       valueLabel: formatDurationMinutes(latest.cumulative_sleep_debt_minutes),
-      averageLabel: averageValueLabel(averageDebt, formatDurationMinutes),
+      averageLabel: averageValueLabel(averageDebt.value, formatDurationMinutes),
+      averageMeasuredNights: averageDebt.measuredDays,
       definition: "Cumulative missed sleep relative to estimated needs.",
       readingDirection: "Lower = better",
       scoreRole: "Context metric · excluded from Sleep score",
-      comparison: comparison(latest.cumulative_sleep_debt_minutes, averageDebt),
-      comparisonLabel: comparisonLabel(averageDebt, formatDurationMinutes),
-      comparisonTone: metricTone(latest.cumulative_sleep_debt_minutes, averageDebt, "lower_is_better"),
+      comparison: comparison(latest.cumulative_sleep_debt_minutes, averageDebt.value),
+      comparisonLabel: sleepMetricComparisonLabel(latest.cumulative_sleep_debt_minutes, averageDebt.value, "lower_is_better"),
+      comparisonTone: sleepMetricTone(latest.cumulative_sleep_debt_minutes, averageDebt.value, "lower_is_better"),
       sourceLabel: "Soma",
     },
   ] : [];
@@ -251,7 +261,8 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
           <SleepScoreOverview
             dimensions={radarDimensions}
             score={score}
-            average={averageScore}
+            average={averageScore.value}
+            averageMeasuredNights={averageScore.measuredNights}
             breakdown={scoreBreakdown}
           />
         </section>
@@ -259,17 +270,17 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
         <section className={styles.readingsSection} aria-label="Sleep indicators" data-scroll-reveal="measurements">
           <div className={styles.readingsGrid}>
             {[
-              { label: "Duration", value: formatDurationMinutes(latest.sleep_minutes), context: `30-day avg · ${formatDurationMinutes(averageSleep)}`, detail: "Measured sleep duration compared with your estimated need." },
-              { label: "Efficiency", value: formatPercent(latest.sleep_efficiency), context: `30-day avg · ${formatPercent(averageEfficiency)}`, detail: "Share of time in bed spent asleep, provided by the health source." },
-              { label: "Regularity", value: formatPercent(latest.sleep_regularity), context: `30-day avg · ${formatPercent(averageRegularity)}`, detail: "Consistency of your sleep schedule relative to its observed rhythm." },
-              { label: "Sleep debt", value: formatDurationMinutes(latest.cumulative_sleep_debt_minutes), context: `30-day avg · ${formatDurationMinutes(averageDebt)}`, detail: "Cumulative missed sleep relative to your estimated needs, calculated by Soma. It is not part of the sleep score." },
-            ].map((item) => <details className={styles.reading} key={item.label}><summary><span>{item.label}</span><strong>{item.value}</strong><small>{item.context}</small><span className={styles.readingChevron} aria-hidden="true" /></summary><p>{item.detail}</p></details>)}
+              { label: "Duration", value: formatDurationMinutes(latest.sleep_minutes), context: averageContext(averageSleep.value, averageSleep.measuredDays, formatDurationMinutes), status: sleepNeedComparisonLabel(latest.sleep_minutes, latest.sleep_need_minutes), tone: sleepNeedTone(latest.sleep_minutes, latest.sleep_need_minutes), detail: "Measured sleep duration compared with your estimated need. Additional time beyond need does not increase the sleep score." },
+              { label: "Efficiency", value: formatPercent(latest.sleep_efficiency), context: averageContext(averageEfficiency.value, averageEfficiency.measuredDays, formatPercent), status: sleepMetricComparisonLabel(latest.sleep_efficiency, averageEfficiency.value, "higher_is_better"), tone: sleepMetricTone(latest.sleep_efficiency, averageEfficiency.value, "higher_is_better"), detail: "Share of time in bed spent asleep, provided by the health source." },
+              { label: "Regularity", value: formatPercent(latest.sleep_regularity), context: averageContext(averageRegularity.value, averageRegularity.measuredDays, formatPercent), status: sleepMetricComparisonLabel(latest.sleep_regularity, averageRegularity.value, "higher_is_better"), tone: sleepMetricTone(latest.sleep_regularity, averageRegularity.value, "higher_is_better"), detail: "Consistency of your sleep schedule relative to its observed rhythm." },
+              { label: "Sleep debt", value: formatDurationMinutes(latest.cumulative_sleep_debt_minutes), context: averageContext(averageDebt.value, averageDebt.measuredDays, formatDurationMinutes), status: sleepMetricComparisonLabel(latest.cumulative_sleep_debt_minutes, averageDebt.value, "lower_is_better"), tone: sleepMetricTone(latest.cumulative_sleep_debt_minutes, averageDebt.value, "lower_is_better"), detail: "Cumulative missed sleep relative to your estimated needs, calculated by Soma. It is not part of the sleep score." },
+            ].map((item) => <details className={styles.reading} data-tone={item.tone} key={item.label}><summary><span>{item.label}</span><strong>{item.value}</strong><small>{item.context}</small><small className={styles.readingStatus}>{item.status}</small><span className={styles.readingChevron} aria-hidden="true" /></summary><p>{item.detail}</p></details>)}
           </div>
         </section>
 
         <section className={`${styles.trendsSection} health-observatory-panel`} aria-label="Sleep trends" data-scroll-reveal="trends">
           <div className={styles.trendGrid}>
-            <MetricTrendCard label="Duration" points={points(data.days, "sleep_minutes")} direction="higher_is_better" format={formatDurationMinutes} valueFormat="duration" chartType="bar" compact averageInChart animateCurrent animationFormat="duration" />
+            <MetricTrendCard label="Duration" points={points(data.days, "sleep_minutes")} direction="context_only" format={formatDurationMinutes} valueFormat="duration" chartType="bar" compact averageInChart animateCurrent animationFormat="duration" />
             <MetricTrendCard label="Efficiency" points={points(data.days, "sleep_efficiency")} unit="%" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" />
             <MetricTrendCard label="Regularity" points={points(data.days, "sleep_regularity")} unit="%" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" />
             <MetricTrendCard label="Fragmentation" points={points(data.days, "sleep_fragmentation")} unit="/h" direction="lower_is_better" valueFormat="decimal" chartType="bar" compact averageInChart animateCurrent animationFormat="decimal" />

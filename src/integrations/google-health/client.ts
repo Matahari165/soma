@@ -194,13 +194,13 @@ export function buildGoogleHealthAuthorizationUrl(state: string, challenge: stri
   return url;
 }
 
-async function tokenRequest(body: URLSearchParams) {
+async function tokenRequest(body: URLSearchParams, signal?: AbortSignal) {
   const response = await fetch(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
     cache: "no-store",
-    signal: AbortSignal.timeout(10_000),
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10_000)]) : AbortSignal.timeout(10_000),
   });
 
   if (!response.ok) {
@@ -221,13 +221,13 @@ export function exchangeGoogleHealthCode(code: string, verifier: string, siteUrl
   }));
 }
 
-export function refreshGoogleHealthToken(refreshToken: string) {
+export function refreshGoogleHealthToken(refreshToken: string, options: { signal?: AbortSignal } = {}) {
   return tokenRequest(new URLSearchParams({
     client_id: getGoogleHealthClientId(),
     client_secret: requireServerEnv("GOOGLE_HEALTH_CLIENT_SECRET"),
     refresh_token: refreshToken,
     grant_type: "refresh_token",
-  }));
+  }), options.signal);
 }
 
 async function googleHealthRequest<T>(path: string, accessToken: string, init?: RequestInit) {
