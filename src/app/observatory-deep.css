@@ -1021,8 +1021,8 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-numbe
   html[data-lab-theme="observatory"] .lab-global-nav a svg,
   html[data-lab-theme="observatory"] .lab-global-nav__more-button svg {
     display: block;
-    width: 21px;
-    height: 21px;
+    width: 20px;
+    height: 20px;
     flex: none;
     stroke-width: 1.7;
     transition: transform 160ms cubic-bezier(.2, .8, .2, 1);
@@ -1060,7 +1060,8 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-numbe
   }
   html[data-lab-theme="observatory"] .lab-global-nav > .lab-global-nav__secondary,
   html[data-lab-theme="observatory"] .lab-global-nav__desktop-label { display: none; }
-  html[data-lab-theme="observatory"] .lab-global-nav__mobile-label { display: inline; }
+  html[data-lab-theme="observatory"] .lab-global-nav > a > span,
+  html[data-lab-theme="observatory"] .lab-global-nav__more-button > span { display: none; }
   html[data-lab-theme="observatory"] .lab-global-nav__more-slot { display: block; min-width: 0; }
   html[data-lab-theme="observatory"] .lab-global-nav__more-button { width: 100%; }
   html[data-lab-theme="observatory"] .lab-global-nav__more-button[aria-expanded="true"] { color: var(--lab-text-primary); }
