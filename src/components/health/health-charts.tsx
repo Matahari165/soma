@@ -1,6 +1,8 @@
 "use client";
 
-import { useId, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useMotionUpdate } from "@/components/motion/use-motion-update";
+
+import { useId, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 
 import type { HeartRateSample, SleepStageSegment } from "@/services/health-analytics";
 import type { MetricPoint } from "@/domain/metrics/trends";
@@ -104,16 +106,18 @@ function formatDurationMs(value: number | null) {
   return `${minutes} min`;
 }
 
-export function BarTrendChart({ points, label, target, unit, valueFormat = "decimal", aggregation = "day", average = null, highlightLatest = true, domain }: { points: MetricPoint[]; label: string; target?: number | null; unit?: string; valueFormat?: ChartValueFormat; aggregation?: BarAggregation; average?: number | null; highlightLatest?: boolean; domain?: { min: number; max: number } }) {
+export function BarTrendChart({ points, label, target, unit, valueFormat = "decimal", aggregation = "day", average = null, highlightLatest = true, domain, animateUpdates = true }: { points: MetricPoint[]; label: string; target?: number | null; unit?: string; valueFormat?: ChartValueFormat; aggregation?: BarAggregation; average?: number | null; highlightLatest?: boolean; domain?: { min: number; max: number }; animateUpdates?: boolean }) {
   const titleId = useId();
   const descriptionId = useId();
   const chartPoints = aggregateBarPoints(points, aggregation);
+  const chartRef = useRef<HTMLDivElement>(null);
+  useMotionUpdate(chartRef, animateUpdates ? `${aggregation}:${chartPoints.map((point) => `${point.date}:${point.value}`).join("|")}:${target}:${average}` : null);
   const available = chartPoints.filter((point): point is MetricPoint & { value: number } => typeof point.value === "number" && Number.isFinite(point.value));
   const latestMeasuredIndex = chartPoints.reduce((latest, point, index) => typeof point.value === "number" && Number.isFinite(point.value) ? index : latest, 0);
   const selectionState = useChartSelection(chartPoints.length, latestMeasuredIndex);
   const { selection } = selectionState;
   const description = chartDescription(label, chartPoints, unit, valueFormat);
-  if (available.length === 0) return <div className="health-line-chart-wrap"><p className="health-empty">Pas assez de mesures complètes pour afficher une tendance.</p><p id={descriptionId} className="sr-only">{description}</p></div>;
+  if (available.length === 0) return <div ref={chartRef} className="health-line-chart-wrap"><p className="health-empty">Pas assez de mesures complètes pour afficher une tendance.</p><p id={descriptionId} className="sr-only">{description}</p></div>;
   const measuredTarget = typeof target === "number" && Number.isFinite(target) ? target : null;
   const rawMin = Math.min(...available.map((point) => point.value), measuredTarget ?? 0, 0);
   const measuredAverage = typeof average === "number" && Number.isFinite(average) ? average : null;
@@ -130,7 +134,7 @@ export function BarTrendChart({ points, label, target, unit, valueFormat = "deci
   const x = (index: number) => 8 + index * slotWidth + (slotWidth - barWidth) / 2;
   const activePoint = selection ? chartPoints[selection.index] : null;
   const tooltipXPercent = selection ? ((8 + (selection.index + .5) * slotWidth) / CHART_VIEWBOX_WIDTH) * 100 : 50;
-  return <div className="health-line-chart-wrap"><div className={styles.chartPlot}><svg className={`${styles.barChart} health-bar-chart`} viewBox={`0 0 ${CHART_VIEWBOX_WIDTH} ${CHART_VIEWBOX_HEIGHT}`} preserveAspectRatio="none" role="img" tabIndex={0} aria-labelledby={titleId} aria-describedby={descriptionId} onFocus={selectionState.onFocus} onBlur={selectionState.onBlur} onKeyDown={selectionState.onKeyDown}>
+  return <div ref={chartRef} className="health-line-chart-wrap"><div className={styles.chartPlot}><svg className={`${styles.barChart} health-bar-chart`} viewBox={`0 0 ${CHART_VIEWBOX_WIDTH} ${CHART_VIEWBOX_HEIGHT}`} preserveAspectRatio="none" role="img" tabIndex={0} aria-labelledby={titleId} aria-describedby={descriptionId} onFocus={selectionState.onFocus} onBlur={selectionState.onBlur} onKeyDown={selectionState.onKeyDown}>
     <line x1="8" y1={baseline} x2="292" y2={baseline} className="health-chart-grid" />
     {measuredTarget !== null && <line x1="8" y1={y(measuredTarget)} x2="292" y2={y(measuredTarget)} className="health-chart-target"><title>{`Objectif ${formatChartValue(measuredTarget, unit, valueFormat)}`}</title></line>}
     {chartPoints.map((point, index) => {
@@ -150,6 +154,8 @@ export function BarTrendChart({ points, label, target, unit, valueFormat = "deci
 export function LineTrendChart({ points, label, target, unit, valueFormat = "decimal" }: { points: MetricPoint[]; label: string; target?: number | null; unit?: string; valueFormat?: ChartValueFormat }) {
   const titleId = useId();
   const descriptionId = useId();
+  const chartRef = useRef<HTMLDivElement>(null);
+  useMotionUpdate(chartRef, `${points.map((point) => `${point.date}:${point.value}`).join("|")}:${target}`);
   const dated = points.map((point, index) => ({ ...point, index, timestamp: Date.parse(point.date) }));
   const selectable = dated.filter((point) => Number.isFinite(point.timestamp));
   const available = dated.filter((point): point is typeof point & { value: number } => typeof point.value === "number" && Number.isFinite(point.value) && Number.isFinite(point.timestamp));
@@ -157,7 +163,7 @@ export function LineTrendChart({ points, label, target, unit, valueFormat = "dec
   const selectionState = useChartSelection(dated.length, latestMeasuredIndex);
   const { selection } = selectionState;
   const description = chartDescription(label, points, unit, valueFormat);
-  if (available.length < 2) return <div className="health-line-chart-wrap"><p className="health-empty">Pas assez de mesures complètes pour afficher une tendance.</p><p id={descriptionId} className="sr-only">{description}</p></div>;
+  if (available.length < 2) return <div ref={chartRef} className="health-line-chart-wrap"><p className="health-empty">Pas assez de mesures complètes pour afficher une tendance.</p><p id={descriptionId} className="sr-only">{description}</p></div>;
   const measuredTarget = typeof target === "number" && Number.isFinite(target) ? target : null;
   const rawMin = Math.min(...available.map((point) => point.value), measuredTarget ?? Infinity);
   const rawMax = Math.max(...available.map((point) => point.value), measuredTarget ?? -Infinity);
@@ -188,7 +194,7 @@ export function LineTrendChart({ points, label, target, unit, valueFormat = "dec
   if (current.length) segments.push(current);
   const activePoint = selection ? dated[selection.index] : null;
   const tooltipXPercent = activePoint && Number.isFinite(activePoint.timestamp) ? (x(activePoint.timestamp) / CHART_VIEWBOX_WIDTH) * 100 : 50;
-  return <div className="health-line-chart-wrap"><div className={styles.chartPlot}><svg className={`${styles.lineChart} health-line-chart`} viewBox={`0 0 ${CHART_VIEWBOX_WIDTH} ${CHART_VIEWBOX_HEIGHT}`} preserveAspectRatio="none" role="img" tabIndex={0} aria-labelledby={titleId} aria-describedby={descriptionId} onFocus={selectionState.onFocus} onBlur={selectionState.onBlur} onKeyDown={selectionState.onKeyDown}>
+  return <div ref={chartRef} className="health-line-chart-wrap"><div className={styles.chartPlot}><svg className={`${styles.lineChart} health-line-chart`} viewBox={`0 0 ${CHART_VIEWBOX_WIDTH} ${CHART_VIEWBOX_HEIGHT}`} preserveAspectRatio="none" role="img" tabIndex={0} aria-labelledby={titleId} aria-describedby={descriptionId} onFocus={selectionState.onFocus} onBlur={selectionState.onBlur} onKeyDown={selectionState.onKeyDown}>
     <line x1="8" y1={CHART_PLOT_BOTTOM} x2="292" y2={CHART_PLOT_BOTTOM} className="health-chart-grid" />
     <line x1="8" y1={y(average)} x2="292" y2={y(average)} className="health-chart-average"><title>{`Moyenne ${formatChartValue(average, unit, valueFormat)}`}</title></line>
     {measuredTarget !== null && <line x1="8" y1={y(measuredTarget)} x2="292" y2={y(measuredTarget)} className="health-chart-target"><title>{`Objectif ${formatChartValue(measuredTarget, unit, valueFormat)}`}</title></line>}

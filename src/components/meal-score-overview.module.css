@@ -162,7 +162,7 @@
 .dailyScoreTrigger:focus-visible .dailyScore,
 .dailyScoreTrigger[aria-expanded="true"] .dailyScore { transform: scale(1.035); }
 .dailyScoreTrigger:focus-visible { outline: 2px solid var(--score-text); outline-offset: 6px; }
-.scoreInline { display: grid; grid-template-rows: 0fr; width: min(100%, 360px); overflow: hidden; opacity: 0; clip-path: inset(0 0 100% 0); transition: grid-template-rows 360ms cubic-bezier(.22, 1, .36, 1), opacity 280ms ease-out, clip-path 360ms cubic-bezier(.22, 1, .36, 1); }
+.scoreInline { display: grid; grid-template-rows: 0fr; width: min(100%, 360px); overflow: hidden; opacity: 0; clip-path: inset(0 0 100% 0); transition: grid-template-rows 240ms cubic-bezier(.2, .8, .2, 1), opacity 180ms cubic-bezier(.2, .8, .2, 1), clip-path 240ms cubic-bezier(.2, .8, .2, 1); }
 .scoreInline[data-open="true"] { grid-template-rows: 1fr; margin-top: 16px; overflow: visible; opacity: 1; clip-path: inset(0); }
 .scoreInlineInner { min-height: 0; overflow: hidden; }
 .scoreInline[data-open="true"] .scoreInlineInner { overflow: visible; }
