@@ -78,7 +78,11 @@ export function createSupabaseRequest(): SupabaseRequest {
         const message = typeof parsed === "object" && parsed && "message" in parsed
           ? String((parsed as { message: unknown }).message)
           : `Supabase request failed (${response.status}).`;
-        throw new Error(message);
+        const error = new Error(message) as Error & { code?: string };
+        if (typeof parsed === "object" && parsed && "code" in parsed && typeof (parsed as { code: unknown }).code === "string") {
+          error.code = (parsed as { code: string }).code;
+        }
+        throw error;
       }
       const rangeTotal = response.headers.get("content-range")?.split("/").at(-1);
       const count = rangeTotal && /^\d+$/.test(rangeTotal) ? Number(rangeTotal) : null;

@@ -2,17 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   createAdmin: vi.fn(),
+  readMealListAggregate: vi.fn(),
   deleteR2: vi.fn(),
   responses: [] as unknown[],
   tables: [] as string[],
   operations: [] as string[],
   updates: [] as unknown[],
   selectors: [] as Array<{ table: string; columns: string }>,
+  sorts: [] as Array<{ table: string; field: string; options?: unknown }>,
   filters: [] as Array<{ table: string; field: string; values: unknown }>,
   predicates: [] as Array<{ table: string; operator: string; field?: string; value?: unknown }>,
 }));
 
-vi.mock("@/lib/cloudflare/db", () => ({ createCloudflareAdminClient: state.createAdmin }));
+vi.mock("@/lib/cloudflare/db", () => ({ createCloudflareAdminClient: state.createAdmin, readMealListAggregate: state.readMealListAggregate }));
 vi.mock("@/lib/r2", () => ({ deleteR2MealPhotoObject: state.deleteR2 }));
 
 import {
@@ -76,8 +78,11 @@ describe("meal photo deletion", () => {
     state.operations = [];
     state.updates = [];
     state.selectors = [];
+    state.sorts = [];
     state.filters = [];
     state.predicates = [];
+    state.readMealListAggregate.mockReset();
+    state.readMealListAggregate.mockResolvedValue(null);
     state.deleteR2.mockReset();
     state.createAdmin.mockImplementation(() => ({
       from(table: string) {
@@ -116,7 +121,10 @@ describe("meal photo deletion", () => {
             state.filters.push({ table, field, values });
             return query;
           },
-          order: () => query,
+          order: (field: string, options?: unknown) => {
+            state.sorts.push({ table, field, options });
+            return query;
+          },
           limit: () => query,
           maybeSingle: () => query,
           update: (values: unknown) => {
@@ -218,6 +226,7 @@ describe("meal photo deletion", () => {
     expect(meals).toHaveLength(1);
     expect(meals[0]).toMatchObject({ id: "meal-current", status: "confirmed", entryState: "skipped", photos: [{ id: "photo-current" }] });
     expect(state.tables).toEqual(["meals", "meal_photos", "meal_analyses", "meal_feelings"]);
+    expect(state.sorts).toContainEqual({ table: "meal_analyses", field: "id", options: { ascending: true } });
     expect(state.filters).toEqual([
       { table: "meal_photos", field: "meal_id", values: ["meal-current"] },
       { table: "meal_analyses", field: "meal_id", values: ["meal-current"] },
@@ -237,6 +246,109 @@ describe("meal photo deletion", () => {
     await expect(listMeals("user-1", { from: "2026-09-02", to: "2026-09-02" })).resolves.toEqual([]);
 
     expect(state.tables).toEqual(["meals"]);
+  });
+
+  it("maps one aggregate read without dropping photos, explicit null feelings, or a successful analysis after a failed retry", async () => {
+    const meal = {
+      id: "meal-with-retry",
+      user_id: "user-1",
+      meal_date: "2026-09-15",
+      meal_type: "lunch",
+      note: "Soup and bread",
+      status: "confirmed",
+      entry_state: "skipped",
+      mouth_warmth_intensity: 4,
+      stomach_overfull_intensity: 3,
+      created_at: "2026-09-15T12:00:00.000Z",
+      updated_at: "2026-09-15T12:00:00.000Z",
+    };
+    const firstPhoto = {
+      id: "photo-1", user_id: "user-1", meal_id: meal.id, origin: "homemade", object_path: "private/one.jpg",
+      mime_type: "image/jpeg", bytes: 12, filename: "one.jpg", comment: "before eating", storage_status: "available",
+      purged_at: null, created_at: "2026-09-15T12:01:00.000Z",
+    };
+    const secondPhoto = {
+      id: "photo-2", user_id: "user-1", meal_id: meal.id, origin: "restaurant", object_path: "private/two.jpg",
+      mime_type: "image/jpeg", bytes: 20, filename: "two.jpg", comment: null, storage_status: "purged",
+      purged_at: "2026-09-15T12:02:00.000Z", created_at: "2026-09-15T12:02:00.000Z",
+    };
+    const latestSuccess = analysis({ id: "analysis-success", meal_id: meal.id, created_at: "2026-09-15T12:03:00.000Z" });
+    const latestFailure = analysis({ id: "analysis-failed", meal_id: meal.id, status: "failed", result: null, error: "provider unavailable", created_at: "2026-09-15T12:04:00.000Z" });
+    state.readMealListAggregate.mockResolvedValueOnce([
+      {
+        meal_row: meal,
+        photo_rows: [firstPhoto, secondPhoto],
+        feelings_row: { id: "feeling-1", user_id: "user-1", meal_id: meal.id, mouth_warmth_intensity: null, stomach_overfull_intensity: 2, created_at: "2026-09-15T12:05:00.000Z", updated_at: "2026-09-15T12:05:00.000Z" },
+        latest_analysis_row: latestFailure,
+        last_successful_analysis_row: latestSuccess,
+      },
+      {
+        meal_row: { ...meal, id: "meal-no-children", meal_type: "snack", mouth_warmth_intensity: 3 },
+        photo_rows: [],
+        feelings_row: null,
+        latest_analysis_row: null,
+        last_successful_analysis_row: null,
+      },
+    ]);
+
+    const meals = await listMeals("user-1", { from: "2026-09-01", to: "2026-09-30" });
+
+    expect(meals).toHaveLength(2);
+    expect(meals[0]).toMatchObject({
+      id: meal.id,
+      status: "confirmed",
+      entryState: "skipped",
+      mouthWarmthIntensity: null,
+      stomachOverfullIntensity: 2,
+      photos: [
+        { id: "photo-1", filename: "one.jpg", comment: "before eating", storageStatus: "available" },
+        { id: "photo-2", filename: "two.jpg", storageStatus: "purged", purgedAt: "2026-09-15T12:02:00.000Z" },
+      ],
+      analysis: { id: "analysis-failed", status: "failed", result: null },
+      lastSuccessfulAnalysis: { id: "analysis-success", status: "completed" },
+    });
+    expect(meals[1]).toMatchObject({
+      id: "meal-no-children",
+      mouthWarmthIntensity: 3,
+      photos: [],
+      analysis: null,
+      lastSuccessfulAnalysis: null,
+    });
+    expect(state.readMealListAggregate).toHaveBeenCalledExactlyOnceWith("user-1", "2026-09-01", "2026-09-30");
+    expect(state.tables).toEqual([]);
+  });
+
+  it("selects the most recent completed result for callers that prefer completed analyses", async () => {
+    const completed = analysis({ id: "analysis-completed", meal_id: "meal-1", created_at: "2026-09-15T12:03:00.000Z" });
+    const failed = analysis({ id: "analysis-failed", meal_id: "meal-1", status: "failed", result: null, created_at: "2026-09-15T12:04:00.000Z" });
+    state.readMealListAggregate.mockResolvedValueOnce([{
+      meal_row: { id: "meal-1", user_id: "user-1", meal_date: "2026-09-15", meal_type: "lunch", created_at: "2026-09-15T12:00:00.000Z", updated_at: "2026-09-15T12:00:00.000Z" },
+      photo_rows: [],
+      feelings_row: null,
+      latest_analysis_row: failed,
+      last_successful_analysis_row: completed,
+    }]);
+
+    const meals = await listMeals("user-1", { from: "2026-09-01", to: "2026-09-30", preferLatestCompletedAnalysis: true });
+
+    expect(meals[0]?.analysis?.id).toBe("analysis-completed");
+    expect(meals[0]?.lastSuccessfulAnalysis?.id).toBe("analysis-completed");
+  });
+
+  it("reuses the newest completed row when the aggregate omits a duplicate successful analysis", async () => {
+    const completed = analysis({ id: "analysis-completed", meal_id: "meal-1" });
+    state.readMealListAggregate.mockResolvedValueOnce([{
+      meal_row: { id: "meal-1", user_id: "user-1", meal_date: "2026-09-15", meal_type: "lunch", created_at: "2026-09-15T12:00:00.000Z", updated_at: "2026-09-15T12:00:00.000Z" },
+      photo_rows: [],
+      feelings_row: null,
+      latest_analysis_row: completed,
+      last_successful_analysis_row: null,
+    }]);
+
+    const meals = await listMeals("user-1", { from: "2026-09-01", to: "2026-09-30" });
+
+    expect(meals[0]?.analysis?.id).toBe("analysis-completed");
+    expect(meals[0]?.lastSuccessfulAnalysis?.id).toBe("analysis-completed");
   });
 
   it("keeps metadata pending when R2 deletion fails so the operation can be retried", async () => {

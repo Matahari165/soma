@@ -13,7 +13,7 @@ import type {
   MealStatus,
   MealType,
 } from "@/domain/meals";
-import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
+import { createCloudflareAdminClient, readMealListAggregate } from "@/lib/cloudflare/db";
 import { deleteR2MealPhotoObject } from "@/lib/r2";
 
 type Row = Record<string, unknown>;
@@ -185,7 +185,11 @@ async function rowsFor<T extends Row>(table: string, userId: string, options: Ro
   const query = createCloudflareAdminClient().from(table).select(options.columns ?? "*").eq("user_id", userId);
   if (options.mealId) query.eq("meal_id", options.mealId);
   if (options.mealIds) query.in("meal_id", [...options.mealIds]);
-  const result = await query.order("created_at", { ascending: true });
+  let ordered = query.order("created_at", { ascending: true });
+  if (table === "meal_photos" || table === "meal_analyses" || table === "meal_feelings") {
+    ordered = ordered.order("id", { ascending: true });
+  }
+  const result = await ordered;
   if (result.error) throw new Error(`Meal ${table} could not be loaded.`);
   return (result.data ?? []) as T[];
 }
@@ -230,8 +234,27 @@ type MealListRead = {
 // server render. React's request cache shares the DB read while keeping data
 // isolated between requests.
 const readMealList = cache(async (userId: string, from?: string, to?: string): Promise<MealListRead> => {
+  const aggregateRows = await readMealListAggregate(userId, from, to);
+  if (aggregateRows !== null) {
+    const meals: MealRow[] = [];
+    const photoRows: PhotoRow[] = [];
+    const analysisRows: AnalysisRow[] = [];
+    const feelingsRows: FeelingsRow[] = [];
+    for (const row of aggregateRows) {
+      meals.push(row.meal_row as MealRow);
+      photoRows.push(...row.photo_rows as PhotoRow[]);
+      if (row.feelings_row) feelingsRows.push(row.feelings_row as FeelingsRow);
+      if (row.latest_analysis_row) analysisRows.push(row.latest_analysis_row as AnalysisRow);
+      if (row.last_successful_analysis_row
+        && row.last_successful_analysis_row.id !== row.latest_analysis_row?.id) {
+        analysisRows.push(row.last_successful_analysis_row as AnalysisRow);
+      }
+    }
+    return { meals, photoRows, analysisRows, feelingsRows };
+  }
+
   const admin = createCloudflareAdminClient();
-  let query = admin.from("meals").select(mealListColumns).eq("user_id", userId).order("meal_date", { ascending: false }).order("created_at", { ascending: false });
+  let query = admin.from("meals").select(mealListColumns).eq("user_id", userId).order("meal_date", { ascending: false }).order("created_at", { ascending: false }).order("id", { ascending: true });
   if (from) query = query.gte("meal_date", from);
   if (to) query = query.lte("meal_date", to);
   const mealResult = await query;
