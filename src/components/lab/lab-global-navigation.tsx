@@ -1,8 +1,65 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type MouseEvent, useEffect, useRef } from "react";
-import { Activity, ChartNoAxesCombined, HeartPulse, House, MessageCircle, Moon, Settings, Utensils } from "lucide-react";
+import { type MouseEvent, useEffect, useId, useRef, useState } from "react";
+import { Activity, ChartNoAxesCombined, Ellipsis, HeartPulse, House, MessageCircle, Moon, Settings, Utensils } from "lucide-react";
+
+const destinations = [
+  { href: "/", label: "Personal Lab", mobileLabel: "Lab", icon: House },
+  { href: "/assistant", label: "Soma", icon: MessageCircle },
+  { href: "/analysis", label: "Analysis", icon: ChartNoAxesCombined },
+  { href: "/meals", label: "Nutrition", icon: Utensils },
+  { href: "/sleep", label: "Sleep", icon: Moon },
+  { href: "/recovery", label: "Recovery", icon: HeartPulse },
+  { href: "/activity", label: "Activity", icon: Activity },
+  { href: "/settings", label: "Settings", icon: Settings },
+];
+
+function isCurrentPage(pathname: string, href: string) {
+  return pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
+}
+
+function MobileMoreNavigation({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
+  const currentPage = destinations.slice(4).find(({ href }) => isCurrentPage(pathname, href));
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !rootRef.current?.contains(event.target)) setOpen(false);
+    };
+    const closeWithEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      setOpen(false);
+      buttonRef.current?.focus();
+    };
+    const mobile = window.matchMedia("(max-width: 700px)");
+    const closeOnDesktop = () => { if (!mobile.matches) setOpen(false); };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeWithEscape);
+    mobile.addEventListener("change", closeOnDesktop);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeWithEscape);
+      mobile.removeEventListener("change", closeOnDesktop);
+    };
+  }, [open]);
+
+  return <div ref={rootRef} className="lab-global-nav__more-slot" onBlur={(event) => {
+    if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+  }}>
+    <button ref={buttonRef} type="button" className="lab-global-nav__more-button" aria-expanded={open} aria-controls={panelId} aria-label={currentPage ? `Plus de pages, page actuelle : ${currentPage.label}` : "Plus de pages"} data-active={Boolean(currentPage)} onClick={() => setOpen((value) => !value)}>
+      <Ellipsis aria-hidden="true" /><span>Plus</span>
+    </button>
+    <div id={panelId} className="lab-global-nav__more-panel" role="group" aria-label="Autres pages" hidden={!open}>
+      {destinations.slice(4).map(({ href, label, icon: Icon }) => <Link key={href} href={href} prefetch={false} aria-current={isCurrentPage(pathname, href) ? "page" : undefined} onClick={() => setOpen(false)}><Icon aria-hidden="true" /><span>{label}</span></Link>)}
+    </div>
+  </div>;
+}
 
 export function LabGlobalNavigation() {
   const pathname = usePathname();
@@ -32,13 +89,7 @@ export function LabGlobalNavigation() {
   // starting them in parallel just because their links are visible; navigation
   // still performs the normal full-quality route transition on demand.
   return <nav ref={navigationRef} className="lab-global-nav" aria-label="Main navigation">
-    <Link href="/" prefetch={false} aria-current={pathname === "/" ? "page" : undefined} onClick={(event: MouseEvent<HTMLAnchorElement>) => { if (pathname !== "/") return; event.preventDefault(); window.history.replaceState(null, "", "/"); window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }); }}><House aria-hidden="true" /><span>Personal Lab</span></Link>
-    <Link href="/assistant" prefetch={false} aria-current={pathname.startsWith("/assistant") ? "page" : undefined}><MessageCircle aria-hidden="true" /><span>Soma</span></Link>
-    <Link href="/analysis" prefetch={false} aria-current={pathname.startsWith("/analysis") ? "page" : undefined}><ChartNoAxesCombined aria-hidden="true" /><span>Analysis</span></Link>
-    <Link href="/meals" prefetch={false} aria-current={pathname === "/meals" ? "page" : undefined}><Utensils aria-hidden="true" /><span>Nutrition</span></Link>
-    <Link href="/sleep" prefetch={false} aria-current={pathname === "/sleep" ? "page" : undefined}><Moon aria-hidden="true" /><span>Sleep</span></Link>
-    <Link href="/recovery" prefetch={false} aria-current={pathname === "/recovery" ? "page" : undefined}><HeartPulse aria-hidden="true" /><span>Recovery</span></Link>
-    <Link href="/activity" prefetch={false} aria-current={pathname === "/activity" ? "page" : undefined}><Activity aria-hidden="true" /><span>Activity</span></Link>
-    <Link className="lab-global-nav__settings" href="/settings" prefetch={false} aria-current={pathname === "/settings" ? "page" : undefined}><Settings aria-hidden="true" /><span>Settings</span></Link>
+    {destinations.map(({ href, label, mobileLabel, icon: Icon }, index) => <Link key={href} href={href} prefetch={false} className={[index >= 4 && "lab-global-nav__secondary", href === "/settings" && "lab-global-nav__settings"].filter(Boolean).join(" ") || undefined} aria-label={label} aria-current={isCurrentPage(pathname, href) ? "page" : undefined} onClick={href === "/" ? (event: MouseEvent<HTMLAnchorElement>) => { if (pathname !== "/") return; event.preventDefault(); window.history.replaceState(null, "", "/"); window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }); } : undefined}><Icon aria-hidden="true" /><span className={mobileLabel ? "lab-global-nav__desktop-label" : undefined}>{label}</span>{mobileLabel && <span className="lab-global-nav__mobile-label">{mobileLabel}</span>}</Link>)}
+    <MobileMoreNavigation key={pathname} pathname={pathname} />
   </nav>;
 }

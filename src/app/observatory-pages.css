@@ -195,7 +195,7 @@ html[data-lab-theme="observatory"] .health-detail-page .health-observatory-recom
 @media (max-width: 700px) {
   html[data-lab-theme="observatory"] body.observatory-mode {
     --soma-mobile-top-space: env(safe-area-inset-top, 0px);
-    --soma-mobile-bottom-space: var(--soma-mobile-nav-height, calc(116px + env(safe-area-inset-bottom, 0px)));
+    --soma-mobile-bottom-space: var(--soma-mobile-nav-height, calc(64px + env(safe-area-inset-bottom, 0px)));
     --soma-mobile-content-height: calc(100svh - var(--soma-mobile-top-space) - var(--soma-mobile-bottom-space));
     --soma-mobile-live-content-height: calc(100dvh - var(--soma-mobile-top-space) - var(--soma-mobile-bottom-space));
   }
