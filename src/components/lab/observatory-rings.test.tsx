@@ -22,7 +22,7 @@ it("shows the four home measures with their current values", () => {
   expect(html).toMatch(/data-ring-value="calories"[^>]*><textPath[^>]*>1200<\/textPath><\/text>/);
   expect(html).not.toContain("<figcaption");
   expect(html).not.toContain("OBJECTIFS");
-  expect((html.match(/startOffset="0%"/g) ?? []).length).toBe(4);
+  expect((html.match(/startOffset="8"/g) ?? []).length).toBe(4);
   expect((html.match(/d="M 160 /g) ?? []).length).toBe(4);
   expect((html.match(/rotate\(-90 160 160\)/g) ?? []).length).toBe(4);
 });

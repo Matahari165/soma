@@ -48,6 +48,19 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
   useEffect(() => {
     if (selectedId) headingRef.current?.focus({ preventScroll: true });
   }, [selectedId]);
+  useEffect(() => {
+    if (!selectedId) return;
+    const dismissOutside = (event: PointerEvent) => {
+      if (event.button !== 0 || !(event.target instanceof Node)) return;
+      const figure = figureRef.current;
+      if (figure?.querySelector("svg")?.contains(event.target) || figure?.querySelector("aside")?.contains(event.target)) return;
+      setSelectedId(null);
+      setFocusedId(null);
+      setHoveredId(null);
+    };
+    document.addEventListener("pointerdown", dismissOutside, true);
+    return () => document.removeEventListener("pointerdown", dismissOutside, true);
+  }, [selectedId]);
   const closeDetail = () => {
     figureRef.current?.querySelector<SVGGElement>(`[data-ring="${selectedId}"]`)?.focus();
     setSelectedId(null);
@@ -78,10 +91,10 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
     { id: "calories", label: "Calories", value: calories, target: calorieTarget, display: valid(calories) ? `${Math.round(calories).toLocaleString("fr-FR")} kcal` : "—", ringDisplay: valid(calories) ? String(Math.round(calories)) : "—", goal: valid(calorieTarget) && calorieTarget > 0 ? `${Math.round(calorieTarget).toLocaleString("fr-FR")} kcal` : "—", color: "var(--lab-ring-calories)", labelColor: "var(--lab-ring-calories-label)" },
   ] as const;
   const details = {
-    sleep: { reference: "Repère de sommeil", description: "Durée de sommeil issue des mesures synchronisées. Le repère de cet anneau est de 8 h 30.", average: valid(data.averageSleepMinutes) ? duration(data.averageSleepMinutes) : null, href: "/sleep" },
-    recovery: { reference: "Échelle du score", description: "Score calculé par Soma à partir des signaux de récupération disponibles. Plus il est élevé, meilleure est la récupération estimée.", average: valid(data.averageRecoveryScore) ? String(Math.round(data.averageRecoveryScore)) : null, href: "/recovery" },
-    effort: { reference: "Échelle de charge", description: "Charge quotidienne calculée par Soma, affichée sur 21. Une valeur plus élevée signifie davantage d’effort, pas une meilleure récupération.", average: valid(data.averageEffortScore) ? (data.averageEffortScore * .21).toFixed(1) : null, href: "/activity" },
-    calories: { reference: "Cible alimentaire", description: "Énergie des repas confirmés dans le journal. Le total est comparé à votre cible lorsqu’elle est renseignée.", average: valid(data.averageCaloriesKcal) ? `${Math.round(data.averageCaloriesKcal).toLocaleString("fr-FR")} kcal` : null, href: "/meals" },
+    sleep: { reference: "Repère de sommeil", average: valid(data.averageSleepMinutes) ? duration(data.averageSleepMinutes) : null },
+    recovery: { reference: "Échelle du score", average: valid(data.averageRecoveryScore) ? String(Math.round(data.averageRecoveryScore)) : null },
+    effort: { reference: "Échelle de charge", average: valid(data.averageEffortScore) ? (data.averageEffortScore * .21).toFixed(1) : null },
+    calories: { reference: "Cible alimentaire", average: valid(data.averageCaloriesKcal) ? `${Math.round(data.averageCaloriesKcal).toLocaleString("fr-FR")} kcal` : null },
   };
   const activeId = hoveredId ?? focusedId ?? selectedId;
   const selectedRing = rings.find(ring => ring.id === (selectedId ?? lastSelectedId));
@@ -92,7 +105,7 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
   }}>
     <div className={styles.visual}>
       <svg className={styles.chart} viewBox="0 0 320 320" role="group" aria-label={rings.map(ring => `${ring.label} : ${ring.display}, objectif ${ring.goal}${progress(ring.value, ring.target) === null ? ", progression indisponible" : `, ${Math.round(progress(ring.value, ring.target)! * 100)} % de l’objectif`}`).join(". ")}>
-        <defs>{rings.map((ring, index) => <path key={ring.id} id={`${ringPathPrefix}-${ring.id}`} d={ringTextPath(136 - index * 29)} />)}</defs>
+        <defs><filter id={`${ringPathPrefix}-lap-shadow`} x="-50%" y="-50%" width="200%" height="200%" colorInterpolationFilters="sRGB"><feDropShadow dx="0" dy="3" stdDeviation="2.5" floodColor="#000" floodOpacity=".7" /></filter>{rings.map((ring, index) => <path key={ring.id} id={`${ringPathPrefix}-${ring.id}`} d={ringTextPath(136 - index * 29)} />)}</defs>
         {rings.map((ring, index) => {
           const radius = 136 - index * 29;
           const ratio = progress(ring.value, ring.target);
@@ -112,21 +125,17 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
                 const next = event.key === "Home" ? 0 : event.key === "End" ? rings.length - 1 : (index + direction + rings.length) % rings.length;
                 figureRef.current?.querySelector<SVGGElement>(`[data-ring="${rings[next].id}"]`)?.focus();
               }
-            }} style={{ "--ring-color": ring.color, "--ring-label": ring.labelColor, "--ring-radius": `${radius}px`, "--ring-delay": `${index * 90}ms` } as CSSProperties}>
+            }} style={{ "--ring-color": ring.color, "--ring-label": ring.labelColor, "--ring-radius": `${radius}px`, "--ring-delay": `${index * 40}ms` } as CSSProperties}>
             <g className={styles.ring} transform={`rotate(${ringStartAngle} 160 160)`}>
               <circle className={styles.track} cx="160" cy="160" r={radius} />
-              {ratio !== null && <circle className={styles.progress} cx="160" cy="160" r={radius} pathLength="100" strokeDasharray={dash} />}
-              {ratio !== null && ratio > 0 && <>
-                <circle className={styles.glassEdge} cx="160" cy="160" r={radius + 12} pathLength="100" strokeDasharray={dash} />
-                <circle className={styles.glassEdgeInner} cx="160" cy="160" r={radius - 12} pathLength="100" strokeDasharray={dash} />
-              </>}
+              {ratio !== null && <circle className={styles.progress} data-complete={ratio >= 1} cx="160" cy="160" r={radius} pathLength="100" strokeDasharray={dash} />}
               {ratio === null && <circle className={styles.unknown} cx="160" cy="160" r={radius} pathLength="100" strokeDasharray="1 2.8" />}
               {extraLaps > 0 && <circle className={styles.completedOverlap} cx="160" cy="160" r={radius} pathLength="100" strokeDasharray="100 100" strokeOpacity={Math.min(.22 + extraLaps * .1, .5)} />}
-              {overflow > 0 && <circle className={styles.overlap} cx="160" cy="160" r={radius} pathLength="100" strokeDasharray={`${overflow * 100} 100`} />}
+              {overflow > 0 && <circle className={styles.overlap} filter={`url(#${ringPathPrefix}-lap-shadow)`} cx="160" cy="160" r={radius} pathLength="100" strokeDasharray={`${overflow * 100} 100`} />}
             </g>
-            {end && <circle className={styles.lapEnd} data-lap-end={ring.id} cx={end.x} cy={end.y} r="13.5" />}
+            {end && overflow === 0 && <circle className={styles.lapEnd} data-lap-end={ring.id} filter={`url(#${ringPathPrefix}-lap-shadow)`} cx={end.x} cy={end.y} r="13.5" />}
             <circle className={styles.focusRing} cx="160" cy="160" r={radius} />
-            <text className={styles.ringNumber} data-ring-value={ring.id} dy="6" aria-hidden="true"><textPath href={`#${ringPathPrefix}-${ring.id}`} startOffset="0%">{ring.ringDisplay}</textPath></text>
+            <text className={styles.ringNumber} data-ring-value={ring.id} dy="6" aria-hidden="true"><textPath href={`#${ringPathPrefix}-${ring.id}`} startOffset="8">{ring.ringDisplay}</textPath></text>
             <circle className={styles.hitArea} cx="160" cy="160" r={radius} />
           </g>;
         })}
@@ -136,14 +145,13 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
       {selectedRing && selectedDetail && <div className={styles.detailContent}>
         <div className={styles.detailHeader}><h2 ref={headingRef} tabIndex={-1} id={`${detailId}-title`}>{selectedRing.label}</h2><button type="button" className={styles.close} onClick={closeDetail} aria-label="Fermer le détail"><X size={18} aria-hidden="true" /></button></div>
         <p className={styles.detailValue}>{selectedRing.display}</p>
+        {!valid(selectedRing.value) && <p className={styles.unavailable}>Aucune mesure disponible pour ce jour.</p>}
         <dl className={styles.facts}>
           <div><dt>{selectedDetail.reference}</dt><dd>{selectedRing.goal === "—" ? "Non renseignée" : selectedRing.goal}</dd></div>
           <div><dt>Progression</dt><dd>{progress(selectedRing.value, selectedRing.target) === null ? "Indisponible" : `${Math.round(progress(selectedRing.value, selectedRing.target)! * 100)} %`}</dd></div>
           {selectedRing.id === "effort" && valid(selectedRing.value) && <div><dt>Score d’activité Soma</dt><dd>{Math.round(selectedRing.value)} / 100</dd></div>}
           {selectedDetail.average && <div><dt>Moyenne sur 30 jours</dt><dd>{selectedDetail.average}</dd></div>}
         </dl>
-        <p className={styles.description}>{valid(selectedRing.value) ? selectedDetail.description : "Aucune mesure disponible pour ce jour."}</p>
-        <a className={styles.link} href={`${selectedDetail.href}${date ? `?date=${encodeURIComponent(date)}` : ""}`}>Voir {selectedRing.id === "calories" ? "les repas" : selectedRing.id === "effort" ? "l’activité" : selectedRing.id === "sleep" ? "le sommeil" : "la récupération"}</a>
       </div>}
     </aside>
   </figure>;
