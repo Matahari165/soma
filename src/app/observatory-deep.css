@@ -100,6 +100,7 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-compo
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art { height:min(500px,42vw)!important; min-height:min(500px,42vw)!important; margin-top:0; margin-bottom:0; padding-top:16px; box-sizing:border-box; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading h1 { font-size:clamp(44px,5vw,72px); line-height:1.06; margin:0 0 20px; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading--personalized h1 { max-width:20ch; }
+@media(min-width:701px) { html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-title-line--secondary { display:none; } }
 .arrival-date-nav { position:relative; display:flex; align-items:center; gap:8px; width:max-content; }
 .arrival-date-nav__btn:first-child { position:absolute; right:100%; margin-right:8px; }
 .arrival-date-nav__btn { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:4px; background:transparent; color:#888; font-size:16px; line-height:1; border:0; cursor:pointer; padding:0; transition:color 150ms ease, background 150ms ease; }

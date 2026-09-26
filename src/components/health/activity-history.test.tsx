@@ -6,6 +6,8 @@ describe("activity history filters", () => {
   it("groups imported jogging and trail running under Run", () => {
     expect(exerciseMatchesFilter("JOGGING", "run")).toBe(true);
     expect(exerciseMatchesFilter("TRAIL_RUNNING", "run")).toBe(true);
+    expect(exerciseMatchesFilter("TRAIL_RUN", "run")).toBe(true);
+    expect(exerciseMatchesFilter("TREADMILL", "run")).toBe(true);
     expect(exerciseMatchesFilter("BOXING", "run")).toBe(false);
   });
 
@@ -13,6 +15,12 @@ describe("activity history filters", () => {
     expect(exerciseMatchesFilter("WEIGHT_TRAINING", "strength")).toBe(true);
     expect(exerciseMatchesFilter("STRENGTH_TRAINING", "strength")).toBe(true);
     expect(exerciseMatchesFilter("UNKNOWN", "all")).toBe(true);
+  });
+
+  it("recognizes Google Health boxing and weight training types", () => {
+    for (const type of ["BOXING", "KICKBOXING", "MUAY_THAI"]) expect(exerciseMatchesFilter(type, "boxing")).toBe(true);
+    for (const type of ["WEIGHTLIFTING", "WEIGHTS", "FREE_WEIGHTS", "WEIGHT_MACHINES", "POWERLIFTING", "FUNCTIONAL_STRENGTH_TRAINING"]) expect(exerciseMatchesFilter(type, "strength")).toBe(true);
+    expect(exerciseMatchesFilter("BOXING", "strength")).toBe(false);
   });
 
   it("uses inclusive rolling period boundaries", () => {

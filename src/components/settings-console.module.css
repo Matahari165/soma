@@ -89,3 +89,8 @@
     animation: none !important;
   }
 }
+
+.heartRateSetting { display: grid; gap: 16px; margin-top: 32px; min-width: 0; }
+.heartRateSetting h3 { margin: 0; color: var(--lab-text-primary); font: 500 18px/1.4 var(--font-soma-ui), system-ui, sans-serif; }
+.heartRateSetting > p { margin: 0; max-width: 65ch; color: var(--lab-text-secondary); font-size: 14px; line-height: 1.5; }
+@media (max-width: 700px) { .heartRateSetting > p { font-size: 16px; } }

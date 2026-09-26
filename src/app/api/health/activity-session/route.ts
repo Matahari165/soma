@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 
+import { activitySessionPreview } from "@/domain/health/activity-session-preview";
+
 import { getCurrentUser } from "@/lib/auth";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { isLocalPreviewMode } from "@/lib/env";
+import { loadHeartRateReferenceForUser } from "@/services/heart-rate-reference";
 import { getActivitySessionTelemetry } from "@/services/activity-session-telemetry";
 
 export async function GET(request: Request) {
@@ -12,22 +15,10 @@ export async function GET(request: Request) {
   if (!recordId || recordId.length > 500) return NextResponse.json({ error: "Invalid workout." }, { status: 400 });
 
   if (isLocalPreviewMode()) {
-    const previewStart = new Date();
-    previewStart.setUTCHours(6, 0, 0, 0);
-    const samples = recordId === "preview-run" ? Array.from({ length: 265 }, (_, index) => ({
-      measuredAt: new Date(previewStart.getTime() + index * 10_000).toISOString(),
-      bpm: index === 200 ? 178 : Math.round(145 + Math.sin(index / 21) * 18 + Math.sin(index / 7) * 5),
-    })) : [];
-    return NextResponse.json({
-      maxHeartRateBpm: samples.length ? Math.max(...samples.map((sample) => sample.bpm)) : null,
-      heartRateSampleCount: samples.length,
-      heartRateSamples: samples,
-      heartRateSamplesDownsampled: false,
-      heartRateFetchLimited: false,
-      heartRateFetchStatus: samples.length ? "not_needed" : "empty",
-      coverage: { sessionSeconds: samples.length ? 2640 : 0, observedSeconds: samples.length ? 2640 : 0, percent: samples.length ? 100 : null },
-      calculatedZones: null,
-    }, { headers: { "Cache-Control": "private, no-store" } });
+    const reference = await loadHeartRateReferenceForUser(user.id);
+    const telemetry = activitySessionPreview(recordId, new Date(), reference.maximumHeartRate);
+    if (!telemetry) return NextResponse.json({ error: "Workout not found." }, { status: 404 });
+    return NextResponse.json(telemetry, { headers: { "Cache-Control": "private, no-store" } });
   }
 
   const admin = createCloudflareAdminClient();

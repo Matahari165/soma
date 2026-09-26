@@ -1,23 +1,24 @@
-export type HeartRateZoneName = "light" | "moderate" | "vigorous" | "peak";
+import {
+  classifyPercentMaxHeartRate,
+  type HeartRateZoneName,
+  type MaximumHeartRate,
+} from "./heart-rate-zones";
+
+export type { HeartRateZoneName } from "./heart-rate-zones";
 
 export type ActivitySessionTelemetryInput = {
   startTime: string;
   endTime: string;
-  date?: string | null;
-  timeZone?: string;
   heartRateRecords: Array<{
     measuredAt: string | null;
-    civilDate?: string | null;
     sourceRecordId?: string | null;
     payload: unknown;
   }>;
-  dailyZoneRecords: Array<{ civilDate: string | null; payload: unknown }>;
+  maximumHeartRate?: MaximumHeartRate | null;
   exercisePayloads?: unknown[];
   heartRateSampleSource?: ActivitySessionTelemetry["heartRateSampleSource"];
   heartRateFetchLimited?: boolean;
   heartRateFetchStatus?: ActivitySessionTelemetry["heartRateFetchStatus"];
-  zoneThresholdFetchStatus?: ActivitySessionTelemetry["zoneThresholdFetchStatus"];
-  zoneThresholdFetchLimited?: boolean;
 };
 
 export type ActivitySessionTelemetry = {
@@ -29,8 +30,6 @@ export type ActivitySessionTelemetry = {
   heartRateSampleSource: "health_records" | "google_health_api" | "none";
   heartRateFetchLimited: boolean;
   heartRateFetchStatus: "not_needed" | "fetched" | "empty" | "unavailable" | "failed";
-  zoneThresholdFetchStatus: "stored" | "fetched" | "unavailable" | "failed";
-  zoneThresholdFetchLimited: boolean;
   coverage: {
     sessionSeconds: number;
     activeSeconds: number;
@@ -43,9 +42,12 @@ export type ActivitySessionTelemetry = {
     omittedGapCount: number;
   };
   calculatedZones: null | {
-    source: "calculated_from_heart_rate_samples";
-    thresholdSource: "google_daily_heart_rate_zones";
+    method: "percent_max_heart_rate";
+    thresholdSource: "soma_max_heart_rate";
+    maximumHeartRate: MaximumHeartRate;
     seconds: Record<HeartRateZoneName, number>;
+    belowZoneSeconds: number;
+    aboveMaximumSeconds: number;
     classifiedSeconds: number;
     observedSeconds: number;
     thresholdCoveragePercent: number | null;
@@ -56,17 +58,9 @@ export type ActivitySessionTelemetry = {
 const MAX_CONTIGUOUS_SAMPLE_GAP_SECONDS = 15;
 const MAX_RETURNED_INTERVALS = 50;
 const MAX_RETURNED_SAMPLES = 10_000;
-const ZONE_NAMES: HeartRateZoneName[] = ["light", "moderate", "vigorous", "peak"];
-const ZONE_TYPES: Record<string, HeartRateZoneName> = {
-  LIGHT: "light",
-  MODERATE: "moderate",
-  VIGOROUS: "vigorous",
-  PEAK: "peak",
-};
 
 type Interval = { start: number; end: number };
-type HeartRateSample = { timestamp: number; bpm: number; date: string | null };
-type ZoneThreshold = { name: HeartRateZoneName; minimum: number; maximum: number };
+type HeartRateSample = { timestamp: number; bpm: number };
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -90,57 +84,8 @@ function findNumbers(value: unknown, key: string, output: number[] = []) {
   return output;
 }
 
-function findArrays(value: unknown, key: string, output: unknown[][] = []) {
-  if (Array.isArray(value)) {
-    for (const item of value) findArrays(item, key, output);
-    return output;
-  }
-  if (!isObject(value)) return output;
-  if (Array.isArray(value[key])) output.push(value[key] as unknown[]);
-  for (const child of Object.values(value)) findArrays(child, key, output);
-  return output;
-}
-
 function sampleBpm(payload: unknown) {
   return findNumbers(payload, "beatsPerMinute").find((value) => value > 0 && value <= 300) ?? null;
-}
-
-function dateInTimeZone(timestamp: number, timeZone: string): string {
-  try {
-    const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).formatToParts(new Date(timestamp));
-    const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value;
-    const year = part("year");
-    const month = part("month");
-    const day = part("day");
-    return year && month && day ? `${year}-${month}-${day}` : new Date(timestamp).toISOString().slice(0, 10);
-  } catch {
-    return new Date(timestamp).toISOString().slice(0, 10);
-  }
-}
-
-function thresholdsFromPayload(payload: unknown): ZoneThreshold[] | null {
-  const zoneArrays = findArrays(payload, "heartRateZones");
-  for (const rawZones of zoneArrays) {
-    const thresholds: ZoneThreshold[] = [];
-    for (const rawZone of rawZones) {
-      if (!isObject(rawZone)) continue;
-      const name = ZONE_TYPES[String(rawZone.heartRateZoneType ?? "").toUpperCase()];
-      const minimum = finiteNumber(rawZone.minBeatsPerMinute);
-      const maximum = finiteNumber(rawZone.maxBeatsPerMinute);
-      if (!name || minimum === null || maximum === null || minimum < 0 || maximum > 300 || minimum > maximum) continue;
-      thresholds.push({ name, minimum, maximum });
-    }
-    if (thresholds.length !== ZONE_NAMES.length || new Set(thresholds.map((zone) => zone.name)).size !== ZONE_NAMES.length) continue;
-    thresholds.sort((a, b) => a.minimum - b.minimum);
-    if (thresholds.some((zone, index) => index > 0 && zone.minimum <= thresholds[index - 1]!.maximum)) continue;
-    return thresholds;
-  }
-  return null;
 }
 
 function eventList(payload: unknown): unknown[] | null {
@@ -231,10 +176,6 @@ function serializeIntervals(intervals: Interval[]) {
   }));
 }
 
-function classifyHeartRate(bpm: number, thresholds: ZoneThreshold[]) {
-  return thresholds.find((zone) => bpm >= zone.minimum && bpm <= zone.maximum)?.name ?? null;
-}
-
 export function calculateActivitySessionTelemetry(input: ActivitySessionTelemetryInput): ActivitySessionTelemetry {
   const sessionStart = Date.parse(input.startTime);
   const sessionEnd = Date.parse(input.endTime);
@@ -248,7 +189,7 @@ export function calculateActivitySessionTelemetry(input: ActivitySessionTelemetr
     const timestamp = record.measuredAt ? Date.parse(record.measuredAt) : Number.NaN;
     const bpm = sampleBpm(record.payload);
     if (!Number.isFinite(timestamp) || timestamp < sessionStart || timestamp > sessionEnd || bpm === null) return [];
-    return [{ timestamp, bpm, date: record.civilDate ?? null }];
+    return [{ timestamp, bpm }];
   }).sort((a, b) => a.timestamp - b.timestamp);
   const deduplicatedSamples = samples.filter((sample, index) => index === 0 || sample.timestamp !== samples[index - 1]!.timestamp || sample.bpm !== samples[index - 1]!.bpm);
   const pauseResult = pauseIntervals(input.exercisePayloads ?? [], bounds);
@@ -256,7 +197,7 @@ export function calculateActivitySessionTelemetry(input: ActivitySessionTelemetr
   const activeSeconds = intervalSeconds(activeIntervals);
 
   const observedIntervals: Interval[] = [];
-  const observedPieces: Array<{ interval: Interval; bpm: number; date: string | null }> = [];
+  const observedPieces: Array<{ interval: Interval; bpm: number }> = [];
   for (let index = 0; index + 1 < deduplicatedSamples.length; index += 1) {
     const current = deduplicatedSamples[index]!;
     const next = deduplicatedSamples[index + 1]!;
@@ -265,36 +206,35 @@ export function calculateActivitySessionTelemetry(input: ActivitySessionTelemetr
     const interval = { start: current.timestamp, end: next.timestamp };
     const activePieces = subtractIntervals([interval], pauseResult.intervals);
     observedIntervals.push(...activePieces);
-    observedPieces.push(...activePieces.map((piece) => ({ interval: piece, bpm: current.bpm, date: current.date })));
+    observedPieces.push(...activePieces.map((piece) => ({ interval: piece, bpm: current.bpm })));
   }
   const observedMerged = mergeIntervals(observedIntervals);
   const observedSeconds = intervalSeconds(observedMerged);
   const gaps = subtractIntervals(activeIntervals, observedMerged);
 
-  const thresholdByDate = new Map<string, ZoneThreshold[]>();
-  for (const record of input.dailyZoneRecords) {
-    if (!record.civilDate) continue;
-    const thresholds = thresholdsFromPayload(record.payload);
-    if (thresholds) thresholdByDate.set(record.civilDate, thresholds);
-  }
-
-  const zoneSeconds: Record<HeartRateZoneName, number> = { light: 0, moderate: 0, vigorous: 0, peak: 0 };
+  const maximumHeartRate = input.maximumHeartRate
+    && Number.isInteger(input.maximumHeartRate.bpm)
+    && input.maximumHeartRate.bpm >= 80
+    && input.maximumHeartRate.bpm <= 250
+    && (input.maximumHeartRate.source === "personal" || input.maximumHeartRate.source === "age_estimate")
+    ? input.maximumHeartRate
+    : null;
+  const zoneSeconds: Record<HeartRateZoneName, number> = { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 };
+  let belowZoneSeconds = 0;
+  let aboveMaximumSeconds = 0;
   let classifiedSeconds = 0;
   for (const piece of observedPieces) {
-    const localDate = piece.date ?? dateInTimeZone(piece.interval.start, input.timeZone ?? "Europe/Paris");
-    const thresholds = thresholdByDate.get(localDate) ?? (input.date ? thresholdByDate.get(input.date) : undefined);
-    if (!thresholds) continue;
-    const zone = classifyHeartRate(piece.bpm, thresholds);
-    if (!zone) continue;
+    if (!maximumHeartRate) continue;
+    const classification = classifyPercentMaxHeartRate(piece.bpm, maximumHeartRate.bpm);
+    if (!classification) continue;
     const seconds = (piece.interval.end - piece.interval.start) / 1000;
-    zoneSeconds[zone] += seconds;
+    if (classification.zone) zoneSeconds[classification.zone] += seconds;
+    else if (classification.belowZone) belowZoneSeconds += seconds;
+    else if (classification.aboveMaximum) aboveMaximumSeconds += seconds;
     classifiedSeconds += seconds;
   }
 
-  const hasThresholdsForAnyObservedInterval = observedPieces.some((piece) => {
-    const localDate = piece.date ?? dateInTimeZone(piece.interval.start, input.timeZone ?? "Europe/Paris");
-    return Boolean(thresholdByDate.get(localDate) ?? (input.date ? thresholdByDate.get(input.date) : undefined));
-  });
+  const hasClassifiableObservedIntervals = Boolean(maximumHeartRate) && observedSeconds > 0;
   const heartRateSamplesDownsampled = deduplicatedSamples.length > MAX_RETURNED_SAMPLES;
   const returnedSamples = heartRateSamplesDownsampled
     ? Array.from({ length: MAX_RETURNED_SAMPLES }, (_, index) => {
@@ -311,8 +251,6 @@ export function calculateActivitySessionTelemetry(input: ActivitySessionTelemetr
     heartRateSampleSource: input.heartRateSampleSource ?? (deduplicatedSamples.length ? "health_records" : "none"),
     heartRateFetchLimited: input.heartRateFetchLimited ?? false,
     heartRateFetchStatus: input.heartRateFetchStatus ?? (deduplicatedSamples.length ? "not_needed" : "unavailable"),
-    zoneThresholdFetchStatus: input.zoneThresholdFetchStatus ?? (thresholdByDate.size ? "stored" : "unavailable"),
-    zoneThresholdFetchLimited: input.zoneThresholdFetchLimited ?? false,
     coverage: {
       sessionSeconds,
       activeSeconds,
@@ -324,31 +262,17 @@ export function calculateActivitySessionTelemetry(input: ActivitySessionTelemetr
       gapCount: gaps.length,
       omittedGapCount: Math.max(0, gaps.length - MAX_RETURNED_INTERVALS),
     },
-    calculatedZones: hasThresholdsForAnyObservedInterval ? {
-      source: "calculated_from_heart_rate_samples",
-      thresholdSource: "google_daily_heart_rate_zones",
+    calculatedZones: hasClassifiableObservedIntervals && maximumHeartRate ? {
+      method: "percent_max_heart_rate",
+      thresholdSource: "soma_max_heart_rate",
+      maximumHeartRate,
       seconds: zoneSeconds,
+      belowZoneSeconds,
+      aboveMaximumSeconds,
       classifiedSeconds,
       observedSeconds,
       thresholdCoveragePercent: observedSeconds > 0 ? (classifiedSeconds / observedSeconds) * 100 : null,
       complete: observedSeconds > 0 && Math.abs(classifiedSeconds - observedSeconds) < 0.001,
     } : null,
   };
-}
-
-export function activitySessionZoneDates(input: {
-  startTime: string;
-  endTime: string;
-  date?: string | null;
-  timeZone?: string;
-}) {
-  const start = Date.parse(input.startTime);
-  const end = Date.parse(input.endTime);
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return [];
-  const timeZone = input.timeZone ?? "Europe/Paris";
-  const dates = new Set<string>();
-  if (input.date && /^\d{4}-\d{2}-\d{2}$/.test(input.date)) dates.add(input.date);
-  dates.add(dateInTimeZone(start, timeZone));
-  dates.add(dateInTimeZone(end, timeZone));
-  return [...dates].filter(Boolean).sort();
 }

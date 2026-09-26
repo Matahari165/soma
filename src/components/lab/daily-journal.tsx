@@ -407,7 +407,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
         context: "Day Context & Modifiers",
       };
 
-      return <section className={isPersonalLab ? "space-y-1 max-sm:space-y-3" : `checkin-card journal-card journal-card--status-${statusTreatment}`} data-managing={managerOpen ? "true" : undefined} data-status-treatment={statusTreatment} aria-labelledby="journal-title">
+      return <section className={isPersonalLab ? "space-y-0 max-sm:space-y-3" : `checkin-card journal-card journal-card--status-${statusTreatment}`} data-managing={managerOpen ? "true" : undefined} data-status-treatment={statusTreatment} aria-labelledby="journal-title">
         {headerElement}
         {tools}
         {showDateNavigation && <nav className="journal-date-strip" aria-label="Journal date">{dateOptions.map((date, index) => <button type="button" aria-current={date === entryDate ? "date" : undefined} onClick={() => changeDate(date)} key={date}><span>{index === 0 ? "Today" : new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(new Date(`${date}T12:00:00`)).replace(".", "")}</span><small>{date.slice(8)}</small></button>)}</nav>}
@@ -421,10 +421,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
 
           if (isPersonalLab) {
             return (
-              <section className="space-y-4" key={section.id} data-purpose={`${section.id}-habits`}>
-                <div>
-                  <span className="text-xs font-mono uppercase tracking-wider text-content-secondary font-medium">{sectionDisplayName}</span>
-                </div>
+              <section key={section.id} data-purpose={`${section.id}-habits`} aria-label={sectionDisplayName}>
                 <div className="divide-y divide-hairline border-t border-b border-hairline">
                   {section.variables.map((variable) => (
                     <div className="journal-field-stack" key={variable.id}>
