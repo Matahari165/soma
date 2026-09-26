@@ -132,6 +132,18 @@ describe("Google Health sync analytics materialization", () => {
     expect(testState.recomputeUserHealth).not.toHaveBeenCalled();
   });
 
+  it("requeues materialization when another Google Health job owns the analysis lock", async () => {
+    testState.claimCloudflareLock.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+    await expect(processGoogleHealthSyncJob("job-1")).rejects.toThrow("Health analysis is already in progress.");
+
+    expect(testState.claimCloudflareLock).toHaveBeenNthCalledWith(2, "health-analysis:user-1", "user-1", 120_000);
+    expect(testState.syncUpdateValues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ status: "queued", retry_after: expect.any(String) }),
+    ]));
+    expect(testState.recomputeUserHealth).not.toHaveBeenCalled();
+  });
+
   it("serializes initial and recurring work for one connection", async () => {
     const result = await drainGoogleHealthSyncJob("job-1", { maxBatches: 1, maxDurationMs: 10_000 });
 

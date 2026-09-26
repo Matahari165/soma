@@ -1,4 +1,4 @@
-export type CronJobName = "meal-analysis" | "sync" | "archive-health" | "account-deletion";
+export type CronJobName = "meal-analysis" | "sync" | "active-hours" | "archive-health" | "account-deletion";
 
 export type CronPipelineEnv = {
   SOMA_CRON_TARGET_URL?: string;
@@ -11,6 +11,7 @@ export type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<
 export const CRON_ENDPOINTS: Record<CronJobName, string> = {
   "meal-analysis": "/api/cron/meal-analysis",
   sync: "/api/cron/sync",
+  "active-hours": "/api/cron/active-hours",
   "archive-health": "/api/cron/archive-health",
   "account-deletion": "/api/cron/account-deletion",
 };

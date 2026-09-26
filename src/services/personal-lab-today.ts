@@ -1,4 +1,4 @@
-import { activityLoadFromScoreRow } from "@/domain/scores/effort";
+import { activeHoursFromScoreRow, calculateDailyStrain, dailyStrainScoreFromRow, activityLoadFromScoreRow } from "@/domain/scores/effort";
 import type { LabObservation } from "@/domain/lab/observation";
 import { arrivalActivityFor, type ArrivalActivity } from "@/domain/lab/arrival-message";
 import { aggregateConfirmedMeals, type ConfirmedMealRecord } from "@/domain/lab/meals";
@@ -61,7 +61,7 @@ export type HealthDay = {
   data_quality?: { primaryWearable?: string | null; presentTypes?: string[] };
 };
 
-export type ScoreDay = { score_date: string; kind: "sleep" | "recovery" | "effort"; score: number | null; drivers?: Record<string, unknown> };
+export type ScoreDay = { score_date: string; kind: "sleep" | "recovery" | "effort"; score: number | null; drivers?: Record<string, unknown>; algorithm_version?: string | null };
 
 export type PersonalLabHistoryPoint = {
   date: string;
@@ -116,6 +116,8 @@ export function average(values: Array<number | null | undefined>) {
 }
 
 function effortCoverage(score: ScoreDay | undefined) {
+  const measurements = score?.drivers?.strainMeasurements as import("@/domain/scores/effort").DailyStrainMeasurements | undefined;
+  if (measurements) return calculateDailyStrain({ ...measurements, activeHoursProgress: activeHoursFromScoreRow(score)?.progress ?? null }).coverage;
   const value = toNumber(score?.drivers?.coverage);
   return value !== null && value >= 0 && value <= 1 ? value : null;
 }
@@ -124,7 +126,7 @@ export function effortContextForDate(scores: ScoreDay[], date: string, mode: "go
   const effortRows = scores.filter((score) => score.kind === "effort");
   const current = effortRows.find((score) => score.score_date === date);
   const recent = effortRows.filter((score) => score.score_date >= addDays(date, -29) && score.score_date <= date);
-  const scoreValue = (row: ScoreDay | undefined) => mode === "load" ? activityLoadFromScoreRow(row) : toNumber(row?.score);
+  const scoreValue = (row: ScoreDay | undefined) => mode === "load" ? activityLoadFromScoreRow(row) : dailyStrainScoreFromRow(row);
   return {
     effortScore: scoreValue(current),
     effortCoverage: effortCoverage(current),
@@ -207,7 +209,7 @@ export function buildTodayData(input: {
       date,
       sleepMinutes: observation?.sleepMinutes ?? null,
       recoveryScore: observation?.recoveryScore ?? null,
-      effortScore: observation?.effortScore ?? null,
+      effortScore: effortContextForDate(input.scores, date).effortScore,
       caloriesKcal: mealByDate.get(date)?.caloriesKcal ?? null,
       calorieTarget: targetForDate(date),
     };

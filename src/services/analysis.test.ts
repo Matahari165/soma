@@ -33,7 +33,8 @@ vi.mock("@/domain/metrics/wellness", () => ({
   activityRegularity: () => ({ activeDayRate: null, consistencyScore: null }),
   isActiveDay: () => null,
 }));
-vi.mock("@/domain/scores/effort", () => ({
+vi.mock("@/domain/scores/effort", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/domain/scores/effort")>(),
   calculateEffortScoreFromAvailable: (_input: unknown, options: unknown) => {
     testState.effortOptionsCalls.push(options);
     return { score: 50, loadScore: 50, status: "steady", coverage: 1, algorithmVersion: "test" };
@@ -346,6 +347,20 @@ describe("recomputeUserHealth analysis windows", () => {
     expect(noRunDay?.running_pace_seconds_per_km).toBeNull();
     expect(noRunDay?.running_average_heart_rate).toBeNull();
     expect(noRunDay?.cumulative_sleep_debt_minutes).toBeNull();
+  });
+
+  it("uses intraday steps for active hours without adding them twice to the daily total", async () => {
+    testState.analysisRecords = [...sourceRecords, {
+      id: "record-intraday-steps", data_type: "steps", civil_date: "2026-08-02",
+      start_time: "2026-08-02T10:00:00Z", end_time: "2026-08-02T10:01:00Z", measured_at: "2026-08-02T10:01:00Z",
+      payload: { soma: { provenance: "google_health_active_hours_intraday" }, steps: { interval: { startTime: "2026-08-02T10:00:00Z", endTime: "2026-08-02T10:01:00Z" }, count: 100 } },
+    }];
+    await recomputeUserHealth("user-1");
+    const metrics = (testState.upsertCalls.find((call) => call.table === "daily_health_metrics")?.rows ?? []) as Array<Record<string, unknown>>;
+    expect(metrics.find((row) => row.metric_date === "2026-08-02")?.steps).toBe(4_200);
+    const scores = (testState.upsertCalls.find((call) => call.table === "daily_scores")?.rows ?? []) as Array<Record<string, unknown>>;
+    const effort = scores.find((row) => row.score_date === "2026-08-02" && row.kind === "effort");
+    expect(effort).toMatchObject({ algorithm_version: "effort-v5", score: null, drivers: { activeHours: { activeHours: 1 } } });
   });
 
   it("passes the configured nutrition calorie target to every effort score", async () => {

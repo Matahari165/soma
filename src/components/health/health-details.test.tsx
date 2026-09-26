@@ -136,12 +136,12 @@ describe("health route states", () => {
       ],
       scores: [
         { score_date: previous, kind: "effort", score: 50, drivers: {} },
-        { score_date: today, kind: "effort", score: 75, drivers: {} },
+        { score_date: today, kind: "effort", score: 75, algorithm_version: "effort-v5", drivers: {} },
       ],
     }) }));
 
     expect(markup).toContain("Strain score: 75 out of 100");
-    expect(markup).toContain("8,000 steps");
+    expect(markup).toContain("8,000 pas");
     expect(markup).toContain("40 min");
     expect(markup).toContain("<strong>125</strong>");
   });
@@ -170,9 +170,11 @@ describe("health route states", () => {
     expect(readable).not.toContain("Recent activity");
     expect(readable).not.toContain("Active time");
 
-    const components = effortComponentDefinitions({ zoneMinutes: 75, activeEnergyKcal: 1_000, exerciseMinutes: 60, steps: 10_000 }, "nutrition_targets");
-    expect(components.find((component) => component.id === "steps")).toMatchObject({ target: 10_000, targetLabel: "10,000 steps" });
-    expect(components.find((component) => component.id === "activeEnergyKcal")).toMatchObject({ target: 1_000, targetLabel: "1,000 kcal" });
+    const components = effortComponentDefinitions();
+    expect(components.find((component) => component.id === "steps")).toMatchObject({ target: 10_000, targetLabel: "10 000 pas" });
+    expect(components.find((component) => component.id === "strengthMinutes")).toMatchObject({ target: 10, targetLabel: "10 min" });
+    expect(components.find((component) => component.id === "zoneMinutes")).toMatchObject({ target: 45 });
+    expect(components.find((component) => component.id === "activeHoursProgress")).toMatchObject({ target: 1 });
   });
 
   it("keeps goal gauges capped without inventing missing data", () => {

@@ -1,3 +1,4 @@
+import { refreshActiveHoursSummary, type ActiveHoursSummary } from "@/domain/health/active-hours";
 import { clampScore, scoreStatus } from "./baseline";
 
 /** Daily activity goals shared by the score and its explanations. */
@@ -103,4 +104,43 @@ export function activityLoadFromScoreRow(row: { score?: unknown; drivers?: unkno
   if (value === null || value === undefined) return null;
   const number = typeof value === "number" || typeof value === "string" ? Number(value) : NaN;
   return Number.isFinite(number) ? number : null;
+}
+
+
+/** Daily goals agreed for Strain; load calculations above retain their historic scale. */
+export const DAILY_STRAIN_TARGETS = { steps: 10_000, zoneMinutes: 45, strengthMinutes: 10, activeHoursProgress: 1 } as const;
+export const DAILY_STRAIN_VERSION = "effort-v5";
+export type DailyStrainMeasurements = { steps: number | null; zoneMinutes: number | null; strengthMinutes: number | null; activeHoursProgress: number | null };
+
+export function calculateDailyStrain(input: DailyStrainMeasurements) {
+  const components: { value: number | null; target: number }[] = Object.entries(DAILY_STRAIN_TARGETS).map(([key, target]) => ({ value: input[key as keyof DailyStrainMeasurements], target }));
+  const available = components.filter((item): item is { value: number; target: number } => item.value !== null && Number.isFinite(item.value));
+  const coverage = available.length / components.length;
+  if (coverage < 1) return { score: null, status: "limited" as const, coverage, algorithmVersion: DAILY_STRAIN_VERSION };
+  const score = goalScore(available.map((item) => ({ value: activityGoalProgress(item.value, item.target), weight: 25 })));
+  return { score, status: scoreStatus(score), coverage, algorithmVersion: DAILY_STRAIN_VERSION };
+}
+
+/** Refresh the clock without inventing observations between imports. */
+export function activeHoursFromScoreRow(row: { drivers?: unknown } | undefined, now: Date = new Date()): ActiveHoursSummary | null {
+  const drivers = row?.drivers;
+  if (!drivers || typeof drivers !== "object" || !("activeHours" in drivers)) return null;
+  const summary = drivers.activeHours as ActiveHoursSummary | null;
+  if (!summary || !Array.isArray(summary.hourStates) || typeof summary.timeZone !== "string" || !summary.source) return null;
+  try { return refreshActiveHoursSummary(summary, now); } catch { return null; }
+}
+
+/** Never present scores from earlier goals as the current Strain indicator. */
+export function dailyStrainScoreFromRow(row: { score?: unknown; algorithm_version?: unknown; drivers?: unknown } | undefined, now: Date = new Date()) {
+  const drivers = row?.drivers;
+  const version = row?.algorithm_version ?? (drivers && typeof drivers === "object" && "strainVersion" in drivers ? drivers.strainVersion : null);
+  if (version !== DAILY_STRAIN_VERSION) return null;
+  if (drivers && typeof drivers === "object" && "strainMeasurements" in drivers && drivers.strainMeasurements) {
+    const measurements = drivers.strainMeasurements as DailyStrainMeasurements;
+    const hours = activeHoursFromScoreRow(row, now);
+    return calculateDailyStrain({ ...measurements, activeHoursProgress: hours?.progress ?? null }).score;
+  }
+  if (row?.score === null || row?.score === undefined) return null;
+  const score = Number(row.score);
+  return Number.isFinite(score) ? score : null;
 }

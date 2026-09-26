@@ -50,7 +50,7 @@ export function loadPersonalLabData(userId: string, options: { periods?: Analysi
 
   const overviewHealthFields = "metric_date,sleep_minutes,sleep_regularity,bedtime,wake_time,sleep_efficiency,sleep_deep_minutes,sleep_rem_minutes,hrv_ms,resting_heart_rate,vigorous_zone_minutes,peak_zone_minutes,running_distance_km,running_duration_minutes,running_pace_seconds_per_km,running_average_heart_rate,data_quality";
   let healthQuery = admin.from("daily_health_metrics").select(options.includeAnalysis ? "*" : overviewHealthFields).eq("user_id", userId).order("metric_date", { ascending: false });
-  let scoresQuery = admin.from("daily_scores").select("score_date,kind,score,drivers").eq("user_id", userId).order("score_date", { ascending: false });
+  let scoresQuery = admin.from("daily_scores").select("score_date,kind,score,drivers,algorithm_version").eq("user_id", userId).order("score_date", { ascending: false });
   let calendarQuery = admin.from("daily_calendar_metrics").select(options.includeAnalysis ? "metric_date,deep_work_minutes,deep_work_event_count,total_scheduled_minutes,synced_at" : "metric_date,deep_work_minutes").eq("user_id", userId).order("metric_date", { ascending: false });
   let checkinQuery = admin.from("daily_checkins").select(options.includeAnalysis ? "checkin_date,energy,focus,stress,mood,soreness,caffeine_servings,alcohol_servings,late_meal,illness,deep_work_minutes_override" : "checkin_date,energy,focus,deep_work_minutes_override").eq("user_id", userId).order("checkin_date", { ascending: false });
   if (readWindow) {
@@ -138,7 +138,7 @@ export async function getPersonalLabToday(user: SomaUser): Promise<PersonalLabTo
   const startDate = addDays(todayDate, -29);
   const [healthResult, scoresResult, targets] = await Promise.all([
     admin.from("daily_health_metrics").select("metric_date,sleep_minutes,sleep_regularity,bedtime,wake_time,sleep_efficiency,sleep_latency_minutes,sleep_awake_minutes,sleep_fragmentation,sleep_deep_minutes,sleep_rem_minutes,hrv_ms,resting_heart_rate,respiratory_rate").eq("user_id", user.id).gte("metric_date", startDate).lte("metric_date", todayDate).order("metric_date", { ascending: true }),
-    admin.from("daily_scores").select("score_date,kind,score,drivers").eq("user_id", user.id).gte("score_date", startDate).lte("score_date", todayDate).order("score_date", { ascending: true }),
+    admin.from("daily_scores").select("score_date,kind,score,drivers,algorithm_version").eq("user_id", user.id).gte("score_date", startDate).lte("score_date", todayDate).order("score_date", { ascending: true }),
     loadNutritionTargetsForUser(user.id).catch(() => DEFAULT_NUTRITION_TARGETS),
   ]);
   if (healthResult.error || scoresResult.error) throw new Error("Today's signals could not be loaded.");
