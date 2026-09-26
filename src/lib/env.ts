@@ -18,7 +18,13 @@ export function hasCloudflareConfig() {
 }
 
 export function isLocalPreviewMode() {
-  return process.env.NODE_ENV !== "production" && process.env.SOMA_LOCAL_PREVIEW === "true";
+  return (process.env.NODE_ENV !== "production" && process.env.SOMA_LOCAL_PREVIEW === "true") || isRemoteDemoPreviewMode();
+}
+
+export function isRemoteDemoPreviewMode() {
+  return process.env.VERCEL_ENV === "preview"
+    && process.env.VERCEL_GIT_COMMIT_REF === "codex/mobile-bottom-navigation-20260925"
+    && process.env.SOMA_TEST_PREVIEW === "true";
 }
 
 /** Soma now has one visual world: the data-backed dark Observatoire shell. */
