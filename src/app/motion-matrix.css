@@ -23,7 +23,7 @@
   content: "";
   pointer-events: none;
   transform: translate3d(calc(var(--matrix-period-index) * 100%), 0, 0);
-  transition: transform 240ms cubic-bezier(.22, .8, .26, 1);
+  transition: transform 240ms cubic-bezier(.2, .8, .2, 1);
 }
 
 .matrix-periods button {
@@ -80,7 +80,7 @@
   border-radius: 0;
   background: var(--lab-surface);
   box-shadow: none;
-  animation: relation-detail-enter 320ms cubic-bezier(.16, 1, .3, 1) both;
+  animation: relation-detail-enter 240ms cubic-bezier(.16, 1, .3, 1) both;
 }
 
 .relation-detail--inline .relation-detail__body {
@@ -197,7 +197,7 @@
   background: transparent !important;
   color: var(--world-muted);
   box-shadow: inset 0 -1px 0 transparent;
-  transition: color 320ms cubic-bezier(.16, 1, .3, 1), box-shadow 320ms cubic-bezier(.16, 1, .3, 1);
+  transition: color 180ms cubic-bezier(.2, .8, .2, 1), box-shadow 180ms cubic-bezier(.2, .8, .2, 1);
 }
 
 .lab-experience.lab-continuous[data-continuous-theme="observatory"] .lab-world__effects .strongest-effects-panel .strongest-effects__periods button:hover:not(:disabled) {
@@ -224,18 +224,18 @@
 
 .lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects[data-motion-ready="true"] .strongest-effects__row:not(.is-visible) {
   opacity: 0;
-  transform: translate3d(0, 18px, 0);
-  filter: blur(2px);
-  transition: opacity 680ms cubic-bezier(.16, 1, .3, 1), transform 920ms cubic-bezier(.16, 1, .3, 1), filter 920ms cubic-bezier(.16, 1, .3, 1);
+  transform: translate3d(0, 6px, 0);
+  filter: none;
+  transition: opacity 420ms cubic-bezier(.16, 1, .3, 1), transform 650ms cubic-bezier(.16, 1, .3, 1), filter 650ms cubic-bezier(.16, 1, .3, 1);
   transition-delay: var(--matrix-row-delay, 0ms);
-  will-change: opacity, transform, filter;
+  will-change: auto;
 }
 
 .lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects[data-motion-ready="true"] .strongest-effects__row.is-visible {
   opacity: 1;
   transform: none;
   filter: none;
-  transition: opacity 680ms cubic-bezier(.16, 1, .3, 1), transform 920ms cubic-bezier(.16, 1, .3, 1), filter 920ms cubic-bezier(.16, 1, .3, 1);
+  transition: opacity 420ms cubic-bezier(.16, 1, .3, 1), transform 650ms cubic-bezier(.16, 1, .3, 1), filter 650ms cubic-bezier(.16, 1, .3, 1);
   transition-delay: var(--matrix-row-delay, 0ms);
   will-change: auto;
 }
@@ -244,7 +244,7 @@
   opacity: .42;
   transform: translateY(-50%) scaleX(.12);
   transform-origin: center;
-  transition: opacity 520ms cubic-bezier(.16, 1, .3, 1), transform 880ms cubic-bezier(.16, 1, .3, 1);
+  transition: opacity 520ms cubic-bezier(.16, 1, .3, 1), transform 520ms cubic-bezier(.16, 1, .3, 1);
   transition-delay: var(--matrix-row-delay, 0ms);
 }
 
@@ -258,7 +258,7 @@
   opacity: .7;
   transform: translateY(-50%) scaleX(0);
   transform-origin: var(--matrix-interval-origin, center);
-  transition: opacity 520ms cubic-bezier(.16, 1, .3, 1), transform 920ms cubic-bezier(.16, 1, .3, 1);
+  transition: opacity 520ms cubic-bezier(.16, 1, .3, 1), transform 650ms cubic-bezier(.16, 1, .3, 1);
   transition-delay: calc(var(--matrix-row-delay, 0ms) + 160ms);
 }
 
@@ -270,8 +270,8 @@
 .lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects[data-motion-ready="true"] .strongest-effects__point {
   opacity: 0;
   transform: translate(-50%, -50%) scale(.35);
-  transition: opacity 460ms cubic-bezier(.16, 1, .3, 1), transform 700ms cubic-bezier(.16, 1, .3, 1);
-  transition-delay: calc(var(--matrix-row-delay, 0ms) + 460ms);
+  transition: opacity 460ms cubic-bezier(.16, 1, .3, 1), transform 420ms cubic-bezier(.16, 1, .3, 1);
+  transition-delay: calc(var(--matrix-row-delay, 0ms) + 160ms);
 }
 
 .lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects[data-motion-ready="true"] .strongest-effects__row.is-visible .strongest-effects__point {
@@ -296,4 +296,29 @@
   .lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects[data-motion-ready="true"] .strongest-effects__point {
     transform: translate(-50%, -50%) scale(1);
   }
+}
+
+/* Exit preserves the proof briefly without leaving closed controls focusable. */
+.matrix-motion-detail { display: contents; }
+.matrix-motion-detail[data-state="closed"] > :is(.relation-detail, .influence-detail) {
+  pointer-events: none;
+  animation: matrix-detail-exit 180ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+@keyframes matrix-detail-exit {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matrix-motion-detail[data-state="closed"] > :is(.relation-detail, .influence-detail) { animation: none; }
+}
+
+.matrix-results-ready { animation: matrix-results-enter 240ms cubic-bezier(.2, .8, .2, 1); }
+@keyframes matrix-results-enter {
+  from { opacity: .7; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .matrix-results-ready { animation: none; }
 }
