@@ -1,18 +1,37 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type MouseEvent } from "react";
+import { type MouseEvent, useEffect, useRef } from "react";
 import { Activity, ChartNoAxesCombined, HeartPulse, House, MessageCircle, Moon, Settings, Utensils } from "lucide-react";
 
 export function LabGlobalNavigation() {
   const pathname = usePathname();
+  const navigationRef = useRef<HTMLElement>(null);
   const isPreHomeSurface = ["/login", "/onboarding", "/auth/", "/privacy", "/terms"].some((path) => pathname.startsWith(path));
+  useEffect(() => {
+    const navigation = navigationRef.current;
+    if (!navigation) return;
+    const mobile = window.matchMedia("(max-width: 700px)");
+    const updateHeight = () => {
+      if (mobile.matches) document.documentElement.style.setProperty("--soma-mobile-nav-height", `${Math.ceil(navigation.getBoundingClientRect().height)}px`);
+      else document.documentElement.style.removeProperty("--soma-mobile-nav-height");
+    };
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(navigation);
+    mobile.addEventListener("change", updateHeight);
+    updateHeight();
+    return () => {
+      observer.disconnect();
+      mobile.removeEventListener("change", updateHeight);
+      document.documentElement.style.removeProperty("--soma-mobile-nav-height");
+    };
+  }, [isPreHomeSurface]);
   if (isPreHomeSurface) return null;
 
   // The seven secondary surfaces all trigger private data reads. Avoid
   // starting them in parallel just because their links are visible; navigation
   // still performs the normal full-quality route transition on demand.
-  return <nav className="lab-global-nav" aria-label="Main navigation">
+  return <nav ref={navigationRef} className="lab-global-nav" aria-label="Main navigation">
     <Link href="/" prefetch={false} aria-current={pathname === "/" ? "page" : undefined} onClick={(event: MouseEvent<HTMLAnchorElement>) => { if (pathname !== "/") return; event.preventDefault(); window.history.replaceState(null, "", "/"); window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }); }}><House aria-hidden="true" /><span>Personal Lab</span></Link>
     <Link href="/assistant" prefetch={false} aria-current={pathname.startsWith("/assistant") ? "page" : undefined}><MessageCircle aria-hidden="true" /><span>Soma</span></Link>
     <Link href="/analysis" prefetch={false} aria-current={pathname.startsWith("/analysis") ? "page" : undefined}><ChartNoAxesCombined aria-hidden="true" /><span>Analysis</span></Link>

@@ -296,11 +296,11 @@
 
 @media (max-width: 700px) {
   :global(body.observatory-mode) .page {
-    height: calc(100dvh - 116px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    height: var(--soma-mobile-live-content-height);
     min-height: 0;
   }
   :global(body.local-preview.observatory-mode) .page {
-    height: calc(100dvh - 144px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    height: var(--soma-mobile-live-content-height);
   }
 }
 
@@ -420,7 +420,7 @@
   .mobileToolbar button:last-child { grid-column: 3; }
   .messageBody, .starterList button { font-size: 17px; }
   .composerRegion { padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
-  :global(body.observatory-mode) .composerRegion { padding-bottom: 8px; }
+  :global(body.observatory-mode) .composerRegion { padding-bottom: 12px; }
   .composer { padding: 12px; transition: border-color 160ms ease, background-color 160ms ease, transform 180ms cubic-bezier(.2,.8,.2,1); }
   .composer:focus-within { transform: scale(1.015); transform-origin: center bottom; }
   .composer textarea { min-height: 48px; padding: 10px 0; font-size: 17px; }
