@@ -93,6 +93,11 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
   const recipesPromise = listMealRecipes(user.id)
     .then((recipes) => ({ recipes, error: undefined as string | undefined }))
     .catch((error) => ({ recipes: [] as MealRecipe[], error: error instanceof MealRecipeServiceError ? error.message : "Personal recipes are temporarily unavailable." }));
+  // The goal is independent of the selected date and profile timezone.
+  const goalPromise = loadSafely(async () => {
+    if (isLocalPreviewMode()) return previewProfile.primaryGoal;
+    return (await loadActiveGoal(user.id)).type;
+  });
   const params = await searchParams;
   let timeZone = "Europe/Paris";
   if (!isLocalPreviewMode()) {
@@ -111,10 +116,7 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
       ? loadSafely(() => loadPreviewConfirmedMealRecords(user.id).filter((record) => record.mealDate >= historyFrom && record.mealDate <= requestedDate))
       : loadSafely(() => loadConfirmedMealRecords(user.id, { from: historyFrom, to: requestedDate })),
     loadSafely(() => loadDailyNutritionTargetsForUser(user.id, requestedDate)),
-    loadSafely(async () => {
-      if (isLocalPreviewMode()) return previewProfile.primaryGoal;
-      return (await loadActiveGoal(user.id)).type;
-    }),
+    goalPromise,
   ]);
 
   const records = mealResult.ok ? mealsForDate(mealResult.value, requestedDate).map((meal) => apiMealToRecord(mealToApi(meal))) : [];

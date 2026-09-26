@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   createAdmin: vi.fn(),
   listMeals: vi.fn(),
   loadConfirmedMealRecords: vi.fn(),
+  loadActiveGoal: vi.fn().mockResolvedValue({ type: "general_fitness" }),
   mappedMeals: [] as Array<{ id: string; status: string }>,
 }));
 
@@ -14,6 +15,7 @@ vi.mock("@/lib/auth", () => ({ getCurrentUser: state.getCurrentUser }));
 vi.mock("@/lib/env", () => ({ isLocalPreviewMode: () => false }));
 vi.mock("@/lib/cloudflare/db", () => ({ createCloudflareAdminClient: state.createAdmin }));
 vi.mock("@/services/meals", () => ({ listMeals: state.listMeals, loadConfirmedMealRecords: state.loadConfirmedMealRecords }));
+vi.mock("@/services/active-goals", () => ({ loadActiveGoal: state.loadActiveGoal }));
 vi.mock("@/services/meal-api", () => ({ mealToApi: (meal: unknown) => meal }));
 vi.mock("@/services/meal-recipes", () => ({
   listMealRecipes: state.listMealRecipes,
@@ -59,6 +61,29 @@ function meal(id: string, mealDate: string, status: "draft" | "confirmed") {
 }
 
 describe("MealsPage initial meal reads", () => {
+  it("starts the independent goal read while the profile is still pending", async () => {
+    vi.clearAllMocks();
+    state.getCurrentUser.mockResolvedValue({ id: "user-1" });
+    let resolveProfile!: (value: { data: { timezone: string }; error: null }) => void;
+    const profile = new Promise<{ data: { timezone: string }; error: null }>((resolve) => { resolveProfile = resolve; });
+    state.createAdmin.mockReturnValue({ from: () => {
+      const query = { select: () => query, eq: () => query, maybeSingle: () => profile };
+      return query;
+    } });
+    state.listMeals.mockResolvedValue([]);
+    state.loadConfirmedMealRecords.mockResolvedValue([]);
+    state.listMealRecipes.mockResolvedValue([]);
+    const page = await MealsPage({ searchParams: Promise.resolve({ date: "2026-09-15" }) });
+    const content = (page as ReactElement<{ children: ReactElement }>).props.children;
+    const renderContent = content.type as unknown as (props: typeof content.props) => Promise<ReactElement>;
+    const rendering = renderContent(content.props);
+    await vi.waitFor(() => expect(state.loadActiveGoal).toHaveBeenCalledWith("user-1"));
+    expect(state.listMeals).not.toHaveBeenCalled();
+    resolveProfile({ data: { timezone: "Europe/Paris" }, error: null });
+    await rendering;
+    expect(state.listMeals).toHaveBeenCalledWith("user-1", { from: "2026-08-19", to: "2026-09-15" });
+  });
+
   it("shares the 28-day range and keeps only the requested date in the journal", async () => {
     state.getCurrentUser.mockResolvedValue({ id: "user-1" });
     state.createAdmin.mockReturnValue({
