@@ -12,7 +12,7 @@ it("compares each value with its own 30-day average, including equality", () => 
   const html = renderToStaticMarkup(<ObservatoryRadar data={data} />);
   expect(html).toContain("7h 40 ↓");
   expect(html).toContain("70 ↑");
-  expect(html).toContain("15.8 ↔");
+  expect(html).toContain("75 ↔");
   expect(html).toMatch(/↓ 1[\s\u202f]800 kcal/);
   expect(html).toContain('class="radar-value"');
   expect((html.match(/class="radar-value-segment"/g) ?? []).length).toBe(4);
@@ -63,7 +63,7 @@ it("renders radar metrics for a specific past date", () => {
   const html = renderToStaticMarkup(<ObservatoryRadar data={pastData} date="2026-09-11" />);
   expect(html).toContain("8h 30 ↑");
   expect(html).toContain("85 ↑");
-  expect(html).toContain("12.6 ↓");
+  expect(html).toContain("60 ↓");
   expect(html).toMatch(/↑ 2[\s\u202f]300 kcal/);
   expect(html).toContain('class="radar-value"');
 });
@@ -165,7 +165,7 @@ it("keeps explicit zeroes measured and ignores invalid runtime numbers", () => {
   expect((html.match(/class="radar-point"/g) ?? []).length).toBe(4);
   expect(html).toContain("0h 00");
   expect(html).toContain("Récupération : 0");
-  expect(html).toContain("Effort : 0.0");
+  expect(html).toContain("Effort : 0");
   expect(html).not.toContain("NaN");
   expect(html).not.toContain("Infinity");
 });

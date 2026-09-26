@@ -75,13 +75,13 @@ describe("wellness calculations", () => {
     expect(acuteChronicLoadRatio(Array.from({ length: 20 }, () => 50))).toBeNull();
   });
 
-  it("excludes the partial current day while preserving a measured zero", () => {
+  it("includes today's measured activity while preserving a measured zero", () => {
     const result = completedActivityDays([
       { metric_date: "2026-08-06", steps: null, zone_minutes: null, active_minutes: null, active_energy_kcal: null, exercise_minutes: null },
       { metric_date: "2026-08-07", steps: 0, zone_minutes: 0, active_minutes: 0, active_energy_kcal: 0, exercise_minutes: 0 },
       { metric_date: "2026-08-08", steps: 4_000, zone_minutes: 8, active_minutes: 20, active_energy_kcal: 240, exercise_minutes: 0 },
     ], "2026-08-08");
 
-    expect(result.map((day) => day.metric_date)).toEqual(["2026-08-07"]);
+    expect(result.map((day) => day.metric_date)).toEqual(["2026-08-07", "2026-08-08"]);
   });
 });

@@ -11,6 +11,7 @@ import { usePrimaryChartPresentation } from "@/components/dashboard/chart-presen
 import { ArrivalBackdrop } from "./arrival-backdrops";
 import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
 import { PersonalLabJournalLoading } from "./personal-lab";
+import { RefreshActiveHealthPage } from "@/components/health/refresh-active-health-page";
 
 function addDays(date: string, days: number) {
   const value = new Date(`${date}T12:00:00Z`);
@@ -94,9 +95,18 @@ export function LabWorldWorkspace({
   // is applied by the effect below once the browser is mounted.
   const [selectedDate, setSelectedDate] = useState(() => initialSelectedDate ?? todayDate ?? "");
   const [urlDateApplied, setUrlDateApplied] = useState(() => Boolean(initialSelectedDate));
+  const previousTodayDate = useRef(todayDate);
   const activeDate = (availableDates.length > 0 && availableDates.includes(selectedDate))
     ? selectedDate
     : (todayDate ?? selectedDate);
+
+  useEffect(() => {
+    const previous = previousTodayDate.current;
+    previousTodayDate.current = todayDate;
+    if (!todayDate || !previous || previous === todayDate) return;
+    const apply = window.setTimeout(() => setSelectedDate((current) => current === previous ? todayDate : current), 0);
+    return () => window.clearTimeout(apply);
+  }, [todayDate]);
 
   useEffect(() => {
     if (initialSelectedDate || availableDates.length === 0) return;
@@ -186,6 +196,7 @@ export function LabWorldWorkspace({
     return () => window.removeEventListener("lab-theme-change", change);
   }, []);
   return <main ref={root} id="main-page-content" className="lab-experience lab-continuous" data-continuous-theme={theme}>
+    <RefreshActiveHealthPage />
     <div className="lab-intro">
       {theme === "observatory" && <ArrivalBackdrop variant={radarPresentation.backdrop} />}
       <LabArrival

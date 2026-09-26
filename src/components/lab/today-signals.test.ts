@@ -46,6 +46,8 @@ describe("Today signals", () => {
     expect(html.match(/data-trend="neutral"/g)).toHaveLength(2);
     expect(html).toContain('class="personal-lab-metric personal-lab-metric--below" data-trend="below"');
     expect(html).toContain("Target 3,050");
+    expect(html).toContain("20</span><small class=\"personal-lab-metric__denominator\" aria-hidden=\"true\">/100</small>");
+    expect(html).not.toContain("/21");
   });
 
   it("keeps the five-day metric history localized for assistive technology", () => {
