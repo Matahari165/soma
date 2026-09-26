@@ -7,6 +7,7 @@ const publicMachinePaths = [
   "/api/health/webhook",
   "/api/cron/meal-analysis",
   "/api/cron/sync",
+  "/api/cron/active-hours",
   "/api/cron/archive-health",
   "/api/cron/account-deletion",
 ];

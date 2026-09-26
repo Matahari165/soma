@@ -9,9 +9,6 @@
   "observability": {
     "enabled": true
   },
-  "limits": {
-    "cpu_ms": 30000
-  },
   "vars": {
     "SOMA_CRON_TARGET_URL": "https://soma-neon-phi.vercel.app"
   },
