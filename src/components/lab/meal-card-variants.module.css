@@ -870,7 +870,7 @@
 .analysisScreen {
   display: flex;
   flex-direction: column;
-  min-height: 174px;
+  min-height: 240px;
   padding: 16px;
   border: 1px solid var(--lab-border, #292929);
   border-radius: 4px;
@@ -930,7 +930,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  margin: auto 0 12px;
+  margin: 24px 0 16px;
   padding: 0;
   list-style: none;
 }
@@ -942,18 +942,25 @@
   padding-top: 7px;
   border-top: 1px solid var(--lab-border, #292929);
   color: var(--lab-text-secondary, #aaa);
-  font-size: 12px;
-  line-height: 16px;
-  transition: color 420ms cubic-bezier(.2, .8, .2, 1), border-color 420ms cubic-bezier(.2, .8, .2, 1);
+  font-size: 14px;
+  line-height: 20px;
+  transition: color 180ms cubic-bezier(.2, .8, .2, 1), border-color 180ms cubic-bezier(.2, .8, .2, 1);
 }
 
 .analysisSteps li > span {
-  color: var(--lab-text-secondary, #aaa);
-  font: 11px/14px var(--font-soma-mono), ui-monospace, monospace;
+  display: flex;
+  align-items: center;
+  height: 20px;
+  color: inherit;
+  font: 12px/20px var(--font-soma-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
 
-.analysisSteps li[data-state="complete"] { border-top-color: var(--lab-text-secondary, #aaa); }
+.analysisSteps li[data-state="complete"] { border-top-color: var(--lab-text-primary, #f1f1f1); color: var(--lab-text-primary, #f1f1f1); }
+.analysisSteps li[data-state="active"] .analysisStepMarker { animation: mealStepActivate 240ms cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes mealStepActivate { from { transform: translateY(3px); opacity: .4; } to { transform: translateY(0); opacity: 1; } }
+.analysisElapsed { margin: 8px 0 0; color: var(--lab-text-secondary, #aaa); font: 12px/20px var(--font-soma-mono), monospace; font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) { .analysisSteps li { font-size: 16px; } }
 .analysisSteps li[data-state="active"] { border-top-color: var(--lab-brand, #eee); color: var(--lab-text-primary, #f1f1f1); }
 .analysisSteps li[data-state="upcoming"] { color: var(--lab-text-secondary, #aaa); }
 
@@ -987,18 +994,6 @@
   from { opacity: .5; transform: translateY(3px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
-.confirmedIndicator {
-  display: inline-flex;
-  min-height: 28px;
-  align-items: center;
-  gap: 5px;
-  color: var(--lab-text-secondary, #aaa);
-  font: 12px/16px var(--font-soma-ui), sans-serif;
-  white-space: nowrap;
-}
-
-.confirmationTickArrival { animation: mealConfirmationTick 420ms cubic-bezier(.16, 1, .3, 1) both; }
 
 .v1FilledActions {
   display: flex;
@@ -1050,12 +1045,6 @@
   to { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 
-@keyframes mealConfirmationTick {
-  0% { opacity: .25; transform: scale(.55) rotate(-12deg); }
-  72% { opacity: 1; transform: scale(1.08) rotate(2deg); }
-  100% { opacity: 1; transform: scale(1) rotate(0); }
-}
-
 .analysisScreenTitle {
   margin: 0;
   font-size: 16px;
@@ -1074,16 +1063,17 @@
   font-size: 13px;
   cursor: pointer;
 }
-.analysisCancel:hover { color: var(--lab-text-primary, #f1f1f1); }
+.analysisCancel:disabled { opacity: .5; cursor: default; }
+.analysisCancel:hover:not(:disabled) { color: var(--lab-text-primary, #f1f1f1); }
 .analysisCancel:focus-visible { outline: 2px solid var(--lab-brand, #eee); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
   .analysisScreen { animation: mealAnalysisAccessible 160ms ease-out both; }
   .errorState, .confirmError { animation: mealAnalysisAccessible 160ms ease-out both; }
   .analysisSteps li { transition: none; }
+  .analysisSteps li[data-state="active"] .analysisStepMarker { animation: none; }
   .analysisResultArrival { animation: mealResultAccessible 160ms ease-out both; }
   .analysisResultArrival :is(.metricChart > li, .labMealNutrition > span, .personalLabNutrients > div) { animation: none; opacity: 1; filter: none; transform: none; }
-  .confirmationTickArrival { animation: mealConfirmationAccessible 160ms ease-out both; }
   .confirmationPending { animation: mealAnalysisAccessible 160ms ease-out both; }
 }
 
@@ -1094,11 +1084,6 @@
 
 @keyframes mealResultAccessible {
   from { opacity: .55; }
-  to { opacity: 1; }
-}
-
-@keyframes mealConfirmationAccessible {
-  from { opacity: .4; }
   to { opacity: 1; }
 }
 

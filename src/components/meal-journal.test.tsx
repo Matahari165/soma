@@ -574,6 +574,35 @@ describe("MealJournal", () => {
     expect((statusHeaders[0] as Record<string, string>)["X-Analysis-Request-Id"]).toMatch(/^analysis-/);
   });
 
+  it("bounds confirmation when the connection stops responding", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("fetch", vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+      })));
+      const saving = defaultSave({ id: "server-meal", date, slot: "snack", note: "Exemple", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "review" });
+      const rejected = expect(saving).rejects.toMatchObject({ code: "timeout", operation: "update" });
+      await vi.advanceTimersByTimeAsync(15_000);
+      await rejected;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("follows the original request when a retry joins an existing analysis", async () => {
+    const joinedRequestId = "analysis-already-running";
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (init?.method === "PATCH") return Response.json({ meal: { id: "server-meal" } });
+      if (init?.method === "POST") return Response.json({ queued: true, analysis: { status: "running", analysisRequestId: joinedRequestId } }, { status: 202 });
+      expect(String(input)).toBe("/api/meals/server-meal/analyze");
+      expect(new Headers(init?.headers).get("X-Analysis-Request-Id")).toBe(joinedRequestId);
+      return Response.json({ analysis: { status: "completed" }, meal: { id: "server-meal", mealDate: date, mealType: "snack", note: "Exemple", status: "confirmed", photos: [], analysis: { result: { summary: "Exemple", foods: [], totals: { calories: { low: 200, likely: 250, high: 300 } } } } } });
+    }));
+    const result = await defaultAnalyze({ date, slot: "snack", files: [], meal: { id: "server-meal", date, slot: "snack", note: "Exemple", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" } });
+    expect(result.status).toBe("confirmed");
+    expect(result.analysis?.calories?.likely).toBe(250);
+  });
+
   it("updates and analyzes an existing text-only meal without requiring photos", async () => {
     const requests: Array<{ url: string; method: string; body?: unknown }> = [];
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
