@@ -321,7 +321,7 @@
 .scoreSummary :global(.health-score-trigger):hover .summaryValue strong,
 .scoreSummary :global(.health-score-trigger):focus-visible .summaryValue strong,
 .scoreSummary :global(.health-score-trigger)[aria-expanded="true"] .summaryValue strong {
-  transform: scale(1.035);
+  transform: none;
 }
 
 .scoreSummary :global(.health-score-trigger):focus-visible {

@@ -87,7 +87,7 @@
 
 .scorePanel:hover .scoreValue,
 .scorePanel:focus-visible .scoreValue,
-.scorePanel[data-detail-selected="true"] .scoreValue { transform: scale(1.035); }
+.scorePanel[data-detail-selected="true"] .scoreValue { transform: none; }
 
 /* The observatory shell adds a filled hover state to buttons globally. The score
    remains a borderless reading surface, including while its detail is open. */
@@ -301,7 +301,7 @@
 .reading[data-tone="negative"] summary > strong { color: var(--lab-error, #e2b2aa); }
 .reading summary:hover strong,
 .reading summary:focus-visible strong,
-.reading[open] strong { transform: scale(1.035); }
+.reading[open] strong { transform: none; }
 .reading summary:focus-visible { outline: 2px solid var(--lab-brand); outline-offset: 2px; }
 .readingChevron { width: 7px; height: 7px; margin-top: 5px; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: rotate(45deg); transition: transform 180ms ease; }
 .reading[open] .readingChevron { transform: rotate(225deg); }
