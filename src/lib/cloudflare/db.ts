@@ -313,9 +313,45 @@ export async function releaseCloudflareLockWithToken(lockKey: string, userId: st
   if (!result.success) throw new Error(result.error ?? "The operation lock could not be released.");
 }
 
+/** One live database read: deleted sessions/users and expired sessions cannot authenticate. */
+export async function sessionUserForHash(tokenHash: string, now: string, timeoutMs: number) {
+  const rows = await supabaseRequest<Array<{ expires_at: string; user: { id: string; email: string | null; display_name: string } }>>(supabasePath("soma_sessions", [
+    ["select", "expires_at,user:soma_users!inner(id,email,display_name)"],
+    ["token_hash", `eq.${tokenHash}`],
+    ["expires_at", `gt.${now}`],
+    ["limit", "1"],
+  ]), {}, timeoutMs);
+  const row = rows[0];
+  if (!row || !row.user || !Number.isFinite(Date.parse(row.expires_at)) || Date.parse(row.expires_at) <= Date.parse(now)) return null;
+  return row.user;
+}
+
+function missingReadAggregate(error: unknown) {
+  return error instanceof Error && /Could not find the function|function .* does not exist/i.test(error.message);
+}
+
+export async function healthDataCoverageAggregate(userId: string, dataTypes: readonly string[]) {
+  if (!hasSupabaseRuntime()) return null;
+  try {
+    const rows = await supabaseRequest<Array<import("@/domain/health/data-coverage").HealthDataCoverage>>("rpc/soma_health_data_coverage", {
+      method: "POST", body: JSON.stringify({ p_user_id: userId, p_data_types: dataTypes }),
+    });
+    return rows[0] ?? null;
+  } catch (error) {
+    // Rolling deployments remain usable until the migration is installed.
+    if (missingReadAggregate(error)) return null;
+    throw error;
+  }
+}
+
 export async function latestHealthRecordsByType(userId: string, dataTypes: readonly string[]) {
   if (!dataTypes.length) return [] as Array<{ data_type: string; civil_date: string | null; measured_at: string | null }>;
   if (hasSupabaseRuntime()) {
+    try {
+      return await supabaseRequest<Array<{ data_type: string; civil_date: string | null; measured_at: string | null }>>("rpc/soma_latest_health_records", { method: "POST", body: JSON.stringify({ p_user_id: userId, p_data_types: dataTypes }) });
+    } catch (error) {
+      if (!missingReadAggregate(error)) throw error;
+    }
     const result = await createCloudflareAdminClient().from("health_records").select("data_type,civil_date,measured_at").eq("user_id", userId).in("data_type", [...dataTypes]);
     if (result.error) throw new Error(result.error.message);
     const latest = new Map<string, { data_type: string; civil_date: string | null; measured_at: string | null }>();
@@ -356,6 +392,11 @@ export async function latestHealthRecordsByType(userId: string, dataTypes: reado
 
 export async function healthSyncDiagnostics(userId: string, dataTypes: readonly string[]) {
   if (hasSupabaseRuntime()) {
+    try {
+      return await supabaseRequest<{ importedRecords: Record<string, number>; analytics: { datedRecords: number; metricDays: number; scoreRows: number } }>("rpc/soma_health_sync_diagnostics", { method: "POST", body: JSON.stringify({ p_user_id: userId, p_data_types: dataTypes }) });
+    } catch (error) {
+      if (!missingReadAggregate(error)) throw error;
+    }
     const [healthResult, analyticsResult] = await Promise.all([
       createCloudflareAdminClient().from("health_records").select("data_type,civil_date").eq("user_id", userId).in("data_type", [...dataTypes]),
       createCloudflareAdminClient().from("daily_health_metrics").select("id").eq("user_id", userId),

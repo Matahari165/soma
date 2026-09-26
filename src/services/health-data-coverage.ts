@@ -2,7 +2,7 @@ import "server-only";
 
 import { calculateHealthDataCoverage, type ImportedHealthDate, type UsedHealthDate } from "@/domain/health/data-coverage";
 import { GOOGLE_HEALTH_DASHBOARD_DATA_TYPES } from "@/integrations/google-health/client";
-import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
+import { createCloudflareAdminClient, healthDataCoverageAggregate } from "@/lib/cloudflare/db";
 
 const PAGE_SIZE = 1_000;
 const MAX_IMPORTED_ROWS = 50_000;
@@ -43,6 +43,8 @@ async function loadUsedDates(admin: AdminClient, userId: string) {
 }
 
 export async function getHealthDataCoverage(userId: string) {
+  const aggregate = await healthDataCoverageAggregate(userId, GOOGLE_HEALTH_DASHBOARD_DATA_TYPES);
+  if (aggregate) return aggregate;
   const admin = createCloudflareAdminClient();
   const [imported, used, profile] = await Promise.all([
     loadImportedDates(admin, userId),
