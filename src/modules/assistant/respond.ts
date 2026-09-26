@@ -14,6 +14,7 @@ import { SOMA_ASSISTANT_PROMPT_VERSION } from "./prompt";
 import {
   appendAssistantMessage,
   attachAssistantAttachmentToMessage,
+  claimAssistantRun,
   createAssistantConversation,
   createAssistantRun,
   findAssistantConversation,
@@ -54,6 +55,7 @@ type Dependencies = {
   repository: {
     appendMessage: typeof appendAssistantMessage;
     attachAttachmentToMessage: typeof attachAssistantAttachmentToMessage;
+    claimRun: typeof claimAssistantRun;
     createConversation: typeof createAssistantConversation;
     createRun: typeof createAssistantRun;
     findConversation: typeof findAssistantConversation;
@@ -73,6 +75,7 @@ const dependencies: Dependencies = {
   repository: {
     appendMessage: appendAssistantMessage,
     attachAttachmentToMessage: attachAssistantAttachmentToMessage,
+    claimRun: claimAssistantRun,
     createConversation: createAssistantConversation,
     createRun: createAssistantRun,
     findConversation: findAssistantConversation,
@@ -172,6 +175,116 @@ function idempotentMessageId(userId: string, requestId: string) {
   return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
 }
 
+type AssistantRequest = z.infer<typeof requestSchema>;
+type AssistantRun = NonNullable<Awaited<ReturnType<typeof findAssistantRunByRequestId>>>;
+type AssistantMessage = NonNullable<Awaited<ReturnType<typeof findAssistantMessage>>>;
+
+function assertInputMatchesMessage(input: AssistantRequest, conversationId: string, message: AssistantMessage) {
+  const persistedAttachmentIds = attachmentIdsFromParts(message.parts);
+  if (message.role !== "user"
+    || (!input.editMessageId && input.conversationId !== null && conversationId !== input.conversationId)
+    || textFromParts(message.parts) !== input.text
+    || persistedAttachmentIds.length !== input.attachmentIds.length
+    || persistedAttachmentIds.some((id, index) => id !== input.attachmentIds[index])) {
+    throw new AssistantResponseError("assistant_request_failed", 409, "Cette clé d’idempotence a déjà été utilisée pour une autre demande.");
+  }
+}
+
+function assertRequestMatchesMessage(input: AssistantRequest, run: AssistantRun, message: AssistantMessage) {
+  assertInputMatchesMessage(input, run.conversation_id, message);
+}
+
+async function replayStoredRun(userId: string, input: AssistantRequest, run: AssistantRun, deps: Dependencies) {
+  if (!run.triggering_message_id) return null;
+  const userMessage = await deps.repository.findMessage(userId, run.triggering_message_id);
+  if (!userMessage) return null;
+  assertRequestMatchesMessage(input, run, userMessage);
+
+  let output = run.output_message_id
+    ? await deps.repository.findMessage(userId, run.output_message_id)
+    : null;
+  if (!output) {
+    const afterTrigger = await deps.repository.listMessages(userId, run.conversation_id, userMessage.sequence);
+    output = afterTrigger.find((message) => message.role === "assistant" && message.parent_message_id === userMessage.id) ?? null;
+  }
+  if (!output || output.role !== "assistant") return null;
+
+  if (run.status !== "completed" || run.output_message_id !== output.id) {
+    await deps.repository.updateRun(userId, run.id, {
+      status: "completed",
+      output_message_id: output.id,
+      completed_at: new Date().toISOString(),
+    }).catch(() => undefined);
+  }
+  return {
+    conversationId: run.conversation_id,
+    userMessage: publicMessage(userMessage),
+    assistantMessage: publicMessage(output),
+    run: publicRun({ ...run, status: "completed", output_message_id: output.id }),
+    replayed: true,
+  };
+}
+
+async function validateRequestAttachments(
+  userId: string,
+  conversationId: string,
+  userMessageId: string,
+  input: AssistantRequest,
+  deps: Dependencies,
+) {
+  if (new Set(input.attachmentIds).size !== input.attachmentIds.length) {
+    throw new AssistantResponseError("assistant_attachment_invalid", 400, "Une même photo ne peut être jointe qu’une fois.");
+  }
+  const attachments = await Promise.all(input.attachmentIds.map((attachmentId) => deps.repository.findAttachment(userId, attachmentId)));
+  if (attachments.some((attachment) => !attachment
+    || attachment.conversation_id !== conversationId
+    || (attachment.message_id !== null && attachment.message_id !== userMessageId)
+    || attachment.status !== "available"
+    || (attachment.media_type !== "image/jpeg" && attachment.media_type !== "image/png"))) {
+    throw new AssistantResponseError("assistant_attachment_invalid", 400, "Une photo jointe est invalide, indisponible ou n’appartient pas à cette conversation.");
+  }
+  const ownedAttachments = attachments.filter((attachment): attachment is NonNullable<typeof attachment> => Boolean(attachment));
+  if (ownedAttachments.reduce((total, attachment) => total + attachment.byte_size, 0) > 40 * 1024 * 1024) {
+    throw new AssistantResponseError("assistant_attachment_invalid", 413, "Les photos jointes dépassent 40 Mo au total.");
+  }
+  return ownedAttachments;
+}
+
+async function claimRunOrRecover(userId: string, input: AssistantRequest, candidate: AssistantRun, deps: Dependencies) {
+  if (candidate.status === "completed") {
+    const replay = await replayStoredRun(userId, input, candidate, deps);
+    if (replay) return { replay };
+    throw new AssistantResponseError("assistant_request_failed", 409, "La demande est terminée, mais sa réponse enregistrée est introuvable.");
+  }
+  if (candidate.status === "running") {
+    const replay = await replayStoredRun(userId, input, candidate, deps);
+    if (replay) return { replay };
+    throw new AssistantResponseError("assistant_request_in_progress", 409, "Cette demande est déjà en cours.");
+  }
+  if (candidate.status !== "queued" && candidate.status !== "failed") {
+    throw new AssistantResponseError("assistant_request_failed", 409, "Cette demande est déjà terminée et ne peut pas être relancée.");
+  }
+
+  const claimed = await deps.repository.claimRun({
+    userId,
+    runId: candidate.id,
+    expectedStatus: candidate.status,
+    provider: SOMA_ASSISTANT_PROVIDER,
+    startedAt: new Date().toISOString(),
+  });
+  if (claimed) return { run: claimed };
+
+  const latest = await deps.repository.findRunByRequestId(userId, input.requestId);
+  if (latest) {
+    const replay = await replayStoredRun(userId, input, latest, deps);
+    if (replay) return { replay };
+    if (latest.status === "queued" || latest.status === "running") {
+      throw new AssistantResponseError("assistant_request_in_progress", 409, "Cette demande est déjà en cours.");
+    }
+  }
+  throw new AssistantResponseError("assistant_request_failed", 409, "Cette demande n’a pas pu être reprise en toute sécurité.");
+}
+
 export async function respondToAssistant(
   userId: string,
   rawInput: unknown,
@@ -184,117 +297,112 @@ export async function respondToAssistant(
   const input = requestSchema.parse(rawInput);
   const deps = options.dependencies ?? dependencies;
   const existingRun = await deps.repository.findRunByRequestId(userId, input.requestId);
+  const userMessageId = idempotentMessageId(userId, input.requestId);
+  let conversation: NonNullable<Awaited<ReturnType<typeof findAssistantConversation>>>;
+  let userMessage: AssistantMessage;
+  let ownedAttachments: Awaited<ReturnType<typeof validateRequestAttachments>>;
+  let run: AssistantRun;
+
   if (existingRun) {
-    if (existingRun.status === "completed" && existingRun.output_message_id) {
-      const [userMessage, output] = await Promise.all([
-        existingRun.triggering_message_id ? deps.repository.findMessage(userId, existingRun.triggering_message_id) : null,
-        deps.repository.findMessage(userId, existingRun.output_message_id),
-      ]);
-      if (userMessage && output) {
-        const persistedAttachmentIds = attachmentIdsFromParts(userMessage.parts);
-        if ((!input.editMessageId && existingRun.conversation_id !== input.conversationId)
-          || textFromParts(userMessage.parts) !== input.text
-          || persistedAttachmentIds.length !== input.attachmentIds.length
-          || persistedAttachmentIds.some((id, index) => id !== input.attachmentIds[index])) {
-          throw new AssistantResponseError("assistant_request_failed", 409, "Cette clé d’idempotence a déjà été utilisée pour une autre demande.");
-        }
-        return {
-        conversationId: existingRun.conversation_id,
-        userMessage: publicMessage(userMessage),
-        assistantMessage: publicMessage(output),
-        run: publicRun(existingRun),
-        replayed: true,
-        };
-      }
+    const replay = await replayStoredRun(userId, input, existingRun, deps);
+    if (replay) return replay;
+    if (existingRun.status === "completed") {
+      throw new AssistantResponseError("assistant_request_failed", 409, "La demande est terminée, mais sa réponse enregistrée est introuvable.");
     }
-    if (existingRun.status === "queued" || existingRun.status === "running") {
+    if (existingRun.status === "running") {
       throw new AssistantResponseError("assistant_request_in_progress", 409, "Cette demande est déjà en cours.");
     }
-    throw new AssistantResponseError("assistant_request_failed", 409, "Cette clé d’idempotence correspond à une demande déjà terminée en erreur.");
-  }
+    if (existingRun.status !== "queued" && existingRun.status !== "failed") {
+      throw new AssistantResponseError("assistant_request_failed", 409, "Cette demande est déjà terminée et ne peut pas être relancée.");
+    }
+    if (!existingRun.triggering_message_id) {
+      throw new AssistantResponseError("assistant_request_failed", 409, "Le message enregistré pour cette demande est introuvable.");
+    }
+    const persisted = await deps.repository.findMessage(userId, existingRun.triggering_message_id);
+    if (!persisted) throw new AssistantResponseError("assistant_request_failed", 409, "Le message enregistré pour cette demande est introuvable.");
+    assertRequestMatchesMessage(input, existingRun, persisted);
+    const foundConversation = await deps.repository.findConversation(userId, existingRun.conversation_id);
+    if (!foundConversation) throw new AssistantResponseError("conversation_not_found", 404, "Conversation introuvable.");
+    conversation = foundConversation;
+    userMessage = persisted;
+    ownedAttachments = await validateRequestAttachments(userId, conversation.id, userMessage.id, input, deps);
+    await Promise.all(ownedAttachments.map((attachment) => deps.repository.attachAttachmentToMessage(
+      userId, conversation.id, attachment.id, userMessage.id,
+    )));
+    const claimed = await claimRunOrRecover(userId, input, existingRun, deps);
+    if ("replay" in claimed) return claimed.replay;
+    run = claimed.run;
+  } else {
+    let persisted = await deps.repository.findMessage(userId, userMessageId);
+    const foundConversation = persisted
+      ? await deps.repository.findConversation(userId, persisted.conversation_id)
+      : input.editMessageId && input.conversationId
+        ? await deps.repository.forkConversationAtMessage({ userId, conversationId: input.conversationId, messageId: input.editMessageId })
+        : input.conversationId
+          ? await deps.repository.findConversation(userId, input.conversationId)
+          : await deps.repository.createConversation(userId);
+    if (!foundConversation) throw new AssistantResponseError("conversation_not_found", 404, "Conversation introuvable.");
+    conversation = foundConversation;
+    ownedAttachments = await validateRequestAttachments(userId, conversation.id, userMessageId, input, deps);
 
-  const conversation = input.editMessageId && input.conversationId
-    ? await deps.repository.forkConversationAtMessage({ userId, conversationId: input.conversationId, messageId: input.editMessageId })
-    : input.conversationId
-      ? await deps.repository.findConversation(userId, input.conversationId)
-      : await deps.repository.createConversation(userId);
-  if (!conversation) throw new AssistantResponseError("conversation_not_found", 404, "Conversation introuvable.");
-
-  if (new Set(input.attachmentIds).size !== input.attachmentIds.length) {
-    throw new AssistantResponseError("assistant_attachment_invalid", 400, "Une même photo ne peut être jointe qu’une fois.");
-  }
-  const userMessageId = idempotentMessageId(userId, input.requestId);
-  const attachmentIds = input.attachmentIds;
-  const attachments = await Promise.all(attachmentIds.map((attachmentId) => deps.repository.findAttachment(userId, attachmentId)));
-  if (attachments.some((attachment) => !attachment
-    || attachment.conversation_id !== conversation.id
-    || (attachment.message_id !== null && attachment.message_id !== userMessageId)
-    || attachment.status !== "available"
-    || (attachment.media_type !== "image/jpeg" && attachment.media_type !== "image/png"))) {
-    throw new AssistantResponseError("assistant_attachment_invalid", 400, "Une photo jointe est invalide, indisponible ou n’appartient pas à cette conversation.");
-  }
-  const ownedAttachments = attachments.filter((attachment): attachment is NonNullable<typeof attachment> => Boolean(attachment));
-  if (ownedAttachments.reduce((total, attachment) => total + attachment.byte_size, 0) > 40 * 1024 * 1024) {
-    throw new AssistantResponseError("assistant_attachment_invalid", 413, "Les photos jointes dépassent 40 Mo au total.");
-  }
-
-  let userMessage = await deps.repository.findMessage(userId, userMessageId);
-  if (!userMessage) {
+    if (persisted) {
+      if (persisted.conversation_id !== conversation.id) {
+        throw new AssistantResponseError("assistant_request_failed", 409, "Cette clé d’idempotence a déjà été utilisée pour une autre demande.");
+      }
+      assertInputMatchesMessage(input, conversation.id, persisted);
+    } else {
+      try {
+        persisted = await deps.repository.appendMessage({
+          userId,
+          conversationId: conversation.id,
+          role: "user",
+          parts: [
+            { type: "text", text: input.text },
+            ...ownedAttachments.map((attachment) => ({ type: "attachment" as const, attachmentId: attachment.id, mediaType: attachment.media_type })),
+          ],
+          id: userMessageId,
+        });
+      } catch (error) {
+        persisted = await deps.repository.findMessage(userId, userMessageId);
+        if (!persisted) throw error;
+        if (persisted.conversation_id !== conversation.id) {
+          throw new AssistantResponseError("assistant_request_failed", 409, "Cette clé d’idempotence a déjà été utilisée pour une autre demande.");
+        }
+        assertInputMatchesMessage(input, conversation.id, persisted);
+      }
+    }
+    userMessage = persisted;
+    await Promise.all(ownedAttachments.map((attachment) => deps.repository.attachAttachmentToMessage(
+      userId, conversation.id, attachment.id, userMessage.id,
+    )));
+    if (!conversation.title) {
+      await deps.repository.updateConversation(userId, conversation.id, { title: conversationTitle(input.text) }).catch(() => undefined);
+    }
+    const quality = classifyAssistantQuality({ text: input.text, attachmentCount: ownedAttachments.length });
     try {
-      userMessage = await deps.repository.appendMessage({
+      run = await deps.repository.createRun({
         userId,
         conversationId: conversation.id,
-        role: "user",
-        parts: [
-          { type: "text", text: input.text },
-          ...ownedAttachments.map((attachment) => ({ type: "attachment" as const, attachmentId: attachment.id, mediaType: attachment.media_type })),
-        ],
-        id: userMessageId,
+        triggeringMessageId: userMessage.id,
+        requestId: input.requestId,
+        quality,
+        model: SOMA_ASSISTANT_MODEL,
+        promptVersion: SOMA_ASSISTANT_PROMPT_VERSION,
       });
     } catch (error) {
-      userMessage = await deps.repository.findMessage(userId, userMessageId);
-      if (!userMessage) throw error;
+      const racedRun = await deps.repository.findRunByRequestId(userId, input.requestId);
+      if (!racedRun) throw error;
+      run = racedRun;
     }
+    if (run.conversation_id !== conversation.id || run.triggering_message_id !== userMessage.id) {
+      throw new AssistantResponseError("assistant_request_failed", 409, "Cette clé d’idempotence a déjà été utilisée pour une autre demande.");
+    }
+    const claimed = await claimRunOrRecover(userId, input, run, deps);
+    if ("replay" in claimed) return claimed.replay;
+    run = claimed.run;
   }
-  if (userMessage.conversation_id !== conversation.id || textFromParts(userMessage.parts) !== input.text) {
-    throw new AssistantResponseError("assistant_request_failed", 409, "Cette clé d’idempotence a déjà été utilisée pour une autre demande.");
-  }
-  const persistedAttachmentIds = attachmentIdsFromParts(userMessage.parts);
-  if (persistedAttachmentIds.length !== attachmentIds.length || persistedAttachmentIds.some((id, index) => id !== attachmentIds[index])) {
-    throw new AssistantResponseError("assistant_request_failed", 409, "Cette clé d’idempotence a déjà été utilisée avec d’autres pièces jointes.");
-  }
-  await Promise.all(ownedAttachments.map((attachment) => deps.repository.attachAttachmentToMessage(
-    userId,
-    conversation.id,
-    attachment.id,
-    userMessage.id,
-  )));
-  if (!conversation.title) {
-    await deps.repository.updateConversation(userId, conversation.id, { title: conversationTitle(input.text) }).catch(() => undefined);
-  }
-  const quality = classifyAssistantQuality({ text: input.text, attachmentCount: ownedAttachments.length });
-  let run;
-  try {
-    run = await deps.repository.createRun({
-      userId,
-      conversationId: conversation.id,
-      triggeringMessageId: userMessage.id,
-      requestId: input.requestId,
-      quality,
-      model: SOMA_ASSISTANT_MODEL,
-      promptVersion: SOMA_ASSISTANT_PROMPT_VERSION,
-    });
-  } catch (error) {
-    const racedRun = await deps.repository.findRunByRequestId(userId, input.requestId);
-    if (racedRun) throw new AssistantResponseError("assistant_request_in_progress", 409, "Cette demande est déjà en cours.");
-    throw error;
-  }
-  await deps.repository.updateRun(userId, run.id, {
-    status: "running",
-    provider: SOMA_ASSISTANT_PROVIDER,
-    started_at: new Date().toISOString(),
-  });
 
+  const quality = run.quality;
   try {
     const messageRows = await deps.repository.listMessages(userId, conversation.id, conversation.summary_through_sequence);
     const history = modelHistory(

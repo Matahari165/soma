@@ -234,6 +234,24 @@ export async function findAssistantRunByRequestId(userId: string, requestId: str
   return rows[0] ?? null;
 }
 
+export async function claimAssistantRun(input: {
+  userId: string;
+  runId: string;
+  expectedStatus: "queued" | "failed";
+  provider: string;
+  startedAt: string;
+}) {
+  const rows = await assistantDatabaseRequest<RunRow[]>(
+    `assistant_runs?user_id=eq.${assistantFilter(input.userId)}&id=eq.${assistantFilter(input.runId)}&status=eq.${input.expectedStatus}`,
+    {
+      method: "PATCH",
+      prefer: "return=representation",
+      body: { status: "running", provider: input.provider, started_at: input.startedAt, completed_at: null, finish_reason: null, error_code: null },
+    },
+  );
+  return rows[0] ?? null;
+}
+
 export async function updateAssistantRun(userId: string, runId: string, update: Partial<Pick<RunRow, "status" | "provider" | "model" | "usage" | "web_searched" | "error_code" | "output_message_id">> & { started_at?: string; completed_at?: string; finish_reason?: string }) {
   const rows = await assistantDatabaseRequest<RunRow[]>(
     `assistant_runs?user_id=eq.${assistantFilter(userId)}&id=eq.${assistantFilter(runId)}`,

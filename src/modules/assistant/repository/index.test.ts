@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { assistantDatabaseRequest } from "./database";
 import {
   attachAssistantAttachmentToMessage,
+  claimAssistantRun,
   createAssistantAttachment,
   deleteAssistantAttachmentMetadata,
   findAssistantAttachment,
@@ -62,6 +63,40 @@ describe("assistant attachment repository", () => {
     expect(paths[2]).toContain(`user_id=eq.${userId}&id=eq.${attachmentId}`);
     expect(paths[3]).toContain(`user_id=eq.${userId}&conversation_id=eq.${conversationId}&id=eq.${attachmentId}&message_id=is.null`);
     expect(paths[4]).toContain(`user_id=eq.${userId}&id=eq.${attachmentId}`);
+  });
+});
+
+describe("assistant run claims", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("claims queued or failed runs with a conditional update so only one retry can start", async () => {
+    const runId = "00000000-0000-4000-8000-000000000003";
+    vi.mocked(assistantDatabaseRequest).mockResolvedValueOnce([{ id: runId, status: "running" }]);
+    await expect(claimAssistantRun({
+      userId,
+      runId,
+      expectedStatus: "failed",
+      provider: "openai",
+      startedAt: "2026-09-26T12:00:00.000Z",
+    })).resolves.toMatchObject({ id: runId, status: "running" });
+
+    expect(assistantDatabaseRequest).toHaveBeenCalledWith(
+      `assistant_runs?user_id=eq.${userId}&id=eq.${runId}&status=eq.failed`,
+      expect.objectContaining({
+        method: "PATCH",
+        prefer: "return=representation",
+        body: expect.objectContaining({ status: "running", provider: "openai", started_at: "2026-09-26T12:00:00.000Z" }),
+      }),
+    );
+
+    vi.mocked(assistantDatabaseRequest).mockResolvedValueOnce([]);
+    await expect(claimAssistantRun({
+      userId,
+      runId,
+      expectedStatus: "failed",
+      provider: "openai",
+      startedAt: "2026-09-26T12:00:01.000Z",
+    })).resolves.toBeNull();
   });
 });
 

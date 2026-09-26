@@ -30,30 +30,49 @@ function message(input: { id: string; role: "user" | "assistant"; text: string; 
 function setup() {
   const calls: string[] = [];
   const user = message({ id: ids.userMessage, role: "user", text: "Analyse ma semaine", sequence: 1 });
-  const assistant = message({ id: ids.assistantMessage, role: "assistant", text: "Verdict utile", sequence: 2 });
+  const assistant = { ...message({ id: ids.assistantMessage, role: "assistant", text: "Verdict utile", sequence: 2 }), parent_message_id: ids.userMessage };
+  const messages = new Map<string, ReturnType<typeof message>>();
+  let currentRun: Record<string, unknown> | null = null;
+  let failCompletedUpdate = false;
   const repository = {
-    findRunByRequestId: vi.fn(async () => null),
-    findMessage: vi.fn(async (): Promise<ReturnType<typeof message> | null> => null),
+    findRunByRequestId: vi.fn(async () => currentRun),
+    findMessage: vi.fn(async (_userId: string, messageId: string): Promise<ReturnType<typeof message> | null> => messages.get(messageId) ?? null),
     findConversation: vi.fn(async () => ({ id: ids.conversation, title: null, summary: null, summary_through_sequence: 0 })),
     createConversation: vi.fn(async () => ({ id: ids.conversation, title: null, summary: null, summary_through_sequence: 0 })),
     forkConversationAtMessage: vi.fn(async () => ({ id: ids.forkConversation, title: null, summary: null, summary_through_sequence: 0 })),
-    appendMessage: vi.fn(async (input: { conversationId: string; role: string; parts: Array<Record<string, unknown>> }) => {
+    appendMessage: vi.fn(async (input: { conversationId: string; role: string; parts: Array<Record<string, unknown>>; parentMessageId?: string }) => {
       calls.push(`append:${input.role}`);
-      return input.role === "user"
+      const row = input.role === "user"
         ? { ...user, conversation_id: input.conversationId, parts: input.parts }
-        : { ...assistant, conversation_id: input.conversationId };
+        : { ...assistant, conversation_id: input.conversationId, parent_message_id: input.parentMessageId ?? null };
+      if (messages.has(row.id)) throw new Error("Assistant message already exists.");
+      messages.set(row.id, row as ReturnType<typeof message>);
+      return row;
     }),
     attachAttachmentToMessage: vi.fn(async () => ({ id: "55555555-5555-4555-8555-555555555555" })),
-    createRun: vi.fn(async () => {
+    createRun: vi.fn(async (input: { conversationId: string; triggeringMessageId: string; requestId: string; quality: string }) => {
       calls.push("run:create");
-      return { id: ids.run };
+      if (currentRun?.request_id === input.requestId) return currentRun;
+      currentRun = { id: ids.run, status: "queued", conversation_id: input.conversationId, triggering_message_id: input.triggeringMessageId, output_message_id: null, request_id: input.requestId, quality: input.quality, provider: null, model: SOMA_ASSISTANT_MODEL, error_code: null };
+      return currentRun;
+    }),
+    claimRun: vi.fn(async (input: { expectedStatus: string; provider: string; startedAt: string }) => {
+      calls.push(`run:claim:${input.expectedStatus}`);
+      if (!currentRun || currentRun.status !== input.expectedStatus) return null;
+      currentRun = { ...currentRun, status: "running", provider: input.provider, started_at: input.startedAt, error_code: null };
+      return currentRun;
     }),
     updateRun: vi.fn(async (_userId: string, _runId: string, update: { status?: string }) => {
       calls.push(`run:${update.status}`);
-      return { id: ids.run, ...update };
+      if (update.status === "completed" && failCompletedUpdate) {
+        failCompletedUpdate = false;
+        throw new Error("Run completion was not acknowledged.");
+      }
+      currentRun = { ...currentRun, ...update };
+      return { id: ids.run, ...currentRun };
     }),
     updateConversation: vi.fn(async () => ({ id: ids.conversation })),
-    listMessages: vi.fn(async () => [user]),
+    listMessages: vi.fn(async () => Array.from(messages.values())),
     findAttachment: vi.fn(async () => null),
     loadAttachment: vi.fn(async () => null),
   };
@@ -62,7 +81,7 @@ function setup() {
     return { text: "Verdict utile", finishReason: "stop", totalUsage: { inputTokens: 12, outputTokens: 4 } };
   });
   const createAgent = vi.fn(() => ({ generate }));
-  return { calls, repository, createAgent, generate, user, assistant };
+  return { calls, repository, createAgent, generate, user, assistant, messages, failNextCompletedUpdate: () => { failCompletedUpdate = true; } };
 }
 
 describe("respondToAssistant", () => {
@@ -86,14 +105,12 @@ describe("respondToAssistant", () => {
 
     expect(result).toMatchObject({ conversationId: ids.conversation, replayed: false, assistantMessage: { id: ids.assistantMessage }, userMessage: { id: ids.userMessage }, run: { status: "completed", provider: SOMA_ASSISTANT_PROVIDER, model: SOMA_ASSISTANT_MODEL } });
     expect(state.calls).toEqual([
-      "append:user", "run:create", "run:running", "generate", "append:assistant", "run:completed",
+      "append:user", "run:create", "run:claim:queued", "generate", "append:assistant", "run:completed",
     ]);
     expect(state.repository.createRun).toHaveBeenCalledWith(expect.objectContaining({ model: SOMA_ASSISTANT_MODEL }));
-    expect(state.repository.updateRun).toHaveBeenCalledWith(
-      "user-1",
-      ids.run,
-      expect.objectContaining({ status: "running", provider: SOMA_ASSISTANT_PROVIDER }),
-    );
+    expect(state.repository.claimRun).toHaveBeenCalledWith(expect.objectContaining({
+      userId: "user-1", runId: ids.run, expectedStatus: "queued", provider: SOMA_ASSISTANT_PROVIDER,
+    }));
     expect(state.generate).toHaveBeenCalledWith(expect.objectContaining({
       messages: [{ role: "user", content: "Analyse ma semaine" }],
     }));
@@ -136,6 +153,69 @@ describe("respondToAssistant", () => {
     expect(result.replayed).toBe(true);
     expect(state.createAgent).not.toHaveBeenCalled();
     expect(state.repository.appendMessage).not.toHaveBeenCalled();
+  });
+
+  it("retries a failed generation under the same request id without appending a second user message", async () => {
+    const state = setup();
+    const request = {
+      requestId: "request-retry-123", text: "Analyse ma semaine", conversationId: ids.conversation,
+    };
+    state.generate.mockRejectedValueOnce(new Error("Temporary model failure."));
+
+    await expect(respondToAssistant("user-1", request, { apiKey: "test-key", dependencies: state as never }))
+      .rejects.toMatchObject({ code: "assistant_generation_failed", status: 502 });
+    expect(state.repository.appendMessage.mock.calls.filter(([input]) => input.role === "user")).toHaveLength(1);
+
+    const result = await respondToAssistant("user-1", request, { apiKey: "test-key", dependencies: state as never });
+
+    expect(result).toMatchObject({ replayed: false, userMessage: { id: ids.userMessage }, assistantMessage: { id: ids.assistantMessage } });
+    expect(state.repository.appendMessage.mock.calls.filter(([input]) => input.role === "user")).toHaveLength(1);
+    expect(state.repository.createRun).toHaveBeenCalledTimes(1);
+    expect(state.repository.claimRun.mock.calls.map(([claim]) => claim.expectedStatus)).toEqual(["queued", "failed"]);
+    expect(state.generate).toHaveBeenCalledTimes(2);
+  });
+
+  it("recovers a saved answer when the run completion update failed", async () => {
+    const state = setup();
+    const request = {
+      requestId: "request-response-saved-123", text: "Analyse ma semaine", conversationId: ids.conversation,
+    };
+    state.failNextCompletedUpdate();
+
+    await expect(respondToAssistant("user-1", request, { apiKey: "test-key", dependencies: state as never }))
+      .rejects.toMatchObject({ code: "assistant_generation_failed", status: 502 });
+    expect(state.messages.get(ids.assistantMessage)).toMatchObject({ role: "assistant", parent_message_id: ids.userMessage });
+
+    const result = await respondToAssistant("user-1", request, { apiKey: "test-key", dependencies: state as never });
+
+    expect(result).toMatchObject({ replayed: true, assistantMessage: { id: ids.assistantMessage } });
+    expect(state.generate).toHaveBeenCalledTimes(1);
+    expect(state.repository.appendMessage.mock.calls.filter(([input]) => input.role === "user")).toHaveLength(1);
+    expect(state.repository.appendMessage.mock.calls.filter(([input]) => input.role === "assistant")).toHaveLength(1);
+  });
+
+  it("only lets one concurrent retry claim a failed run", async () => {
+    const state = setup();
+    const request = {
+      requestId: "request-concurrent-123", text: "Analyse ma semaine", conversationId: ids.conversation,
+    };
+    state.generate.mockRejectedValueOnce(new Error("Initial generation failed."));
+    await expect(respondToAssistant("user-1", request, { apiKey: "test-key", dependencies: state as never }))
+      .rejects.toMatchObject({ code: "assistant_generation_failed" });
+
+    let releaseGeneration!: () => void;
+    state.generate.mockImplementationOnce(() => new Promise((resolve) => {
+      releaseGeneration = () => resolve({ text: "Verdict utile", finishReason: "stop", totalUsage: { inputTokens: 12, outputTokens: 4 } });
+    }) as never);
+    const firstRetry = respondToAssistant("user-1", request, { apiKey: "test-key", dependencies: state as never });
+    await Promise.resolve();
+    const competingRetry = respondToAssistant("user-1", request, { apiKey: "test-key", dependencies: state as never });
+    await expect(competingRetry).rejects.toMatchObject({ code: "assistant_request_in_progress", status: 409 });
+    expect(state.generate).toHaveBeenCalledTimes(2);
+    releaseGeneration();
+    await expect(firstRetry).resolves.toMatchObject({ replayed: false });
+    expect(state.repository.claimRun.mock.calls.map(([claim]) => claim.expectedStatus)).toEqual(["queued", "failed", "failed"]);
+    expect(state.repository.appendMessage.mock.calls.filter(([input]) => input.role === "user")).toHaveLength(1);
   });
 
   it("replays an edited request from its fork without mistaking the source conversation for a conflict", async () => {
@@ -183,6 +263,35 @@ describe("respondToAssistant", () => {
     expect((generated as { content: Array<{ data?: Uint8Array }> }).content[1]?.data).toEqual(new Uint8Array([1, 2, 3]));
   });
 
+  it("reuses the persisted photo attachment when retrying a failed generation", async () => {
+    const state = setup();
+    const attachment = {
+      id: "55555555-5555-4555-8555-555555555555", user_id: "user-1", conversation_id: ids.conversation,
+      message_id: null, object_path: "assistant/user-1/conversation/photo.jpg", media_type: "image/jpeg", byte_size: 3,
+      sha256: createHash("sha256").update(new Uint8Array([1, 2, 3])).digest("hex"), purpose: "context", status: "available",
+      created_at: "2026-09-21T12:00:00.000Z",
+    };
+    state.repository.findAttachment.mockResolvedValue(attachment as never);
+    state.repository.loadAttachment.mockResolvedValue({ arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer } as never);
+    state.generate.mockRejectedValueOnce(new Error("Temporary model failure."));
+    const request = {
+      requestId: "request-photo-retry-123", text: "Analyse cette photo", conversationId: ids.conversation,
+      attachmentIds: [attachment.id],
+    };
+
+    await expect(respondToAssistant("user-1", request, { apiKey: "test-key", dependencies: state as never }))
+      .rejects.toMatchObject({ code: "assistant_generation_failed" });
+    const result = await respondToAssistant("user-1", request, { apiKey: "test-key", dependencies: state as never });
+
+    expect(result.userMessage.parts).toEqual([
+      { type: "text", text: "Analyse cette photo" },
+      { type: "attachment", attachmentId: attachment.id, mediaType: "image/jpeg" },
+    ]);
+    expect(state.repository.appendMessage.mock.calls.filter(([input]) => input.role === "user")).toHaveLength(1);
+    expect(state.repository.attachAttachmentToMessage).toHaveBeenCalledTimes(2);
+    expect(state.generate).toHaveBeenCalledTimes(2);
+  });
+
   it("rejects an attachment that belongs to another conversation", async () => {
     const state = setup();
     state.repository.findAttachment.mockResolvedValueOnce({
@@ -216,6 +325,30 @@ describe("respondToAssistant", () => {
       role: "user",
     }));
     expect(result.conversationId).toBe(ids.forkConversation);
+  });
+
+  it("retries an edited turn in its original fork instead of creating another conversation", async () => {
+    const state = setup();
+    state.repository.findConversation.mockImplementation(async (_userId, conversationId) => ({
+      id: conversationId, title: "Conversation reprise", summary: null, summary_through_sequence: 0,
+    }) as never);
+    state.generate.mockRejectedValueOnce(new Error("Temporary model failure."));
+    const request = {
+      requestId: "request-edit-retry-123",
+      text: "Question corrigée",
+      conversationId: ids.conversation,
+      editMessageId: ids.editedMessage,
+    };
+
+    await expect(respondToAssistant("user-1", request, { apiKey: "test-key", dependencies: state as never }))
+      .rejects.toMatchObject({ code: "assistant_generation_failed" });
+    const result = await respondToAssistant("user-1", request, { apiKey: "test-key", dependencies: state as never });
+
+    expect(result.conversationId).toBe(ids.forkConversation);
+    expect(state.repository.forkConversationAtMessage).toHaveBeenCalledTimes(1);
+    expect(state.repository.appendMessage.mock.calls.filter(([input]) => input.role === "user")).toHaveLength(1);
+    expect(state.repository.findConversation).toHaveBeenCalledWith("user-1", ids.forkConversation);
+    expect(state.generate).toHaveBeenCalledTimes(2);
   });
 
   it("rejects an edit without its source conversation", async () => {
