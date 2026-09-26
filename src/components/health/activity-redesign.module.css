@@ -427,7 +427,7 @@
 .activitySportDetail > .activitySportSource { margin-bottom: 24px; }
 .activitySportDetail .trendGrid :global(.metric-trend-card) :global(header) { align-items: flex-start; justify-content: center; gap: 4px; }
 .activitySportDetail .trendGrid :global(.metric-trend-card) :global(header > div) { width: 100%; margin: 0; justify-items: center; }
-.activitySportDetail .trendGrid :global(.metric-trend-card) :global(header .metric-trend-card__average) { width: 100%; min-height: 16px; color: var(--effort-muted); font: 400 10px/14px var(--font-soma-mono), ui-monospace, monospace; text-align: center; white-space: normal; }
+.activitySportDetail .trendGrid :global(.metric-trend-card) :global(header .metric-trend-card__average) { width: 100%; min-height: 16px; color: var(--effort-muted); font: 400 11px/16px var(--font-soma-mono), ui-monospace, monospace; text-align: center; white-space: normal; }
 .activitySportDetail .trendGrid :global(.metric-trend-card__current[data-tone="positive"] .metric-reading > span),
 .activitySportDetail .trendGrid :global(.metric-trend-card__reference-delta[data-tone="positive"]) { color: var(--lab-signal); }
 .activitySportDetail .trendGrid :global(.metric-trend-card__current[data-tone="negative"] .metric-reading > span),

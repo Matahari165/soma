@@ -237,6 +237,9 @@ export function activityRegularity(exercises: readonly ExerciseSummary[], refere
   if (!exercises.some((exercise) => exercise.date >= currentStart && exercise.date <= referenceDate)) {
     current.percent = null;
   }
+  if (!exercises.some((exercise) => exercise.date >= previousStart && exercise.date <= previousEnd)) {
+    previous.percent = null;
+  }
   return {
     ...current,
     previousPercent: previous.percent,

@@ -107,4 +107,13 @@ describe("activity sport analytics", () => {
 
     expect(result).toEqual({ activeWeeks: 0, totalWeeks: 6, percent: null, previousPercent: 20, deltaPoints: null });
   });
+
+  it("does not invent an increase when the previous window has no imported workouts", () => {
+    const result = activityRegularity([
+      exercise({ id: "older", date: "2026-07-01", type: "RUNNING" }),
+      exercise({ id: "current", date: "2026-09-03", type: "RUNNING" }),
+    ], "2026-09-21");
+
+    expect(result).toMatchObject({ activeWeeks: 1, percent: 17, previousPercent: null, deltaPoints: null });
+  });
 });
