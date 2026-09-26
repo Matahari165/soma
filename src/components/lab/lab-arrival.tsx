@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { Suspense, use, useEffect, useState, type ReactNode } from "react";
 import { arrivalMessageFor, type ArrivalActivity, type ArrivalMessage } from "@/domain/lab/arrival-message";
-import type { PersonalLabActivitySummary } from "@/domain/lab/activity-summary";
+import type { PersonalLabActivitySummariesResult, PersonalLabActivitySummary } from "@/domain/lab/activity-summary";
 import { JOURNAL_PROGRESS_EVENT } from "./personal-lab-journal-workspace";
 import { HomeSomaEntry } from "./home-soma-entry";
+import activityStyles from "./lab-activity-summary.module.css";
 
 export type LabArrivalPersonalization = {
   name: string;
@@ -23,6 +24,7 @@ export function LabArrival({
   todayDate,
   personalization,
   activitySummaries,
+  activitySummariesPromise,
 }: {
   theme: string;
   date: string;
@@ -33,6 +35,7 @@ export function LabArrival({
   onDateChange?: (date: string) => void;
   personalization?: LabArrivalPersonalization;
   activitySummaries?: readonly PersonalLabActivitySummary[];
+  activitySummariesPromise?: Promise<PersonalLabActivitySummariesResult>;
 }) {
   const [message, setMessage] = useState<ArrivalMessage>(() => personalization?.initialMessage ?? {
     moment: "morning",
@@ -42,6 +45,7 @@ export function LabArrival({
   const [journalProgress, setJournalProgress] = useState<JournalProgress | null>(null);
   const activity = personalization?.activity;
   const dayActivitySummary = activitySummaries?.find((summary) => summary.date === selectedDate && summary.count > 0) ?? null;
+  const keepsActivityGeometry = activitySummaries !== undefined || activitySummariesPromise !== undefined;
   useEffect(() => {
     if (!personalization) return;
     const refresh = () => setMessage(arrivalMessageFor({ name: personalization.name, timeZone: personalization.timeZone, activity: personalization.activity }));
@@ -64,7 +68,7 @@ export function LabArrival({
   }, []);
   return <section className="lab-arrival" data-arrival-theme={theme} aria-label="Personal lab home" key={theme}>
     <div className="arrival-composition" style={{ position: "relative" }}>
-      <div className={`arrival-heading${personalization ? " arrival-heading--personalized" : ""}${dayActivitySummary ? " arrival-heading--with-activity" : ""}`} style={{ position: "relative", zIndex: 1 }}>
+      <div className={`arrival-heading${personalization ? " arrival-heading--personalized" : ""}${dayActivitySummary || keepsActivityGeometry ? " arrival-heading--with-activity" : ""}`} style={{ position: "relative", zIndex: 1 }}>
         <h1 id="arrival-title" tabIndex={-1}>
           {message.lines.map((line, index) => <span className={`arrival-title-line${personalization && index > 0 ? " arrival-title-line--secondary" : ""}`} key={`${message.moment}-${index}`}><span>{line}</span></span>)}
         </h1>
@@ -79,21 +83,48 @@ export function LabArrival({
             <span style={{ transform: `scaleX(${journalProgress.total > 0 ? Math.min(1, journalProgress.count / journalProgress.total) : 0})` }} />
           </div>
         </div>}
-        {dayActivitySummary && <section className="arrival-activity-summary" aria-label={`Activités du ${date}`}>
-          <div className="arrival-activity-summary__identity">
-            <strong>{dayActivitySummary.activity.name.trim() || activityTypeLabel(dayActivitySummary.activity.type)}</strong>
-          </div>
-          <dl className="arrival-activity-summary__metrics">
-            {activitySummaryMetrics(dayActivitySummary).map(({ label, value }) => <div key={label}>
-              <dt>{label}</dt>
-              <dd>{value}</dd>
-            </div>)}
-          </dl>
-        </section>}
+        <ActivitySummarySlot date={date} selectedDate={selectedDate} summaries={activitySummaries} promise={activitySummariesPromise} />
         {personalization && <HomeSomaEntry visible={!selectedDate || !todayDate || selectedDate === todayDate} />}
       </div>
       <div className="arrival-art" style={{ position: "relative", zIndex: 1 }}>{radar}</div>
     </div>
+  </section>;
+}
+
+function ActivitySummarySlot({ date, selectedDate, summaries, promise }: {
+  date: string;
+  selectedDate?: string;
+  summaries?: readonly PersonalLabActivitySummary[];
+  promise?: Promise<PersonalLabActivitySummariesResult>;
+}) {
+  if (summaries !== undefined) return <ActivitySummary date={date} selectedDate={selectedDate} summaries={summaries} />;
+  if (!promise) return null;
+  return <div className={activityStyles.slot}>
+    <Suspense fallback={<span className={activityStyles.state} role="status" aria-live="polite">Chargement des activités…</span>}>
+      <ResolvedActivitySummary date={date} selectedDate={selectedDate} promise={promise} />
+    </Suspense>
+  </div>;
+}
+
+function ResolvedActivitySummary({ date, selectedDate, promise }: { date: string; selectedDate?: string; promise: Promise<PersonalLabActivitySummariesResult> }) {
+  const result = use(promise);
+  if (result.status === "unavailable") return <span className={activityStyles.state} role="status">Activités indisponibles.</span>;
+  return <ActivitySummary date={date} selectedDate={selectedDate} summaries={result.summaries} />;
+}
+
+function ActivitySummary({ date, selectedDate, summaries }: { date: string; selectedDate?: string; summaries: readonly PersonalLabActivitySummary[] }) {
+  const summary = summaries.find((item) => item.date === selectedDate && item.count > 0);
+  if (!summary) return <span className={activityStyles.state} role="status">Aucun résumé d’activité disponible.</span>;
+  return <section className="arrival-activity-summary" aria-label={`Activités du ${date}`}>
+    <div className="arrival-activity-summary__identity">
+      <strong>{summary.activity.name.trim() || activityTypeLabel(summary.activity.type)}</strong>
+    </div>
+    <dl className="arrival-activity-summary__metrics">
+      {activitySummaryMetrics(summary).map(({ label, value }) => <div key={label}>
+        <dt>{label}</dt>
+        <dd>{value}</dd>
+      </div>)}
+    </dl>
   </section>;
 }
 

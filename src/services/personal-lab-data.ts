@@ -1,15 +1,19 @@
-import { DEFAULT_NUTRITION_TARGETS, nutritionTargetsForEffort } from "@/domain/nutrition-targets";
+import { apiMealToRecord, MEAL_SLOTS, type MealJournalData } from "@/domain/meal-record";
+import { DEFAULT_NUTRITION_TARGETS, nutritionTargetsForEffort, type NutritionTargets } from "@/domain/nutrition-targets";
 import type { AnalysisPeriod } from "@/domain/lab/matrix";
 import type { MetricRole } from "@/domain/lab/metrics";
 import type { ConfirmedMealRecord } from "@/domain/lab/meals";
+import type { Meal } from "@/domain/meals";
 import type { SomaUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { createCloudflareAdminClient, labMatrixInputRevision } from "@/lib/cloudflare/db";
 import { getLabMatrixCacheObject, LAB_MATRIX_CACHE_VERSION } from "@/lib/lab-matrix-cache";
 import { elapsedServerMs, serverNow } from "@/lib/performance";
 import { loadJournalData } from "@/services/journal";
-import { loadConfirmedMealRecords } from "@/services/meals";
-import { loadNutritionTargetsForUser } from "@/services/nutrition-targets";
+import { listMeals, loadConfirmedMealRecords } from "@/services/meals";
+import { mealToApi } from "@/services/meal-api";
+import { confirmedMealRecordFor } from "@/services/meal-analysis-records";
+import { loadNutritionTargetsForUser, loadNutritionTargetsStateForUser } from "@/services/nutrition-targets";
 import { listSupplementDefinitions, listSupplementEntries } from "@/services/supplements";
 import { addDays, average, buildTodayData, dateInTimezone, effortContextForDate, joinObservations, toNumber, type CalendarDay, type DailyCheckin, type HealthDay, type ScoreDay } from "./personal-lab-today";
 import { analysisWindowForPeriods, isCachedMatrix, labMatrixCacheKey, overnightFingerprint, readWindowForStream } from "./personal-lab-analysis";
@@ -23,6 +27,8 @@ type MatrixCacheState = {
   cachedMatrix: PersonalLabSnapshot["matrix"] | null;
   cacheMs: number;
 } | null;
+
+type NutritionTargetLoadState = { targets: NutritionTargets; persisted: boolean; fresh: boolean };
 
 /**
  * Starts every independent source read once. The facade can then compose the
@@ -66,14 +72,43 @@ export function loadPersonalLabData(userId: string, options: { periods?: Analysi
   // Converting the query builders to real promises starts every independent
   // read now and lets the streamed sections share the same database results.
   const profile = admin.from("profiles").select("timezone").eq("user_id", userId).maybeSingle().then((result) => result);
-  const targetsPromise = loadNutritionTargetsForUser(userId);
+  const targetsState: Promise<NutritionTargetLoadState> = loadNutritionTargetsStateForUser(userId)
+    .then((state) => ({ ...state, fresh: true }))
+    .catch(() => ({ targets: DEFAULT_NUTRITION_TARGETS, persisted: false, fresh: false }));
+  const targetsPromise = targetsState.then((state) => state.targets);
   const targets = targetsPromise.catch(() => DEFAULT_NUTRITION_TARGETS);
   const health = Promise.resolve(healthQuery);
   const scores = Promise.resolve(scoresQuery);
   const calendars = calendarQuery.then((result) => result);
   const checkins = checkinQuery.then((result) => result);
-  const connections = admin.from("provider_connections").select("provider,status,last_synced_at").eq("user_id", userId).in("provider", ["google_health", "google_calendar"]).then((result) => result);
-  const meals: Promise<readonly ConfirmedMealRecord[]> = loadConfirmedMealRecords(userId, readWindow ? { from: readWindow.start } : {});
+  // Read each meal range once so totals and the selected editable journal can
+  // share the cached repository promise without an /api/meals hydration read.
+  const mealRows: Promise<Meal[]> = options.includeAnalysis
+    ? Promise.resolve(listMeals(userId, readWindow ? { from: readWindow.start } : {}))
+    : Promise.resolve(profile).then((profileResult) => {
+      if (profileResult.error) throw new Error("Your Personal Lab is temporarily unavailable.");
+      const todayDate = dateInTimezone(profileResult.data?.timezone ?? "Europe/Paris");
+      return Promise.resolve(listMeals(userId, { from: readWindow!.start, to: todayDate }));
+    });
+  const meals: Promise<readonly ConfirmedMealRecord[]> = mealRows.then((rows) => rows.flatMap((meal) => {
+    const record = confirmedMealRecordFor(meal);
+    return record ? [record] : [];
+  }));
+  const initialMealData: Promise<{ date: string; data: MealJournalData }> = mealRows.then(async (rows) => {
+    const profileResult = await profile;
+    const todayDate = dateInTimezone(profileResult.data?.timezone ?? "Europe/Paris");
+    const todayMeals = rows.filter((meal) => meal.mealDate === todayDate).map((meal) => apiMealToRecord(mealToApi(meal)));
+    return {
+      date: todayDate,
+      data: {
+        date: todayDate,
+        meals: Object.fromEntries(MEAL_SLOTS.map((slot) => [slot, todayMeals.find((meal) => meal.slot === slot) ?? null])) as MealJournalData["meals"],
+      },
+    };
+  });
+  const connections = options.includeAnalysis
+    ? admin.from("provider_connections").select("provider,status,last_synced_at").eq("user_id", userId).in("provider", ["google_health", "google_calendar"]).then((result) => result)
+    : Promise.resolve({ data: [], error: null });
   const supplements: Promise<PersonalLabSupplements> = Promise.resolve(profile).then(async (profileResult) => {
     const today = dateInTimezone(profileResult.data?.timezone ?? "Europe/Paris");
     const [definitions, entries] = await Promise.all([
@@ -87,20 +122,19 @@ export function loadPersonalLabData(userId: string, options: { periods?: Analysi
     timeZone: profileResult.data?.timezone ?? "Europe/Paris",
     mealRecords,
     automaticHealth: health.then((healthRows) => (healthRows.error ? [] : healthRows.data ?? []) as HealthDay[], () => []),
-    dailyTargetKcal: targetsPromise.then((value) => value.caloriesKcal.likely).catch(() => null),
+    dailyTargetKcal: targetsState.then((state) => state.fresh ? state.targets.caloriesKcal.likely : null),
     ensureDefaults: false,
   }));
-  const core: Promise<PersonalLabCoreData> = Promise.all([profile, health, scores, calendars, checkins, connections]).then((results) => {
+  const core: Promise<PersonalLabCoreData> = Promise.all([profile, health, scores, calendars, checkins]).then((results) => {
     const failed = results.find((result) => result.error);
     if (failed?.error) throw new Error("Your Personal Lab is temporarily unavailable.");
-    const [profileResult, healthResult, scoresResult, calendarResult, checkinResult, connectionResult] = results;
+    const [profileResult, healthResult, scoresResult, calendarResult, checkinResult] = results;
     return {
       timeZone: profileResult.data?.timezone ?? "Europe/Paris",
       health: (healthResult.data ?? []) as HealthDay[],
       scores: (scoresResult.data ?? []) as ScoreDay[],
       calendars: (calendarResult.data ?? []) as CalendarDay[],
       checkins: (checkinResult.data ?? []).map((row) => ({ ...row, caffeine_servings: toNumber(row.caffeine_servings), alcohol_servings: toNumber(row.alcohol_servings) })) as DailyCheckin[],
-      connections: connectionResult.data ?? [],
     };
   });
   const detail: Promise<{ metricPreferenceResult: { data: Array<{ metric_id: string; role: MetricRole }> | null; error: unknown }; matrixCache: MatrixCacheState }> | null = options.includeAnalysis ? Promise.all([
@@ -112,7 +146,7 @@ export function loadPersonalLabData(userId: string, options: { periods?: Analysi
     return { metricPreferenceResult: metricPreferenceResult as { data: Array<{ metric_id: string; role: MetricRole }> | null; error: unknown }, matrixCache };
   }) : null;
 
-  return { matrixCacheKey, profile, targets, health, scores, calendars, checkins, connections, meals, supplements, journal, core, detail };
+  return { matrixCacheKey, profile, targets, targetsState, health, scores, calendars, checkins, connections, meals, mealRows, initialMealData, supplements, journal, core, detail };
 }
 
 export type PersonalLabMatrixLoad = {

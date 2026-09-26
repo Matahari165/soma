@@ -1,17 +1,21 @@
 import { after } from "next/server";
-import { DEFAULT_NUTRITION_TARGETS } from "@/domain/nutrition-targets";
+import { DEFAULT_NUTRITION_TARGETS, nutritionTargetsForEffort } from "@/domain/nutrition-targets";
+import { apiMealToRecord, MEAL_SLOTS, type MealJournalData } from "@/domain/meal-record";
+import type { Meal } from "@/domain/meals";
 import type { AnalysisPeriod } from "@/domain/lab/matrix";
 import type { SomaUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { LAB_MATRIX_CACHE_VERSION, putLabMatrixCacheObject } from "@/lib/lab-matrix-cache";
 import { elapsedServerMs, serverNow } from "@/lib/performance";
-import { loadPreviewConfirmedMealRecords } from "@/services/meal-preview";
-import { loadNutritionTargetsForUser } from "@/services/nutrition-targets";
+import { listPreviewMeals, loadPreviewConfirmedMealRecords } from "@/services/meal-preview";
+import { confirmedMealRecordFor } from "@/services/meal-analysis-records";
+import { mealToApi } from "@/services/meal-api";
+import { loadNutritionTargetsStateForUser } from "@/services/nutrition-targets";
 import { loadPersonalLabData, loadPersonalLabMatrixData } from "./personal-lab-data";
 import { saveDailyLabRelationSnapshot } from "./lab-relation-history";
 import { previewData } from "./personal-lab-preview";
 import { buildJournalView, buildOverview, buildPersonalLabMatrix, buildSnapshot } from "./personal-lab-snapshot";
-import { dateInTimezone } from "./personal-lab-today";
+import { dateInTimezone, effortContextForDate } from "./personal-lab-today";
 import type { PersonalLabAnalysisTimings, PersonalLabSnapshot, PersonalLabStream } from "./personal-lab-types";
 
 export type { DailyCheckin, PersonalLabHistoryPoint } from "./personal-lab-today";
@@ -31,6 +35,14 @@ export {
   timingForAutomaticMetric,
 } from "./personal-lab-analysis";
 export { joinObservations, recentAverages } from "./personal-lab-today";
+
+function mealJournalDataFor(mealRows: readonly Meal[], date: string): MealJournalData {
+  const meals = mealRows.filter((meal) => meal.mealDate === date).map((meal) => apiMealToRecord(mealToApi(meal)));
+  return {
+    date,
+    meals: Object.fromEntries(MEAL_SLOTS.map((slot) => [slot, meals.find((meal) => meal.slot === slot) ?? null])) as MealJournalData["meals"],
+  };
+}
 
 type PersonalLabWriteInput = {
   userId: string;
@@ -92,11 +104,21 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
   const includeAnalysis = options.includeAnalysis !== false;
   if (isLocalPreviewMode()) {
     const preview = previewData();
-    const input = { user, timeZone: "Europe/Paris", ...preview, meals: loadPreviewConfirmedMealRecords(user.id), requestedPeriods: options.periods, connections: [
+    const timeZone = "Europe/Paris";
+    const todayDate = dateInTimezone(timeZone);
+    const mealRows = listPreviewMeals(user.id);
+    const previewMeals = mealRows.flatMap((meal) => {
+      const record = confirmedMealRecordFor(meal);
+      return record ? [record] : [];
+    });
+    const input = { user, timeZone, ...preview, meals: previewMeals, requestedPeriods: options.periods, connections: [
       { provider: "google_health", status: "connected", last_synced_at: new Date().toISOString() },
       { provider: "google_calendar", status: "connected", last_synced_at: new Date().toISOString() },
     ] };
-    const targetsPromise = loadNutritionTargetsForUser(user.id).catch(() => DEFAULT_NUTRITION_TARGETS);
+    const targetStatePromise = loadNutritionTargetsStateForUser(user.id)
+      .then((state) => ({ ...state, fresh: true }))
+      .catch(() => ({ targets: DEFAULT_NUTRITION_TARGETS, persisted: false, fresh: false }));
+    const targetsPromise = targetStatePromise.then((state) => state.targets);
     const analysisResult = includeAnalysis ? targetsPromise.then((targets) => {
       const buildStartedAt = serverNow();
       const snapshot = buildSnapshot({ ...input, targets });
@@ -107,7 +129,18 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
     }) : null;
     return {
       overview: targetsPromise.then((targets) => buildOverview({ ...input, targets, greetingName: user.displayName })),
-      journal: Promise.resolve(buildJournalView(input.timeZone, input.journal, input.meals, input.health)),
+      activityDate: Promise.resolve(todayDate),
+      journal: targetStatePromise.then((targetState) => {
+        const effortTargetContext = effortContextForDate(input.scores, todayDate);
+        return buildJournalView(input.timeZone, input.journal, input.meals, input.health, undefined, {
+          mealData: mealJournalDataFor(mealRows, todayDate),
+          targets: targetState.targets,
+          effectiveTargets: nutritionTargetsForEffort(targetState.targets, effortTargetContext),
+          effortTargetContext,
+          targetsPersisted: targetState.persisted,
+          targetsFresh: targetState.fresh,
+        });
+      }),
       analysis: analysisResult?.then((result) => result.snapshot) ?? null,
       analysisTimings: analysisResult?.then((result) => result.timings, () => ({ cacheMs: 0, dataMs: 0, buildMs: 0, cacheStatus: "unavailable" as const })) ?? null,
     };
@@ -115,17 +148,33 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
 
   const dataStartedAt = serverNow();
   const loaded = loadPersonalLabData(user.id, { periods: options.periods, includeAnalysis });
-  const overview = Promise.all([loaded.core, loaded.meals, loaded.targets]).then(([core, meals, targets]) => buildOverview({ ...core, meals, targets, greetingName: user.displayName }));
-  const journal = Promise.all([loaded.profile, loaded.journal, loaded.meals, loaded.supplements]).then(([profileResult, journalData, meals, supplements]) => {
+  const activityDate = Promise.resolve(loaded.profile).then((profileResult) => {
     if (profileResult.error) throw new Error("Your Personal Lab is temporarily unavailable.");
-    return buildJournalView(profileResult.data?.timezone ?? "Europe/Paris", journalData, meals, [], supplements);
+    return dateInTimezone(profileResult.data?.timezone ?? "Europe/Paris");
   });
-  const analysisResult = includeAnalysis ? Promise.all([loaded.core, loaded.journal, loaded.meals, loaded.targets, loaded.detail!]).then(([core, journalData, meals, targets, detail]) => {
+  const overview = Promise.all([loaded.core, loaded.meals, loaded.targets]).then(([core, meals, targets]) => buildOverview({ ...core, meals, targets, greetingName: user.displayName }));
+  const journal = Promise.all([loaded.profile, loaded.journal, loaded.meals, loaded.supplements, loaded.initialMealData, loaded.targetsState, loaded.core]).then(([profileResult, journalData, meals, supplements, initialMealData, targetState, core]) => {
+    if (profileResult.error) throw new Error("Your Personal Lab is temporarily unavailable.");
+    const timeZone = profileResult.data?.timezone ?? "Europe/Paris";
+    const todayDate = dateInTimezone(timeZone);
+    const effortTargetContext = effortContextForDate(core.scores, todayDate);
+    return buildJournalView(timeZone, journalData, meals, [], supplements, {
+      mealData: initialMealData.date === todayDate ? initialMealData.data : undefined,
+      targets: targetState.targets,
+      effectiveTargets: nutritionTargetsForEffort(targetState.targets, effortTargetContext),
+      effortTargetContext,
+      targetsPersisted: targetState.persisted,
+      targetsFresh: targetState.fresh,
+    });
+  });
+  const analysisResult = includeAnalysis ? Promise.all([loaded.core, loaded.journal, loaded.meals, loaded.targets, loaded.detail!, loaded.connections]).then(([core, journalData, meals, targets, detail, connectionResult]) => {
+    if (connectionResult.error) throw new Error("Your Personal Lab is temporarily unavailable.");
     const dataMs = elapsedServerMs(dataStartedAt);
     const buildStartedAt = serverNow();
     const snapshot = buildSnapshot({
       user,
       ...core,
+      connections: connectionResult.data ?? [],
       journal: journalData,
       meals,
       targets,
@@ -165,6 +214,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
   return {
     overview,
     journal,
+    activityDate,
     analysis: analysisResult?.then((result) => result.snapshot) ?? null,
     analysisTimings: analysisResult?.then((result) => result.timings, () => ({ cacheMs: 0, dataMs: 0, buildMs: 0, cacheStatus: "unavailable" as const })) ?? null,
   };
@@ -186,7 +236,7 @@ export async function getPersonalLabSnapshotWithTimings(user: SomaUser, options:
   return { snapshot, timings };
 }
 
-export async function getPersonalLabMatrixWithTimings(user: SomaUser, period: AnalysisPeriod) {
+export async function getPersonalLabMatrixWithTimings(user: SomaUser, period: AnalysisPeriod, options: { persist?: boolean } = {}) {
   if (isLocalPreviewMode()) {
     const preview = previewData();
     const buildStartedAt = serverNow();
@@ -226,18 +276,20 @@ export async function getPersonalLabMatrixWithTimings(user: SomaUser, period: An
   }
 
   const cacheStatus = loaded.cacheStatus;
-  schedulePersonalLabWrites({
-    userId: user.id,
-    matrix,
-    todayDate: loaded.todayDate,
-    inputRevision: loaded.inputRevision,
-    cacheKey: loaded.cacheKey,
-    writeCache: cacheStatus !== "hit",
-    cacheStatus,
-  });
+  if (options.persist !== false) {
+    schedulePersonalLabWrites({
+      userId: user.id,
+      matrix,
+      todayDate: loaded.todayDate,
+      inputRevision: loaded.inputRevision,
+      cacheKey: loaded.cacheKey,
+      writeCache: cacheStatus !== "hit",
+      cacheStatus,
+    });
+  }
   return { matrix, timings: { ...loaded.timings, buildMs, cacheStatus } };
 }
 
-export async function getPersonalLabMatrix(user: SomaUser, period: AnalysisPeriod) {
-  return (await getPersonalLabMatrixWithTimings(user, period)).matrix;
+export async function getPersonalLabMatrix(user: SomaUser, period: AnalysisPeriod, options: { persist?: boolean } = {}) {
+  return (await getPersonalLabMatrixWithTimings(user, period, options)).matrix;
 }

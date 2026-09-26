@@ -166,6 +166,9 @@ type Props = {
   initialTargets?: NutritionTargets;
   initialEffectiveTargets?: NutritionTargets;
   initialEffortTargetContext?: EffortTargetContext;
+  initialTargetsPersisted?: boolean;
+  initialTargetsFresh?: boolean;
+  initialTargetsDate?: string;
   hideAddMealButton?: boolean;
   allowTargetEditing?: boolean;
   showCalorieProgress?: boolean;
@@ -173,8 +176,35 @@ type Props = {
 };
 
 type LoadState = "loading" | "ready" | "error";
+type TargetsForDate = { base: NutritionTargets; effective: NutritionTargets; context: EffortTargetContext };
 
-export function MealJournal({ readOnly = false, date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, allowTargetEditing, showCalorieProgress = true, designVariant = "v1" }: Props) {
+export function reconcileMealJournalData(incoming: MealJournalData, current: MealJournalData | null, previousServer: MealJournalData | null): MealJournalData {
+  if (!current || !previousServer || current.date !== incoming.date || previousServer.date !== incoming.date) return incoming;
+  const meals = { ...incoming.meals };
+  for (const slot of MEAL_SLOTS) {
+    if (JSON.stringify(current.meals[slot]) !== JSON.stringify(previousServer.meals[slot])) {
+      meals[slot] = current.meals[slot];
+    }
+  }
+  return { ...incoming, meals };
+}
+
+export function mergeLocalMealDrafts(loaded: MealJournalData, dateKey: string, cached: MealJournalData["meals"] | undefined, storedNotes: Partial<Record<MealSlot, string>>): MealJournalData {
+  const meals = { ...loaded.meals };
+  for (const slot of MEAL_SLOTS) {
+    if (meals[slot]) continue;
+    const draft = cached?.[slot];
+    if (draft && (draft.note.trim().length > 0 || draft.photos.length > 0)) {
+      meals[slot] = draft;
+      continue;
+    }
+    const storedNote = (storedNotes[slot] ?? "").slice(0, MEAL_NOTE_MAX_LENGTH);
+    if (storedNote.trim()) meals[slot] = { ...emptyMeal(dateKey, slot), note: storedNote };
+  }
+  return { ...loaded, meals };
+}
+
+export function MealJournal({ readOnly = false, date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, initialTargetsPersisted, initialTargetsFresh = false, initialTargetsDate, allowTargetEditing, showCalorieProgress = true, designVariant = "v1" }: Props) {
   const router = useRouter();
   const today = providedToday ?? todayInLocalTime();
   const requestedDate = date ?? initialData?.date ?? today;
@@ -232,7 +262,11 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   const targetBaseRef = useRef(initialTargets ?? DEFAULT_NUTRITION_TARGETS);
   const effectiveTargetsRef = useRef(initialEffectiveTargets ?? initialTargets ?? DEFAULT_NUTRITION_TARGETS);
   const effortTargetContextRef = useRef<EffortTargetContext>(initialEffortTargetContext ?? { effortScore: null, effortCoverage: null, averageEffortScore: null });
-  const targetStateDateRef = useRef(initialTargets ? initialDate : null);
+  const targetStatesByDateRef = useRef(new Map<string, TargetsForDate>());
+  const targetSelectedDateRef = useRef(selectedDate);
+  targetSelectedDateRef.current = selectedDate;
+  const targetStateDateRef = useRef(initialTargetsFresh && initialTargets && initialTargetsDate === selectedDate ? selectedDate : null);
+  const initialMealSnapshotRef = useRef<MealJournalData | null>(initialData ? normalizeData(initialData, initialDate) : null);
   const initialDateRef = useRef(initialDate);
   const loadRequestId = useRef(0);
   // Les mutations sont suivies par créneau : une analyse sur un repas ne bloque
@@ -261,19 +295,8 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   }, []);
 
   const mergeCachedDrafts = useCallback((loaded: MealJournalData, dateKey: string): MealJournalData => {
-    const cached = draftCache.current.get(dateKey);
-    const meals = { ...loaded.meals };
-    for (const slot of MEAL_SLOTS) {
-      if (meals[slot]) continue;
-      const draft = cached?.[slot];
-      if (draft && (draft.note.trim().length > 0 || draft.photos.length > 0)) {
-        meals[slot] = draft;
-        continue;
-      }
-      const storedNote = readStoredDraftNote(dateKey, slot).slice(0, MEAL_NOTE_MAX_LENGTH);
-      if (storedNote.trim()) meals[slot] = { ...emptyMeal(dateKey, slot), note: storedNote };
-    }
-    return { ...loaded, meals };
+    const storedNotes = Object.fromEntries(MEAL_SLOTS.map((slot) => [slot, readStoredDraftNote(dateKey, slot)])) as Partial<Record<MealSlot, string>>;
+    return mergeLocalMealDrafts(loaded, dateKey, draftCache.current.get(dateKey), storedNotes);
   }, []);
 
   const goToDate = useCallback((nextDate: string, options: { push?: boolean } = {}) => {
@@ -342,7 +365,9 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       const current = dataRef.current;
       if (current) stashLocalDrafts(current.date, current.meals);
       setInternalSelectedDate(initialDate);
-      setData(initialData ? normalizeData(initialData, initialDate) : null);
+      const nextServerData = initialData ? normalizeData(initialData, initialDate) : null;
+      initialMealSnapshotRef.current = nextServerData;
+      setData(nextServerData ? mergeCachedDrafts(nextServerData, initialDate) : null);
       setLoadState(initialData ? "ready" : "loading");
       setLoadError(null);
       setFileError(null);
@@ -353,12 +378,20 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     }
     initialDateRef.current = initialDate;
     if (initialData && selectedDate === initialDate) {
-      setData(normalizeData(initialData, selectedDate));
+      const nextServerData = normalizeData(initialData, selectedDate);
+      const mergedData = reconcileMealJournalData(
+        nextServerData,
+        dataRef.current?.date === selectedDate ? dataRef.current : null,
+        initialMealSnapshotRef.current?.date === selectedDate ? initialMealSnapshotRef.current : null,
+      );
+      initialMealSnapshotRef.current = nextServerData;
+      setData(mergeCachedDrafts(mergedData, selectedDate));
       setLoadState("ready");
       return;
     }
+    if (!initialData) initialMealSnapshotRef.current = null;
     void load();
-  }, [initialData, initialDate, load, selectedDate, selectedDateProp, stashLocalDrafts]);
+  }, [initialData, initialDate, load, mergeCachedDrafts, selectedDate, selectedDateProp, stashLocalDrafts]);
 
   // The POST only accepts the job. Polling this small status endpoint lets a
   // resumed tab reconcile the durable result without repeating the XAI call.
@@ -506,6 +539,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     targetBaseRef.current = nextBase;
     effortTargetContextRef.current = nextContext;
     effectiveTargetsRef.current = merged;
+    targetStatesByDateRef.current.set(targetDate, { base: nextBase, effective: merged, context: nextContext });
     setTargets(nextBase);
     setEffectiveTargets(merged);
   }, []);
@@ -546,9 +580,40 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
 
   useEffect(() => {
     const controller = new AbortController();
-    void refreshTargets(controller.signal).catch((error) => {
-      if (error instanceof Error && error.name !== "AbortError") setTargetError("Using local targets: Soma synchronization is unavailable.");
-    });
+    const context = initialEffortTargetContext ?? { effortScore: null, effortCoverage: null, averageEffortScore: null };
+    const hasFreshTargetsForSelectedDate = initialTargetsFresh && initialTargets && initialTargetsDate === selectedDate;
+    if (!hasFreshTargetsForSelectedDate) {
+      void refreshTargets(controller.signal).catch((error) => {
+        if (error instanceof Error && error.name !== "AbortError") setTargetError("Using local targets: Soma synchronization is unavailable.");
+      });
+    } else {
+      const cachedTargets = targetStatesByDateRef.current.get(selectedDate);
+      const localTargets = loadNutritionTargets();
+      const hasCustomizedLocalTargets = JSON.stringify(localTargets) !== JSON.stringify(DEFAULT_NUTRITION_TARGETS);
+      const effectiveContext = cachedTargets?.context ?? context;
+      if (cachedTargets) {
+        applyLoadedTargets(cachedTargets.base, cachedTargets.effective, cachedTargets.context, selectedDate);
+      } else if (initialTargetsPersisted === false && hasCustomizedLocalTargets) {
+        applyLoadedTargets(localTargets, nutritionTargetsForEffort(localTargets, effectiveContext), effectiveContext, selectedDate);
+      } else {
+        const nextEffectiveTargets = initialEffectiveTargets ?? nutritionTargetsForEffort(initialTargets, context);
+        applyLoadedTargets(initialTargets, nextEffectiveTargets, context, selectedDate);
+        saveNutritionTargets(initialTargets);
+      }
+      if (initialTargetsPersisted === false && hasCustomizedLocalTargets) {
+        void fetch("/api/nutrition-targets", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ targets: localTargets }),
+          signal: controller.signal,
+        }).then((response) => {
+          if (!response.ok) throw new Error();
+          setTargetError(null);
+        }).catch((error) => {
+          if (error instanceof Error && error.name !== "AbortError") setTargetError("Local targets could not be synchronized.");
+        });
+      }
+    }
     const interval = window.setInterval(() => {
       void refreshTargets().catch(() => undefined);
     }, 60_000);
@@ -556,7 +621,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       controller.abort();
       window.clearInterval(interval);
     };
-  }, [refreshTargets]);
+  }, [applyLoadedTargets, initialEffectiveTargets, initialEffortTargetContext, initialTargets, initialTargetsDate, initialTargetsFresh, initialTargetsPersisted, refreshTargets, selectedDate]);
 
   useEffect(() => {
     setMealDistributionDraft(mealTargetDistributionOf(targets));
@@ -603,6 +668,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       targetBaseRef.current = next;
       const nextEffective = nutritionTargetsForEffort(next, effortTargetContextRef.current);
       effectiveTargetsRef.current = nextEffective;
+      targetStatesByDateRef.current.set(targetSelectedDateRef.current, { base: next, effective: nextEffective, context: effortTargetContextRef.current });
       setEffectiveTargets(nextEffective);
       saveNutritionTargets(next);
       if (targetSaveTimer.current) clearTimeout(targetSaveTimer.current);
@@ -635,6 +701,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       const nextEffective = nutritionTargetsForEffort(nextTargets, effortTargetContextRef.current);
       targetBaseRef.current = nextTargets;
       effectiveTargetsRef.current = nextEffective;
+      targetStatesByDateRef.current.set(targetSelectedDateRef.current, { base: nextTargets, effective: nextEffective, context: effortTargetContextRef.current });
       setTargets(nextTargets);
       setEffectiveTargets(nextEffective);
       setTargetDistributionError(null);

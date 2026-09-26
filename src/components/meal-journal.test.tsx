@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiMealToRecord } from "@/domain/meal-record";
-import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultRemoveMeal, defaultSave, defaultSetEntryState, firstAvailableMealSlot, groupMealIngredients, mealHistoryDates, mealPhotoLimitMessage, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
+import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultRemoveMeal, defaultSave, defaultSetEntryState, firstAvailableMealSlot, groupMealIngredients, mealHistoryDates, mealPhotoLimitMessage, mergeLocalMealDrafts, reconcileMealJournalData, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 
@@ -10,6 +10,56 @@ const date = "2026-08-31";
 afterEach(() => vi.unstubAllGlobals());
 
 describe("MealJournal", () => {
+  it("keeps local notes, photos, feelings, and an in-progress meal when fresh SSR data changes", () => {
+    const previousServer: MealJournalData = { date, meals: {
+      lunch: null,
+      dinner: null,
+      breakfast: null,
+      snack: null,
+    } };
+    const localDraft: MealJournalData = { date, meals: {
+      ...previousServer.meals,
+      lunch: {
+        id: "local-meal",
+        date,
+        slot: "lunch",
+        note: "À compléter",
+        photos: [{ id: "local-photo", url: "blob:local", filename: "repas.jpg", origin: "homemade" }],
+        analysis: null,
+        mouthHeat: 2,
+        stomachLoad: 3,
+        status: "analyzing",
+      },
+    } };
+    const refreshedServer: MealJournalData = { date, meals: {
+      ...previousServer.meals,
+      dinner: {
+        id: "new-server-meal",
+        date,
+        slot: "dinner",
+        note: "Repas synchronisé",
+        photos: [],
+        analysis: null,
+        mouthHeat: null,
+        stomachLoad: null,
+        status: "draft",
+      },
+    } };
+
+    expect(reconcileMealJournalData(refreshedServer, localDraft, previousServer).meals).toEqual({
+      ...refreshedServer.meals,
+      lunch: localDraft.meals.lunch,
+    });
+  });
+
+  it("restores a saved local note when fresh server meal data has an empty slot", () => {
+    const emptyServerData: MealJournalData = { date, meals: { breakfast: null, lunch: null, snack: null, dinner: null } };
+
+    const merged = mergeLocalMealDrafts(emptyServerData, date, undefined, { lunch: "Note locale à compléter" });
+
+    expect(merged.meals.lunch).toMatchObject({ date, slot: "lunch", note: "Note locale à compléter", status: "draft" });
+  });
+
   it("garde la note modifiable et masque la photo après confirmation", () => {
     const html = renderToStaticMarkup(<MealJournal initialData={{
       date,

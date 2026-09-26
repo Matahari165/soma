@@ -1,6 +1,8 @@
 import type { ArrivalActivity } from "@/domain/lab/arrival-message";
 import type { JournalDay, JournalEntry, JournalVariable } from "@/domain/lab/journal";
 import type { AnalysisPeriod, MatrixRelation } from "@/domain/lab/matrix";
+import type { MealJournalData } from "@/domain/meal-record";
+import type { EffortTargetContext, NutritionTargets } from "@/domain/nutrition-targets";
 import type { LabMetricDefinition, MetricRole } from "@/domain/lab/metrics";
 import type { supplementDefinitionToView, supplementEntryToView } from "@/domain/supplements";
 import type { SomaUser } from "@/lib/auth";
@@ -98,11 +100,23 @@ export type PersonalLabOverview = Pick<PersonalLabSnapshot, "todayDate" | "overn
   timeZone: string;
 };
 
-export type PersonalLabJournal = Pick<PersonalLabSnapshot, "todayDate" | "journal"> & { supplements: PersonalLabSupplements };
+export type PersonalLabJournal = Pick<PersonalLabSnapshot, "todayDate" | "journal"> & {
+  supplements: PersonalLabSupplements;
+  /** One selected date only; full historical meal rows stay on the server. */
+  initialMealData?: MealJournalData;
+  initialTargets?: NutritionTargets;
+  initialEffectiveTargets?: NutritionTargets;
+  initialEffortTargetContext?: EffortTargetContext;
+  initialTargetsPersisted?: boolean;
+  initialTargetsFresh?: boolean;
+  initialTargetsDate?: string;
+};
 
 export type PersonalLabStream = {
   overview: Promise<PersonalLabOverview>;
   journal: Promise<PersonalLabJournal>;
+  /** Resolves as soon as the profile timezone is available, before overview reads finish. */
+  activityDate: Promise<string>;
   analysis: Promise<PersonalLabSnapshot> | null;
   analysisTimings?: Promise<PersonalLabAnalysisTimings> | null;
 };
@@ -132,7 +146,6 @@ export type PersonalLabCoreData = {
   scores: ScoreDay[];
   calendars: CalendarDay[];
   checkins: DailyCheckin[];
-  connections: PersonalLabConnection[];
 };
 
 export type PersonalLabSnapshotInput = {

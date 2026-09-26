@@ -16,6 +16,10 @@ export type PersonalLabActivitySummary = {
   activity: PersonalLabActivityRecord;
 };
 
+export type PersonalLabActivitySummariesResult =
+  | { status: "ready"; summaries: readonly PersonalLabActivitySummary[] }
+  | { status: "unavailable" };
+
 function rankingValue(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : -1;
 }

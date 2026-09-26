@@ -3,7 +3,8 @@ import { journalAchievementsFor } from "@/domain/lab/journal-achievement";
 import { aggregateConfirmedMeals, mealDailySeries, isMealMetric, type ConfirmedMealRecord } from "@/domain/lab/meals";
 import { metricDefinitionsForHealth, metricRoleFor, type MetricRole } from "@/domain/lab/metrics";
 import { isPersonalLabMetricAllowed } from "@/domain/lab/matrix";
-import type { NutritionTargets } from "@/domain/nutrition-targets";
+import type { EffortTargetContext, NutritionTargets } from "@/domain/nutrition-targets";
+import type { MealJournalData } from "@/domain/meal-record";
 import { addDays, buildTodayData, dateInTimezone, joinObservations, type CalendarDay, type DailyCheckin, type HealthDay, type ScoreDay } from "./personal-lab-today";
 import { buildCorrelationMatrix, overnightFingerprint } from "./personal-lab-analysis";
 import type { PersonalLabJournal, PersonalLabJournalData, PersonalLabOverview, PersonalLabSnapshot, PersonalLabSnapshotInput, PersonalLabSupplements } from "./personal-lab-types";
@@ -34,7 +35,14 @@ function journalWithAutomaticEntries(journal: PersonalLabJournalData, meals: rea
   return { ...journal, entries: [...journal.entries, ...automaticEntries] };
 }
 
-export function buildJournalView(timeZone: string, journal: PersonalLabJournalData, meals: readonly ConfirmedMealRecord[] = [], health: readonly AutomaticJournalHealthDay[] = [], supplements: PersonalLabSupplements = { definitions: [], entries: [], error: null }): PersonalLabJournal {
+export function buildJournalView(timeZone: string, journal: PersonalLabJournalData, meals: readonly ConfirmedMealRecord[] = [], health: readonly AutomaticJournalHealthDay[] = [], supplements: PersonalLabSupplements = { definitions: [], entries: [], error: null }, initial?: {
+  mealData?: MealJournalData;
+  targets?: NutritionTargets;
+  effectiveTargets?: NutritionTargets;
+  effortTargetContext?: EffortTargetContext;
+  targetsPersisted?: boolean;
+  targetsFresh?: boolean;
+}): PersonalLabJournal {
   const todayDate = dateInTimezone(timeZone);
   const earliestDate = addDays(todayDate, -6);
   const entries = journalWithAutomaticEntries(journal, meals, health).entries;
@@ -42,6 +50,13 @@ export function buildJournalView(timeZone: string, journal: PersonalLabJournalDa
   return {
     todayDate,
     supplements,
+    ...(initial?.mealData ? { initialMealData: initial.mealData } : {}),
+    ...(initial?.targets ? { initialTargets: initial.targets } : {}),
+    ...(initial?.effectiveTargets ? { initialEffectiveTargets: initial.effectiveTargets } : {}),
+    ...(initial?.effortTargetContext ? { initialEffortTargetContext: initial.effortTargetContext } : {}),
+    ...(initial?.targetsPersisted === undefined ? {} : { initialTargetsPersisted: initial.targetsPersisted }),
+    ...(initial?.targetsFresh === undefined ? {} : { initialTargetsFresh: initial.targetsFresh }),
+    ...(initial?.targetsFresh ? { initialTargetsDate: todayDate } : {}),
     journal: {
       variables: journal.variables,
       entries: entries.filter((entry) => entry.entryDate >= earliestDate && entry.entryDate <= todayDate),
