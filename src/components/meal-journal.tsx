@@ -192,9 +192,13 @@ export function reconcileMealJournalData(incoming: MealJournalData, current: Mea
 export function mergeLocalMealDrafts(loaded: MealJournalData, dateKey: string, cached: MealJournalData["meals"] | undefined, storedNotes: Partial<Record<MealSlot, string>>): MealJournalData {
   const meals = { ...loaded.meals };
   for (const slot of MEAL_SLOTS) {
-    if (meals[slot]) continue;
     const draft = cached?.[slot];
-    if (draft && (draft.note.trim().length > 0 || draft.photos.length > 0)) {
+    const hasDraftContent = draft && (draft.note.trim().length > 0 || draft.photos.length > 0);
+    if (meals[slot]) {
+      if (hasDraftContent && draft.id === meals[slot]?.id) meals[slot] = draft;
+      continue;
+    }
+    if (hasDraftContent) {
       meals[slot] = draft;
       continue;
     }

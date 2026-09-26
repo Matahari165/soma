@@ -60,6 +60,29 @@ describe("MealJournal", () => {
     expect(merged.meals.lunch).toMatchObject({ date, slot: "lunch", note: "Note locale à compléter", status: "draft" });
   });
 
+  it("prefers the cached edit for the same meal ID but keeps a different server meal", () => {
+    const cachedDraft: NonNullable<MealJournalData["meals"]["lunch"]> = {
+      id: "meal-existing",
+      date,
+      slot: "lunch",
+      note: "Note locale modifiée",
+      photos: [{ id: "photo-local", url: "blob:photo", filename: "repas.jpg", origin: "homemade" }],
+      analysis: null,
+      mouthHeat: 2,
+      stomachLoad: 3,
+      status: "draft",
+    };
+    const cached: MealJournalData["meals"] = { breakfast: null, lunch: cachedDraft, snack: null, dinner: null };
+    const oldServerMeal = { ...cachedDraft, note: "Ancienne note serveur", photos: [], mouthHeat: null, stomachLoad: null };
+    const replacementServerMeal = { ...oldServerMeal, id: "meal-replacement", note: "Nouveau repas serveur" };
+
+    const sameId = mergeLocalMealDrafts({ date, meals: { lunch: oldServerMeal } }, date, cached, {});
+    const differentId = mergeLocalMealDrafts({ date, meals: { lunch: replacementServerMeal } }, date, cached, {});
+
+    expect(sameId.meals.lunch).toEqual(cachedDraft);
+    expect(differentId.meals.lunch).toEqual(replacementServerMeal);
+  });
+
   it("stashes an unsaved photo draft before controlled date navigation loads another day", () => {
     const meals: MealJournalData["meals"] = {
       breakfast: null,
