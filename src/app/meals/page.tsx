@@ -151,7 +151,27 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
         {initialData ? (
           <section className={`${styles.journal} meals-page-journal`} aria-labelledby="meals-journal-title" data-scroll-reveal="journal">
             <h2 id="meals-journal-title" className={styles.visuallyHidden}>Meal journal</h2>
-            <MealJournal date={requestedDate} today={today} initialData={initialData} variant="lab" className="meal-journal-lab" historyDays={7} publishMealTotals readOnly showCalorieProgress={false} />
+            <MealJournal
+              date={requestedDate}
+              today={today}
+              initialData={initialData}
+              initialTargets={targetsResult.ok ? targetsResult.value.targets : undefined}
+              initialEffectiveTargets={targetsResult.ok ? targetsResult.value.effectiveTargets : undefined}
+              initialEffortTargetContext={targetsResult.ok ? {
+                effortScore: targetsResult.value.effortScore,
+                effortCoverage: targetsResult.value.effortCoverage,
+                averageEffortScore: targetsResult.value.averageEffortScore,
+              } : undefined}
+              initialTargetsPersisted={targetsResult.ok ? targetsResult.value.persisted : undefined}
+              initialTargetsFresh={targetsResult.ok}
+              initialTargetsDate={targetsResult.ok ? requestedDate : undefined}
+              variant="lab"
+              className="meal-journal-lab"
+              historyDays={7}
+              publishMealTotals
+              readOnly
+              showCalorieProgress={false}
+            />
           </section>
         ) : <MealsInitialLoadError kind="meals" />}
         {nutritionResult.ok
