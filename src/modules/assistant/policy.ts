@@ -4,6 +4,7 @@ export type AssistantPolicy = { quality: AssistantQuality; model: string; maxSte
 type PolicyInput = { text: string; attachmentCount?: number; explicitlyRequestsWeb?: boolean };
 
 const deepSignals = [
+  /(?:relations?|analyses?).{0,80}(?:temporalit[ée]s|fen[eê]tres|toutes? les p[ée]riodes)/iu,
   /analyse (?:en profondeur|compl[eè]te)/iu,
   /(?:cr[ée]e|fais|construis|adapte|pr[ée]pare).{0,40}(?:plan|programme|marathon|semi-marathon|course|comp[ée]tition)/iu,
   /(?:plan|programme).{0,40}(?:course|musculation|entra[iî]nement|nutrition)/iu,
@@ -11,6 +12,8 @@ const deepSignals = [
   /(?:croise|corr[ée]lation|relation entre)/iu,
 ];
 const balancedSignals = [
+  /(?:r[ée]sume|zones? cardiaques|donn[ée]es brutes|HRV|glucose|s[ée]ances? de boxe|sessions? de boxe)/iu,
+  /(?:compare|progression|tendance|pourquoi|avis|objectif|performance)/iu,
   /(?:compare|progression|tendance|pourquoi|avis|objectif|performance|analyse|[ée]value|bilan)/iu,
   /(?:combien|quel(?:le)? (?:allure|vitesse|charge|poids|zone|fr[ée]quence|cible)|battements par minute|\bbpm\b)/iu,
   /(?:donn[ée]es|s[ée]ances?|activit[ée]s?|course|courir|running).{0,60}(?:derni[eè]res?|pass[ée]es?)\s+(?:(?:\d+|deux|trois|quatre|six|huit)\s+)?semaines?/iu,

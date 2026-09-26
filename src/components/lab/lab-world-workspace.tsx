@@ -165,6 +165,16 @@ export function LabWorldWorkspace({
   }, [activeDate, overview]);
 
   const radarPresentation = OBSERVATORY_RADAR_PRESENTATION;
+  const insightRevision = JSON.stringify({
+    date: todayDate,
+    timeZone: overview?.timeZone,
+    sleep: overview?.today.sleepMinutes,
+    recovery: overview?.today.recoveryScore,
+    effort: overview?.today.effortScore,
+    coverage: overview?.today.effortCoverage,
+    history: overview?.today.history.map(({ date, sleepMinutes, recoveryScore }) => ({ date, sleepMinutes, recoveryScore })),
+    activities: activitySummaries,
+  });
   const activeRadar = radarData ? (
     primaryChartPresentation === "rings"
       ? <ObservatoryRings data={radarData} date={activeDate} key={activeDate} />
@@ -211,6 +221,7 @@ export function LabWorldWorkspace({
         onDateChange={setSelectedDate}
         personalization={personalization}
         activitySummaries={activitySummaries}
+        insightRevision={insightRevision}
       />
     </div>
     <div className="lab-world" lang="fr">

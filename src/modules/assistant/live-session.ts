@@ -288,7 +288,10 @@ export async function respondToAssistantLiveDelegation(
       });
     const responseText = textFromAssistantMessage(result.assistantMessage);
     if (!responseText) throw new AssistantLiveError("assistant_live_session_failed", 502, "Soma n’a pas produit de réponse vocale.");
-    return { delegationId: parsed.data.delegationId, responseText: asPublicVoiceText(responseText) };
+    const memoryStatus = "memoryStatus" in result ? result.memoryStatus : null;
+    const warning = memoryStatus && typeof memoryStatus === "object" && "state" in memoryStatus && memoryStatus.state === "retry_pending"
+      ? "Une partie de l’historique ancien est temporairement indisponible. Soma réessaiera au prochain message." : null;
+    return { delegationId: parsed.data.delegationId, responseText: asPublicVoiceText(warning ? `${warning} ${responseText}` : responseText), ...(memoryStatus ? { memoryStatus } : {}) };
   } catch (error) {
     if (error instanceof AssistantLiveError) throw error;
     if (error instanceof AssistantResponseError || error instanceof PreviewChatError) {

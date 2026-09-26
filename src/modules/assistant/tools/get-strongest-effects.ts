@@ -9,7 +9,7 @@ import { getPersonalLabSnapshot } from "@/services/personal-lab";
 import { executeAuditedAssistantTool } from "./audited-tool";
 
 const inputSchema = z.object({
-  period: z.union([z.literal(15), z.literal(30), z.literal(90), z.literal("all")]),
+  period: z.union([z.literal(15), z.literal(30), z.literal(90), z.literal("all")]).default(90),
   requireTemporalStability: z.boolean().default(false),
 });
 
@@ -48,7 +48,7 @@ export function createGetStrongestEffectsTool(context: { userId: string; runId: 
       toolName: "getStrongestEffects",
       toolCallId: options.toolCallId,
       arguments: input,
-      execute: () => loadAssistantStrongestEffects(context.userId, input.period, input.requireTemporalStability),
+      execute: () => loadAssistantStrongestEffects(context.userId, input.period ?? 90, input.requireTemporalStability ?? false),
     }),
   });
 }

@@ -9,7 +9,7 @@ function result(cursor: string | null, returnedItems: number, complete: boolean)
     output: { manifest: {
       dataset: "daily_health", requestedPeriod: { from: "2026-01-01", to: "2026-04-30" },
       coveredPeriod: { from: "2026-01-01", to: "2026-04-30" }, timezone: "Europe/Zurich",
-      totalItems: 120, returnedItems, hasMore: !complete, nextCursor: complete ? null : "next-page",
+      totalItems: 120, totalKnown: true, returnedItems, hasMore: !complete, nextCursor: complete ? null : "next-page",
       complete, generatedAt: "2026-09-23T10:00:00.000Z",
     } },
   };
@@ -49,4 +49,28 @@ describe("assistant evidence summary", () => {
       period: { from: "2026-01-01", to: "2026-04-30" }, coveredPeriod: null, itemCount: 0,
     });
   });
+});
+
+it("uses only the latest persisted summary checkpoint when counting an exhaustive history", () => {
+  function job(processedItems: number, complete: boolean) {
+    return { toolName: "summarizeSomaData", input: { query: { dataset: "activities", period: { from: "2020-01-01", to: "2020-01-31" }, activityTypes: ["BOXING"] } },
+      output: { jobId: "test-job", manifest: { dataset: "activities", requestedPeriod: { from: "2020-01-01", to: "2020-01-31" },
+        coveredPeriod: { from: "2020-01-01", to: "2020-01-31" }, processedItems, totalItems: 600, complete, hasMore: !complete, generatedAt: "2020-02-01T00:00:00Z" } } };
+  }
+  expect(dataSummaryFromSteps([{ toolResults: [job(200, false)] }, { toolResults: [job(600, true)] }]))
+    .toMatchObject({ itemCount: 600, label: "Données Soma consultées", domains: ["effort"] });
+});
+
+it("preserves bounded analysis evidence without inventing source samples or dates", () => {
+  const page = (offset: number, hasMore: boolean) => ({ toolName: "queryLabAnalyses", input: { periods: [90, "all"], offset }, output: { periods: [90, "all"], relations: [{}, {}], pagination: { hasMore } } });
+  const summary = dataSummaryFromSteps([{ toolResults: [page(0, true), page(0, true), page(2, false), { toolName: "getStrongestEffects", input: { period: 30 }, output: { period: 30, relations: [{}] } }] }]);
+  expect(summary).toMatchObject({ period: null, coveredPeriod: null, itemCount: 0, domains: [], toolStats: [
+    { toolName: "queryLabAnalyses", itemCount: 4, complete: true, periods: ["90", "all"] },
+    { toolName: "getStrongestEffects", itemCount: 1, complete: true, periods: ["30"] },
+  ] });
+});
+
+it("does not imply exhaustive analysis coverage when only a final offset page was read", () => {
+  const result = { toolName: "queryLabAnalyses", input: { periods: [90], offset: 40 }, output: { periods: [90], relations: [{}], pagination: { hasMore: false } } };
+  expect(dataSummaryFromSteps([{ toolResults: [result] }])).toMatchObject({ label: "Analyses Soma consultées · analyse partielle", toolStats: [{ complete: false }] });
 });
