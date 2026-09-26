@@ -217,7 +217,7 @@ export interface LabMealCardProps {
   disabled?: boolean;
   designVariant?: MealDesignVariant;
   targets?: NutritionTargets;
-  analysisProgress?: { stage?: "connecting" | "preparing" | "queued" | "analyzing"; phase?: string; dishType?: string; foods: string[] } | null;
+  analysisProgress?: { stage?: "connecting" | "preparing" | "queued" | "analyzing" | "finalizing"; phase?: string; dishType?: string; foods: string[] } | null;
   onFiles: (files: File[]) => void | Promise<void>;
   onRemovePhoto: (photoId: string) => void;
   onPhotoComment?: (photoId: string, comment: string) => void;
@@ -234,7 +234,7 @@ export interface LabMealCardProps {
 
 function MealAnalysisScreen({ slot, stage, note, photoCount, phase, onCancel }: {
   slot: MealSlot;
-  stage: "connecting" | "preparing" | "queued" | "analyzing";
+  stage: "connecting" | "preparing" | "queued" | "analyzing" | "finalizing";
   note: string;
   photoCount: number;
   onCancel: () => void;
@@ -245,11 +245,20 @@ function MealAnalysisScreen({ slot, stage, note, photoCount, phase, onCancel }: 
     preparing: "Préparation des photos…",
     queued: "Analyse en attente…",
     analyzing: "Analyse du repas…",
+    finalizing: "Enregistrement des résultats…",
   }[stage];
-  const activeStep = stage === "connecting" || stage === "preparing" ? 0 : stage === "queued" ? 1 : 2;
-  const steps = ["Préparer", "En attente", "Analyser"];
+  const activeStep = stage === "connecting" || stage === "preparing" ? 0 : stage === "finalizing" ? 2 : 1;
+  const steps = ["Connexion", "Analyse", "Résultats"];
+  const [elapsed, setElapsed] = useState(0);
+  const statusRef = useRef<HTMLParagraphElement | null>(null);
+  useEffect(() => { statusRef.current?.focus({ preventScroll: true }); }, []);
+  useEffect(() => {
+    const started = Date.now();
+    const timer = window.setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
-  return <article className={`${styles.analysisScreen} ${styles.personalLabType}`} aria-labelledby={`meal-${slot}-title`} aria-busy="true" data-purpose={`meal-${slot}-analyzing`}>
+  return <article className={`${styles.analysisScreen} ${styles.personalLabType}`} aria-labelledby={`meal-${slot}-title`} data-purpose={`meal-${slot}-analyzing`}>
     <div className={styles.analysisScreenTop}>
       <h3 id={`meal-${slot}-title`}>{SLOT_LABELS[slot]}</h3>
     </div>
@@ -258,12 +267,13 @@ function MealAnalysisScreen({ slot, stage, note, photoCount, phase, onCancel }: 
       {photoCount > 0 && <p className={styles.analysisPhotoCount}>{photoCount} {photoCount === 1 ? "photo" : "photos"}</p>}
       <ol className={styles.analysisSteps} aria-label="Progression de l’analyse">
         {steps.map((step, index) => <li key={step} data-state={index < activeStep ? "complete" : index === activeStep ? "active" : "upcoming"} aria-current={index === activeStep ? "step" : undefined}>
-          <span aria-hidden="true">0{index + 1}</span>{step}
+          <span className={styles.analysisStepMarker} aria-hidden="true">{index < activeStep ? <Check size={14} /> : `0${index + 1}`}</span>{step}
         </li>)}
       </ol>
-      <p className={styles.analysisScreenTitle} role="status" aria-live="polite" aria-atomic="true">{phase?.trim() || label}</p>
+      <p ref={statusRef} tabIndex={-1} className={styles.analysisScreenTitle} role="status" aria-live="polite" aria-atomic="true">{phase?.trim() || label}</p>
+      <p className={styles.analysisElapsed}>{elapsed} s écoulées{elapsed >= 30 ? " · Traitement toujours en cours." : ""}</p>
     </div>
-    <button type="button" className={styles.analysisCancel} onClick={onCancel}>Annuler l’analyse</button>
+    <button type="button" className={styles.analysisCancel} disabled={stage === "finalizing"} onClick={onCancel}>Annuler l’analyse</button>
   </article>;
 }
 
@@ -306,12 +316,11 @@ export function LabMealCard({
 
   const status = meal?.status ?? "draft";
   const isSkipped = meal?.entryState === "skipped";
-  const isAnalyzing = status === "analyzing" || status === "accepted";
+  const isAnalyzing = status === "analyzing" || status === "accepted" || Boolean(analysisProgress);
   const isConfirmedOrReview = status === "confirmed" || status === "review";
   const isFilled = isConfirmedOrReview && Boolean(meal?.analysis) && !isLocalEditing;
   const previousResultState = useRef({ status, analysis: meal?.analysis ?? null });
   const resultArrivalRef = useRef<HTMLElement | null>(null);
-  const confirmationRef = useRef<SVGSVGElement | null>(null);
 
   const photos = meal?.status === "confirmed"
     ? []
@@ -356,9 +365,6 @@ export function LabMealCard({
       && !meal?.error;
 
     if (receivedNewAnalysis && resultArrivalRef.current) resultArrivalRef.current.classList.add(styles.analysisResultArrival);
-    if (status === "confirmed" && previous.status !== "confirmed" && !meal?.error && confirmationRef.current) {
-      confirmationRef.current.classList.add(styles.confirmationTickArrival);
-    }
     previousResultState.current = { status, analysis: meal?.analysis ?? null };
   }, [isAnalyzing, meal?.analysis, meal?.error, status]);
 
@@ -555,11 +561,6 @@ export function LabMealCard({
     return <MealAnalysisScreen slot={slot} stage={analysisProgress?.stage ?? (status === "analyzing" ? "analyzing" : "queued")} note={noteText} photoCount={photos.length} phase={analysisProgress?.phase} onCancel={onCancelAnalysis} />;
   }
 
-  const confirmedIndicator = status === "confirmed" && !meal?.error ? <span className={styles.confirmedIndicator}>
-    <Check ref={confirmationRef} size={14} aria-hidden="true" onAnimationEnd={(event: React.AnimationEvent<SVGSVGElement>) => event.currentTarget.classList.remove(styles.confirmationTickArrival)} />
-    Confirmed
-  </span> : null;
-
   if (status === "error") {
     if (designVariant === "v1") {
       return (
@@ -654,7 +655,6 @@ export function LabMealCard({
               <h3 className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
             </div>
             <div className={styles.v1FilledActions}>
-              {confirmedIndicator}
               <button type="button" className={styles.mealDisclosureButton} onClick={() => setShowDetails((open) => !open)} aria-label={`${showDetails ? "Replier" : "Déplier"} ${slotLabel}`} aria-expanded={showDetails} aria-controls={detailsId}>
                 <ChevronDown size={18} strokeWidth={1.75} aria-hidden="true" className={showDetails ? styles.mealDisclosureOpen : undefined} />
               </button>
@@ -790,7 +790,6 @@ export function LabMealCard({
           </div>
           {isFilled && (
             <div className={styles.headerActions}>
-              {confirmedIndicator}
               <button
                 type="button"
                 className={styles.editButton}
@@ -905,7 +904,6 @@ export function LabMealCard({
       <div className={styles.v3Row}>
         <div className={styles.v3SlotSide}>
           <h3 id={headingId} className={styles.v3SlotHeading}>{slotLabel}</h3>
-          {confirmedIndicator}
           {isFilled && (
             <button
               type="button"
