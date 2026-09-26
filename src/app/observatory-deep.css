@@ -47,6 +47,7 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art:h
   height:auto!important;
   min-height:0!important;
   padding-top:0;
+  animation:none!important;
 }
 @media(max-width:700px) {
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art:has([data-home-rings]) {
@@ -92,7 +93,8 @@ html[data-lab-theme="observatory"] :is(.arrival-backdrop__image--panorama,.arriv
 html[data-lab-theme="observatory"] .arrival-backdrop__image--panorama { object-position:44% 34%; filter:grayscale(1) brightness(.42) contrast(1.18); }
 html[data-lab-theme="observatory"] .arrival-backdrop__image--crepuscule { object-position:55% 40%; filter:grayscale(1) brightness(.48) contrast(1.2); }
 html[data-lab-theme="observatory"] [data-backdrop="mont-nuages-user"] .arrival-backdrop__image--crepuscule { filter:grayscale(1) brightness(.56) contrast(1.18); }
-html[data-lab-theme="observatory"] .arrival-backdrop__tone { position:absolute; inset:0; background:linear-gradient(90deg,rgba(5,5,5,.18) 0%,rgba(5,5,5,.3) 42%,rgba(5,5,5,.82) 72%,#050505 100%); }
+html[data-lab-theme="observatory"] .arrival-backdrop__tone { position:absolute; inset:0; background:linear-gradient(90deg,rgba(5,5,5,.74) 0%,rgba(5,5,5,.74) 42%,rgba(5,5,5,.82) 72%,#050505 100%); }
+html[data-lab-theme="observatory"] .arrival-activity-summary__metrics dt { color:var(--lab-text-secondary); }
 html[data-lab-theme="observatory"] .arrival-backdrop__fade { position:absolute; inset:0; background:linear-gradient(to bottom,#050505 0%,transparent 12%,transparent 62%,rgba(5,5,5,.78) 84%,#050505 100%); }
 html[data-lab-theme="observatory"] .lab-intro > .lab-arrival { position:relative; z-index:1; width:100%; }
 html[data-lab-theme="observatory"] body.local-preview .lab-experience.lab-continuous .lab-intro { min-height:calc(100svh - 52px); }
@@ -1113,4 +1115,22 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-numbe
 
 @media (min-width: 701px) {
   .lab-global-nav a svg { display: none; }
+}
+
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art.arrival-art--conversation {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  height:auto!important;
+  min-height:0!important;
+  padding-top:0;
+  animation:none!important;
+}
+html[data-lab-theme="observatory"] .arrival-visual { width:100%; height:min(410px,34vw); }
+html[data-lab-theme="observatory"] .arrival-art--conversation:has([data-home-rings]) .arrival-visual { height:auto; }
+html[data-lab-theme="observatory"] .arrival-art--conversation [data-home-rings] { height:auto; }
+html[data-lab-theme="observatory"] .arrival-art--conversation [data-home-rings] > aside { position:relative; top:auto; }
+@media(max-width:700px) {
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art.arrival-art--conversation { margin:0!important; }
+  html[data-lab-theme="observatory"] .arrival-visual { height:min(410px,106vw); }
 }
