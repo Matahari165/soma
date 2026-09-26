@@ -345,8 +345,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { border-color
   border-right: 0;
   background-color: var(--lab-canvas);
   background-image:
-    linear-gradient(90deg, rgba(var(--lab-canvas-rgb), 0.08) 0%, rgba(var(--lab-canvas-rgb), 0.22) 45%, rgba(var(--lab-canvas-rgb), 0.74) 80%, var(--lab-surface) 100%),
-    linear-gradient(180deg, rgba(var(--lab-canvas-rgb), 0.08) 0%, rgba(var(--lab-canvas-rgb), 0.28) 50%, rgba(var(--lab-canvas-rgb), 0.78) 95%, var(--lab-surface) 100%),
+    linear-gradient(90deg, rgba(var(--lab-canvas-rgb), var(--lab-backdrop-wash)) 0%, rgba(var(--lab-canvas-rgb), var(--lab-backdrop-wash)) 45%, rgba(var(--lab-canvas-rgb), var(--lab-backdrop-wash-strong)) 80%, var(--lab-surface) 100%),
+    linear-gradient(180deg, rgba(var(--lab-canvas-rgb), var(--lab-backdrop-wash)) 0%, rgba(var(--lab-canvas-rgb), var(--lab-backdrop-wash)) 50%, rgba(var(--lab-canvas-rgb), var(--lab-backdrop-wash-strong)) 95%, var(--lab-surface) 100%),
     url("/images/backdrops/login-mountain.jpg");
   background-position: center;
   background-size: cover;

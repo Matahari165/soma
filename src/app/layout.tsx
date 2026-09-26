@@ -61,7 +61,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "Soma",
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
   },
   verification: {
     google: "vN4Hbw8JsncwAf_vQailk6Xw0Wrh7awEsPtmaVoJWL8",
@@ -71,8 +71,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  colorScheme: "dark",
-  themeColor: "#050505",
+  colorScheme: "light",
+  themeColor: "#ffffff",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

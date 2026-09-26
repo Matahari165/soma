@@ -161,7 +161,7 @@
   border-radius: 50%;
   background: rgba(5, 5, 5, 0.85);
   border: 0;
-  color: var(--lab-text-primary);
+  color: var(--lab-on-photo);
   display: flex;
   align-items: center;
   justify-content: center;

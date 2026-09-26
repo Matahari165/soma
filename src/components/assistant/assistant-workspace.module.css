@@ -189,7 +189,7 @@
 .moreConversation { display: grid; width: 36px; height: 36px; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--lab-text-secondary); opacity: 0; transition: opacity 150ms ease, background-color 150ms ease; }
 .conversationRow:hover .moreConversation, .conversationRow:focus-within .moreConversation, .moreConversation[aria-expanded="true"] { opacity: 1; }
 .moreConversation:hover { background: var(--lab-surface-selected); color: var(--lab-text-primary); }
-.conversationMenu { position: absolute; z-index: 5; top: 40px; right: 0; min-width: 152px; padding: 4px; border: 1px solid var(--lab-rule-strong); border-radius: 12px; background: var(--lab-surface-subtle); box-shadow: 0 12px 24px #0008; }
+.conversationMenu { position: absolute; z-index: 5; top: 40px; right: 0; min-width: 152px; padding: 4px; border: 1px solid var(--lab-rule-strong); border-radius: 12px; background: var(--lab-surface-subtle); box-shadow: 0 12px 24px var(--lab-shadow-popup-color); }
 .conversationMenu button { display: flex; width: 100%; min-height: 40px; align-items: center; gap: 9px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--lab-text-primary); font: 400 13px/1.3 var(--font-soma-ui), sans-serif; text-align: left; }
 .conversationMenu button:hover { background: var(--lab-surface-selected); }
 .conversation { position: relative; height: 100%; background: var(--lab-canvas); }
@@ -228,12 +228,12 @@
 .inlineEditorActions button { display: inline-flex; min-height: 40px; align-items: center; gap: 7px; padding: 0 13px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--lab-text-secondary); font: 500 13px/1 var(--font-soma-ui), sans-serif; }
 .inlineEditorActions button:hover:not(:disabled) { background: var(--lab-surface-selected); color: var(--lab-text-primary); }
 .inlineEditorActions button:last-child { background: var(--lab-brand); color: var(--lab-canvas); }
-.inlineEditorActions button:last-child:hover:not(:disabled) { background: var(--lab-brand); color: var(--lab-canvas); }
+.inlineEditorActions button:last-child:hover:not(:disabled) { background: var(--lab-text-primary); color: var(--lab-canvas); }
 .inlineEditorActions button:disabled { opacity: .45; }
-.jumpToLatest { z-index: 2; display: inline-flex; grid-row: 1; grid-column: 1; align-self: end; justify-self: center; min-height: 38px; align-items: center; gap: 8px; margin-bottom: 14px; padding: 0 14px; border: 1px solid var(--lab-rule-strong); border-radius: 20px; background: var(--lab-surface-selected); color: var(--lab-text-primary); box-shadow: 0 6px 16px #0007; font: 500 12px/1 var(--font-soma-ui), sans-serif; }
+.jumpToLatest { z-index: 2; display: inline-flex; grid-row: 1; grid-column: 1; align-self: end; justify-self: center; min-height: 38px; align-items: center; gap: 8px; margin-bottom: 14px; padding: 0 14px; border: 1px solid var(--lab-rule-strong); border-radius: 20px; background: var(--lab-surface-selected); color: var(--lab-text-primary); box-shadow: 0 6px 16px var(--lab-shadow-floating-color); font: 500 12px/1 var(--font-soma-ui), sans-serif; }
 .jumpToLatest:hover { background: var(--lab-surface-selected); }
 .composerRegion { grid-row: 2; grid-column: 1; min-height: 0; max-height: min(50dvh, 360px); overflow-y: auto; overscroll-behavior: contain; padding: 8px 24px max(18px, env(safe-area-inset-bottom)); background: var(--lab-canvas); }
-.composer { width: min(640px, 100%); padding: 9px 11px; border: 1px solid var(--lab-rule); border-radius: 22px; background: var(--lab-surface-subtle); box-shadow: 0 8px 28px #0005; transition: border-color 160ms ease, background-color 160ms ease; }
+.composer { width: min(640px, 100%); padding: 9px 11px; border: 1px solid var(--lab-rule); border-radius: 22px; background: var(--lab-surface-subtle); box-shadow: 0 8px 28px var(--lab-shadow-control-color); transition: border-color 160ms ease, background-color 160ms ease; }
 .composer:hover { border-color: var(--lab-rule-strong); }
 .composer:focus-within { border-color: var(--lab-rule-strong); background: var(--lab-surface-selected); }
 .composerLine { display: grid; grid-template-columns: 36px minmax(0, 1fr) 36px; align-items: end; gap: 8px; }
