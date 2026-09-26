@@ -12,7 +12,7 @@
   min-width: 0;
   padding: 28px 16px;
   border-right: 1px solid var(--lab-border);
-  background: #141414;
+  background: var(--lab-surface-subtle);
 }
 
 .historyHeader { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 24px; }
@@ -175,25 +175,25 @@
 /* The chat is one continuous reading surface. Only the composer floats above it. */
 .page { height: 100dvh; min-height: 0; box-sizing: border-box; background: var(--lab-canvas); }
 :global(.app-shell--preview) .page { height: calc(100dvh - 28px); }
-.history { min-height: 0; overflow-y: auto; margin: 10px 0 10px 10px; padding: 22px 12px; border: 0; border-radius: 18px; background: #111; scrollbar-width: thin; }
+.history { min-height: 0; overflow-y: auto; margin: 10px 0 10px 10px; padding: 22px 12px; border: 0; border-radius: 18px; background: var(--lab-surface-subtle); scrollbar-width: thin; }
 .historyHeader { justify-content: stretch; margin-bottom: 22px; }
-.newButton { display: flex; width: 100%; min-height: 44px; justify-content: flex-start; gap: 12px; padding: 0 12px; border: 1px solid #303030; border-radius: 13px; color: var(--lab-text-primary); font-size: 13px; transition: background-color 160ms ease, border-color 160ms ease; }
+.newButton { display: flex; width: 100%; min-height: 44px; justify-content: flex-start; gap: 12px; padding: 0 12px; border: 1px solid var(--lab-rule); border-radius: 13px; color: var(--lab-text-primary); font-size: 13px; transition: background-color 160ms ease, border-color 160ms ease; }
 .newButton span { white-space: nowrap; }
-.newButton:hover { border-color: #4a4a4a; background: #1c1c1c; }
+.newButton:hover { border-color: var(--lab-rule-strong); background: var(--lab-surface-subtle); }
 .conversationList { gap: 2px; }
 .conversationRow { position: relative; grid-template-columns: minmax(0, 1fr) 36px; gap: 0; border-radius: 12px; }
 .conversationList .conversationRow > button:first-child { min-height: 46px; padding: 8px 10px; border-radius: 12px; transition: background-color 150ms ease, color 150ms ease; }
-.conversationList .conversationRow > button:first-child[aria-current="page"] { background: #202020; }
+.conversationList .conversationRow > button:first-child[aria-current="page"] { background: var(--lab-surface-selected); }
 .conversationList time { font-size: 11px; }
 .rowActions { position: relative; align-self: center; }
 .moreConversation { display: grid; width: 36px; height: 36px; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--lab-text-secondary); opacity: 0; transition: opacity 150ms ease, background-color 150ms ease; }
 .conversationRow:hover .moreConversation, .conversationRow:focus-within .moreConversation, .moreConversation[aria-expanded="true"] { opacity: 1; }
-.moreConversation:hover { background: #303030; color: var(--lab-text-primary); }
-.conversationMenu { position: absolute; z-index: 5; top: 40px; right: 0; min-width: 152px; padding: 4px; border: 1px solid #3a3a3a; border-radius: 12px; background: #1c1c1c; box-shadow: 0 12px 24px #0008; }
+.moreConversation:hover { background: var(--lab-surface-selected); color: var(--lab-text-primary); }
+.conversationMenu { position: absolute; z-index: 5; top: 40px; right: 0; min-width: 152px; padding: 4px; border: 1px solid var(--lab-rule-strong); border-radius: 12px; background: var(--lab-surface-subtle); box-shadow: 0 12px 24px var(--lab-shadow-popup-color); }
 .conversationMenu button { display: flex; width: 100%; min-height: 40px; align-items: center; gap: 9px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--lab-text-primary); font: 400 13px/1.3 var(--font-soma-ui), sans-serif; text-align: left; }
-.conversationMenu button:hover { background: #303030; }
+.conversationMenu button:hover { background: var(--lab-surface-selected); }
 .conversation { position: relative; height: 100%; background: var(--lab-canvas); }
-.transcript { grid-row: 1; grid-column: 1; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #353535 transparent; }
+.transcript { grid-row: 1; grid-column: 1; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--lab-rule-strong) transparent; }
 .voiceStage { display: grid; min-height: 100%; padding: 40px max(24px, calc((100% - 780px) / 2)) 56px; }
 .voiceStageContent { display: flex; min-width: 0; width: 100%; max-width: 780px; flex-direction: column; gap: 32px; }
 .voiceHistory { display: grid; gap: 28px; margin: 0; padding: 0 0 32px; list-style: none; border-bottom: 1px solid var(--lab-border); }
@@ -217,29 +217,29 @@
 .voicePrompt { margin: 0; color: var(--lab-text-primary); font: 400 clamp(28px, 4vw, 44px)/1.2 Georgia, serif; }
 .messages { width: min(780px, calc(100% - 64px)); padding: 42px 0 56px; gap: 34px; }
 .messages > .userMessage { max-width: min(600px, 78%); }
-.userMessage .messageBody { padding: 11px 16px; border-radius: 16px; background: #292929; line-height: 1.55; }
+.userMessage .messageBody { padding: 11px 16px; border-radius: 16px; background: var(--lab-surface-selected); line-height: 1.55; }
 .messageBody { line-height: 1.68; }
 .messageBody p { max-width: 68ch; }
 .editMessage { transition: opacity 150ms ease, color 150ms ease; }
-.inlineEditor { display: grid; gap: 10px; width: 100%; padding: 10px; border: 1px solid #4a4a4a; border-radius: 16px; background: #202020; }
+.inlineEditor { display: grid; gap: 10px; width: 100%; padding: 10px; border: 1px solid var(--lab-rule-strong); border-radius: 16px; background: var(--lab-surface-selected); }
 .userMessage:has(.inlineEditor) { width: min(600px, 100%); max-width: 100%; }
 .inlineEditor textarea { display: block; width: 100%; min-height: 90px; max-height: 36dvh; padding: 4px 6px; resize: vertical; border: 0; outline: 0; background: transparent; color: var(--lab-text-primary); font: 400 16px/1.55 var(--font-soma-ui), sans-serif; }
 .inlineEditorActions { display: flex; justify-content: flex-end; gap: 8px; }
 .inlineEditorActions button { display: inline-flex; min-height: 40px; align-items: center; gap: 7px; padding: 0 13px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--lab-text-secondary); font: 500 13px/1 var(--font-soma-ui), sans-serif; }
-.inlineEditorActions button:hover:not(:disabled) { background: #303030; color: var(--lab-text-primary); }
+.inlineEditorActions button:hover:not(:disabled) { background: var(--lab-surface-selected); color: var(--lab-text-primary); }
 .inlineEditorActions button:last-child { background: var(--lab-brand); color: var(--lab-canvas); }
-.inlineEditorActions button:last-child:hover:not(:disabled) { background: #fff; color: var(--lab-canvas); }
+.inlineEditorActions button:last-child:hover:not(:disabled) { background: var(--lab-text-primary); color: var(--lab-canvas); }
 .inlineEditorActions button:disabled { opacity: .45; }
-.jumpToLatest { z-index: 2; display: inline-flex; grid-row: 1; grid-column: 1; align-self: end; justify-self: center; min-height: 38px; align-items: center; gap: 8px; margin-bottom: 14px; padding: 0 14px; border: 1px solid #414141; border-radius: 20px; background: #242424; color: var(--lab-text-primary); box-shadow: 0 6px 16px #0007; font: 500 12px/1 var(--font-soma-ui), sans-serif; }
-.jumpToLatest:hover { background: #303030; }
+.jumpToLatest { z-index: 2; display: inline-flex; grid-row: 1; grid-column: 1; align-self: end; justify-self: center; min-height: 38px; align-items: center; gap: 8px; margin-bottom: 14px; padding: 0 14px; border: 1px solid var(--lab-rule-strong); border-radius: 20px; background: var(--lab-surface-selected); color: var(--lab-text-primary); box-shadow: 0 6px 16px var(--lab-shadow-floating-color); font: 500 12px/1 var(--font-soma-ui), sans-serif; }
+.jumpToLatest:hover { background: var(--lab-surface-selected); }
 .composerRegion { grid-row: 2; grid-column: 1; min-height: 0; max-height: min(50dvh, 360px); overflow-y: auto; overscroll-behavior: contain; padding: 8px 24px max(18px, env(safe-area-inset-bottom)); background: var(--lab-canvas); }
-.composer { width: min(640px, 100%); padding: 9px 11px; border: 1px solid #373737; border-radius: 22px; background: #1b1b1b; box-shadow: 0 8px 28px #0005; transition: border-color 160ms ease, background-color 160ms ease; }
-.composer:hover { border-color: #494949; }
-.composer:focus-within { border-color: #3e3e3e; background: #222; }
+.composer { width: min(640px, 100%); padding: 9px 11px; border: 1px solid var(--lab-rule); border-radius: 22px; background: var(--lab-surface-subtle); box-shadow: 0 8px 28px var(--lab-shadow-control-color); transition: border-color 160ms ease, background-color 160ms ease; }
+.composer:hover { border-color: var(--lab-rule-strong); }
+.composer:focus-within { border-color: var(--lab-rule-strong); background: var(--lab-surface-selected); outline: 2px solid var(--lab-text-primary); outline-offset: 2px; }
 .composerLine { display: grid; grid-template-columns: 36px minmax(0, 1fr) 36px; align-items: end; gap: 8px; }
 .composer textarea { min-height: 36px; max-height: 220px; padding: 7px 0; font-size: 15px; line-height: 1.45; }
 .page .composer textarea:focus-visible { outline: none; }
-.composer textarea::placeholder { color: #a5a5a5; opacity: 1; }
+.composer textarea::placeholder { color: var(--lab-text-secondary); opacity: 1; }
 .composer textarea:disabled { cursor: not-allowed; opacity: .6; }
 .attachButton { min-width: 36px; min-height: 36px; border-radius: 50%; color: var(--lab-text-secondary); transition: background-color 150ms ease, color 150ms ease; }
 .sendButton { min-width: 36px; min-height: 36px; border-radius: 50%; transition: background-color 150ms ease, transform 150ms ease, opacity 150ms ease; }
@@ -247,7 +247,7 @@
 .sendButton:active:not(:disabled), .attachButton:active:not(:disabled) { transform: scale(.96); }
 .photoList { flex-wrap: wrap; margin-bottom: 8px; }
 .starterList button { transition: background-color 160ms ease, color 160ms ease; }
-.starterList button:hover:not(:disabled) { background: #151515; }
+.starterList button:hover:not(:disabled) { background: var(--lab-surface-subtle); }
 .freshMessage { animation-duration: 200ms; }
 .page button:focus-visible, .page textarea:focus-visible, .analysis summary:focus-visible { outline: 2px solid var(--lab-brand); outline-offset: 3px; }
 
@@ -261,7 +261,7 @@
 }
 
 @media (max-width: 700px) {
-  .mobileToolbar { border-bottom-color: #242424; }
+  .mobileToolbar { border-bottom-color: var(--lab-rule); }
   .mobileToolbar button, .closeHistory { border-radius: 12px; }
   .history { inset: 0 auto 0 0; width: min(320px, 88vw); margin: 0; padding: max(20px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-inline-end)) max(20px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-inline-start)); border-radius: 0 18px 18px 0; }
   .historyHeader { gap: 8px; }
@@ -386,7 +386,7 @@
   .starterList button {
     min-height: 72px;
     padding: 12px 0;
-    border-bottom-color: #242424;
+    border-bottom-color: var(--lab-rule);
     overflow-wrap: anywhere;
   }
   .starterList button span { align-self: center; }

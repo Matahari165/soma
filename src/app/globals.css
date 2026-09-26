@@ -1,33 +1,34 @@
 @import "tailwindcss";
+@import "./theme.css";
 
 @theme {
-  --color-obsidian: #050505;
-  --color-surface-subtle: #0c0c0c;
-  --color-surface-elevated: #121212;
-  --color-surface-card: #0a0a0a;
-  --color-hairline: #1a1a1a;
-  --color-hairline-light: #262626;
-  --color-hairline-border: #1f1f1f;
-  --color-sage: #d5e5da;
-  --color-sage-muted: #8ba293;
-  --color-sage-dark: #1e2d24;
-  --color-signal-warn: #d5c397;
-  --color-signal-neg: #e2b2aa;
-  --color-content-primary: #f1f1f1;
-  --color-content-secondary: #888888;
-  --color-content-tertiary: #555555;
+  --color-obsidian: var(--lab-canvas);
+  --color-surface-subtle: var(--lab-surface-subtle);
+  --color-surface-elevated: var(--lab-tailwind-surface-elevated);
+  --color-surface-card: var(--lab-tailwind-surface-card);
+  --color-hairline: var(--lab-tailwind-hairline);
+  --color-hairline-light: var(--lab-tailwind-hairline-light);
+  --color-hairline-border: var(--lab-tailwind-hairline-border);
+  --color-sage: var(--lab-signal);
+  --color-sage-muted: var(--lab-tailwind-sage-muted);
+  --color-sage-dark: var(--lab-signal-soft);
+  --color-signal-warn: var(--lab-warning);
+  --color-signal-neg: var(--lab-error);
+  --color-content-primary: var(--lab-text-primary);
+  --color-content-secondary: var(--lab-tailwind-content-secondary);
+  --color-content-tertiary: var(--lab-tailwind-content-tertiary);
   --font-serif: Newsreader, Georgia, serif;
   --font-sans: "Schibsted Grotesk", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "Azeret Mono", "SF Mono", ui-monospace, monospace;
 }
 
 .stepper-btn:hover {
-  background-color: #1a1a1a;
-  color: #ffffff;
+  background-color: var(--lab-surface-selected);
+  color: var(--lab-text-primary);
 }
 
 .hover-border:hover {
-  border-color: #333333;
+  border-color: var(--lab-border-strong);
 }
 
 .animate-fade-in {
@@ -205,7 +206,7 @@
   vertical-align: middle;
   width: 4rem;
   height: 0.25rem;
-  background-color: #262626;
+  background-color: var(--lab-border);
   border-radius: 9999px;
   overflow: hidden;
 }
@@ -213,7 +214,7 @@
 .journal-card--personal-lab .journal-achievement__fill {
   display: block;
   height: 100%;
-  background-color: #d5e5da;
+  background-color: var(--lab-signal);
   border-radius: 9999px;
 }
 
@@ -221,27 +222,7 @@
    A calm, precise surface for reading a personal body history. */
 
 :root {
-  color-scheme: dark;
-  /* Soma has one visual world. These defaults keep compatibility aliases
-     dark even on routes that have not received a route-specific override. */
-  --lab-canvas: #050505;
-  --lab-surface: #080808;
-  --lab-surface-subtle: #0c0c0c;
-  --lab-surface-selected: #222222;
-  --lab-control-track: #0b0b0b;
-  --lab-border: #292929;
-  --lab-border-strong: #3a3a3a;
-  --lab-text-primary: #f1f1f1;
-  --lab-text-secondary: #aaaaaa;
-  --lab-brand: #eeeeee;
-  --lab-signal: #d5e5da;
-  --lab-error: #e2b2aa;
-  --lab-error-soft: #382a28;
-  --lab-warning: #d5c397;
-  --lab-warning-soft: #342f25;
-  --lab-info: #adc5df;
-  --lab-info-soft: #273340;
-  --lab-sidebar: #050505;
+  /* Palette lives in theme.css; geometry and compatibility aliases stay here. */
   --lab-radius-xs: 2px;
   --lab-radius-sm: 4px;
   --lab-radius-md: 8px;
@@ -265,7 +246,7 @@
   --lab-content-top: 100px;
   --lab-card-padding: 24px;
   --lab-column-gap: 32px;
-  --lab-shadow-subtle: 0 1px 2px rgba(28, 37, 32, .05);
+  --lab-shadow-subtle: 0 1px 2px var(--lab-shadow-subtle-color);
 
   --canvas: var(--lab-canvas);
   --paper: var(--lab-surface);
@@ -273,7 +254,7 @@
   --ink: var(--lab-text-primary);
   --ink-soft: var(--lab-text-secondary);
   --muted: var(--lab-text-secondary);
-  --faint: color-mix(in srgb, var(--lab-text-secondary) 68%, var(--lab-surface));
+  --faint: var(--lab-text-muted);
   --line: var(--lab-border);
   --line-strong: var(--lab-border-strong);
   --canvas-muted: var(--lab-surface-subtle);
@@ -284,7 +265,7 @@
   /* Semantic accents remain named until their consumers move to --lab-*.
      They now use the same mineral palette rather than the Atlas palette. */
   --cobalt: var(--lab-info);
-  --cobalt-alt: #6a8499;
+  --cobalt-alt: var(--lab-info-alt);
   --cobalt-soft: var(--lab-info-soft);
   --clay: var(--lab-error);
   --clay-soft: var(--lab-error-soft);
@@ -297,9 +278,9 @@
   --nutrition-protein-soft: var(--moss-soft);
   --nutrition-fat-soft: var(--clay-soft);
   --nutrition-carbs-soft: var(--cobalt-soft);
-  --nutrition-fiber-soft: #e3e9df;
-  --nutrition-sugar-soft: #e9e1eb;
-  --overlay: rgba(20, 23, 18, .62);
+  --nutrition-fiber-soft: var(--lab-nutrition-fiber-soft);
+  --nutrition-sugar-soft: var(--lab-nutrition-sugar-soft);
+  --overlay: var(--lab-overlay);
   --shadow: var(--lab-shadow-subtle);
   --sidebar-width: var(--lab-sidebar-width);
   --sidebar-expanded-width: 224px;
@@ -332,7 +313,7 @@
   --soma-depth: var(--paper);
   --soma-surface: var(--paper-strong);
   --soma-raised: var(--moss-soft);
-  --soma-glass: rgba(255, 255, 255, .94);
+  --soma-glass: var(--lab-glass);
   --soma-text: var(--ink);
   --soma-text-soft: var(--ink-soft);
   --soma-text-muted: var(--muted);
@@ -341,7 +322,7 @@
   --soma-emerald: var(--moss);
   --soma-emerald-dim: var(--moss-dark);
   --soma-emerald-soft: var(--moss-soft);
-  --soma-emerald-glow: rgba(38, 77, 56, .15);
+  --soma-emerald-glow: var(--lab-brand-glow);
   --soma-iris: var(--cobalt);
   --soma-iris-soft: var(--cobalt-soft);
   --soma-coral: var(--clay);
@@ -364,14 +345,14 @@
   --soma-shadow-sm: none;
   --soma-shadow-md: none;
   --soma-shadow-lg: var(--shadow);
-  --stage-deep: #354966;
-  --stage-rem: #647b96;
-  --stage-light: #9cabb8;
-  --stage-awake: #b17b47;
-  --zone-light: #8397a5;
-  --zone-moderate: #6f866a;
-  --zone-vigorous: #b28648;
-  --zone-peak: #a8563f;
+  --stage-deep: var(--lab-stage-deep);
+  --stage-rem: var(--lab-stage-rem);
+  --stage-light: var(--lab-stage-light);
+  --stage-awake: var(--lab-stage-awake);
+  --zone-light: var(--lab-zone-light);
+  --zone-moderate: var(--lab-zone-moderate);
+  --zone-vigorous: var(--lab-zone-vigorous);
+  --zone-peak: var(--lab-zone-peak);
   --font-soma-ui: var(--font-soma-sans), system-ui, sans-serif;
   /* Data keeps its own instrument voice, as documented in DESIGN.md. */
   --lab-type-page: 26px;
@@ -631,7 +612,7 @@ textarea:focus-visible,
 .primary-button:hover, .google-button:hover { background: var(--lab-text-primary); border-color: var(--lab-text-primary); }
 .secondary-button { border-color: var(--lab-border-strong); background: transparent; color: var(--lab-text-primary); }
 .secondary-button:hover { border-color: var(--lab-brand); background: var(--lab-surface-selected); }
-.danger-button { border-color: var(--lab-error); background: var(--lab-error); color: #fff; }
+.danger-button { border-color: var(--lab-error); background: var(--lab-error); color: var(--lab-on-error); }
 .icon-button {
   display: inline-grid;
   width: var(--control-height);

@@ -1,5 +1,5 @@
-html[data-lab-theme="observatory"] { --lab-canvas: #101214; --lab-sidebar: #0c0e10; --lab-surface: #171a1d; --lab-surface-subtle: #1e2327; --lab-surface-selected: #2b3338; --lab-control-track: #252b30; --lab-border: #2e363b; --lab-border-strong: #465057; --lab-text-primary: #edf0ef; --lab-text-secondary: #adb7bb; --lab-brand: #cbd8dc; --lab-signal: #a8c9b2; --lab-error: #e1aaa0; --lab-error-soft: #382a28; }
-html[data-lab-theme="strata"] { --lab-canvas: #151a1c; --lab-sidebar: #101517; --lab-surface: #20282b; --lab-surface-subtle: #293438; --lab-surface-selected: #39474a; --lab-control-track: #303b3e; --lab-border: #3e4b4e; --lab-border-strong: #56686a; --lab-text-primary: #e8edea; --lab-text-secondary: #b7c1c0; --lab-brand: #c0d0c7; --lab-signal: #a8c8b0; --lab-error: #dca59c; --lab-error-soft: #3b2d2b; }
+html[data-lab-theme="observatory"] { }
+html[data-lab-theme="strata"] { }
 html[data-lab-theme="observatory"] .lab-world,
 html[data-lab-theme="strata"] .lab-world {
   --world-line: color-mix(in srgb, var(--lab-border-strong) 76%, transparent);

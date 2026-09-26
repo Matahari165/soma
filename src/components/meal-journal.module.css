@@ -1211,7 +1211,7 @@
 .mealsPageRoot .mealsWeekStrip .weekDaySelected:last-child { border-right: 0; }
 .mealsPageRoot .mealsWeekStrip .weekDay:hover { background: var(--lab-surface-selected); color: var(--lab-text-primary); }
 .mealsPageRoot .mealsWeekStrip .weekDaySelected {
-  background: rgba(238, 238, 238, .05);
+  background: rgba(var(--lab-ink-rgb), .05);
   color: var(--lab-text-primary);
   box-shadow: inset 0 -1px var(--lab-text-primary);
 }
@@ -1739,8 +1739,8 @@
    reached reliably from a global class name. */
 :global(.meals-page) .mealsPageRoot {
   padding: 32px 5vw 64px;
-  background: #050505;
-  color: #eee;
+  background: var(--lab-canvas);
+  color: var(--lab-text-primary);
 }
 
 :global(.meals-page) .mealsPageRoot .mealsPageHeader {
@@ -1754,7 +1754,7 @@
 }
 
 :global(.meals-page) .mealsPageRoot .mealsPageHeader h1 {
-  color: #eee;
+  color: var(--lab-text-primary);
   font-family: Georgia, "Times New Roman", serif;
   font-size: 40px;
   font-weight: 400;
@@ -1783,7 +1783,7 @@
 }
 
 :global(.meals-page) .mealsPageRoot .headerMetric > span {
-  color: #aaa;
+  color: var(--lab-text-secondary);
   font-size: 12px;
   font-weight: 400;
   letter-spacing: 0;
@@ -1792,7 +1792,7 @@
 }
 
 :global(.meals-page) .mealsPageRoot .headerMetric > strong {
-  color: #eee;
+  color: var(--lab-text-primary);
   font-family: var(--font-soma-mono), ui-monospace, monospace;
   font-size: 20px;
   font-weight: 400;
@@ -1800,7 +1800,7 @@
 }
 
 :global(.meals-page) .mealsPageRoot .headerMetric > strong small {
-  color: #aaa;
+  color: var(--lab-text-secondary);
   font: inherit;
   font-size: 12px;
 }
@@ -1820,8 +1820,8 @@
   height: 36px;
   border: 0;
   border-radius: 4px;
-  background: #1c1c1c;
-  color: #eee;
+  background: var(--lab-surface-subtle);
+  color: var(--lab-text-primary);
 }
 
 :global(.meals-page) .mealsPageRoot .mealsWeekStrip {
@@ -1840,9 +1840,9 @@
 }
 
 :global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDaySelected {
-  background: rgba(238, 238, 238, .05);
-  color: #eee;
-  box-shadow: inset 0 -1px #eee;
+  background: rgba(var(--lab-ink-rgb), .05);
+  color: var(--lab-text-primary);
+  box-shadow: inset 0 -1px var(--lab-text-primary);
 }
 
 :global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-trends),
@@ -1863,7 +1863,7 @@
 :global(.meals-page) .mealsPageRoot .mealsJournalHeader h2,
 :global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-trends) h2,
 :global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-recipes) h2 {
-  color: #eee;
+  color: var(--lab-text-primary);
   font-family: Georgia, "Times New Roman", serif;
   font-size: 20px;
   font-weight: 400;
@@ -1878,7 +1878,7 @@
 }
 
 :global(.meals-page) .mealsPageRoot .mealsJournalPanel .mealTitle h3 {
-  color: #eee;
+  color: var(--lab-text-primary);
   font-family: var(--font-soma-ui), system-ui, sans-serif;
   font-size: 18px;
   font-weight: 400;
@@ -1889,7 +1889,7 @@
 :global(.meals-page) .mealsPageRoot .mealsJournalPanel .mealCalories,
 :global(.meals-page) .mealsPageRoot .mealsJournalPanel .mealsMealDetails span,
 :global(.meals-page) .mealsPageRoot .mealsJournalPanel .mealsMealFooter {
-  color: #aaa;
+  color: var(--lab-text-secondary);
   font-weight: 400;
 }
 
@@ -1897,20 +1897,20 @@
   min-height: 36px;
   border: 0;
   border-radius: 4px;
-  background: #1c1c1c;
-  color: #eee;
+  background: var(--lab-surface-subtle);
+  color: var(--lab-text-primary);
   font-weight: 400;
 }
 
 :global(.meals-page) .mealsPageRoot .mealsJournalPanel :is(.captureButton,.captureButtonCompact,.galleryButton,.galleryButtonCompact,.analyzeButton,.emptyNoteButton,.secondaryButton):hover:not(:disabled) {
-  background: #292929;
-  color: #fff;
+  background: var(--lab-surface-selected);
+  color: var(--lab-text-primary);
 }
 
 :global(.meals-page) .mealsPageRoot .mealsJournalPanel :is(.captureButton,.captureButtonCompact,.galleryButton,.galleryButtonCompact,.analyzeButton,.emptyNoteButton,.secondaryButton):disabled {
   border: 0;
-  background: #1c1c1c;
-  color: #aaa;
+  background: var(--lab-surface-subtle);
+  color: var(--lab-text-secondary);
 }
 
 @media (max-width: 700px) {
@@ -2080,7 +2080,7 @@
 :global(html[data-lab-theme="observatory"]) .labRoot .mealCard {
   border: 0;
   border-radius: 0;
-  background: #121719;
+  background: var(--lab-surface-subtle);
   box-shadow: none;
 }
 :global(html[data-lab-theme="observatory"]) .labRoot .mealHeader { border-bottom: 0; }
@@ -2841,7 +2841,7 @@
   padding: 10px 28px 0 12px;
   border: 0;
   border-radius: 0;
-  background: #000 !important;
+  background: var(--lab-canvas) !important;
   box-shadow: none;
 }
 
@@ -3455,7 +3455,7 @@
   align-items: stretch;
   overflow: hidden;
   border: 0;
-  border-bottom: 1px solid rgba(238, 238, 238, .14);
+  border-bottom: 1px solid rgba(var(--lab-ink-rgb), .14);
   border-radius: 0;
   background: transparent;
   box-shadow: none;
@@ -3474,7 +3474,7 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: rgba(238, 238, 238, .62);
+  color: rgba(var(--lab-ink-rgb), .62);
   font: 400 12px/1.15 var(--font-soma-ui), ui-sans-serif, system-ui, sans-serif;
   text-align: center;
 }
@@ -3494,22 +3494,22 @@
 }
 
 :global(.meals-page) .labRoot :global(.personal-lab-day-strip__days) > button:is(:hover, :focus-visible) {
-  background: rgba(238, 238, 238, .045);
-  color: #f1f1f1;
+  background: rgba(var(--lab-ink-rgb), .045);
+  color: var(--lab-text-primary);
 }
 
 :global(.meals-page) .labRoot :global(.personal-lab-day-strip__days) > button[aria-current="date"] {
-  background: rgba(238, 238, 238, .07);
-  box-shadow: inset 0 -1px #eee;
-  color: #f1f1f1;
+  background: rgba(var(--lab-ink-rgb), .07);
+  box-shadow: inset 0 -1px var(--lab-text-primary);
+  color: var(--lab-text-primary);
 }
 
 :global(.meals-page) .labRoot :global(.personal-lab-day-strip__days) > button[aria-current="date"] small {
-  color: rgba(241, 241, 241, .78);
+  color: rgba(var(--lab-ink-rgb), .78);
 }
 
 :global(.meals-page) .labRoot :global(.personal-lab-day-strip__days) > button:focus-visible {
-  outline: 2px solid #ddd;
+  outline: 2px solid var(--lab-text-primary);
   outline-offset: 3px;
 }
 
@@ -3580,13 +3580,13 @@
 
 @media (max-width: 700px) {
   :global(.meals-page) .labRoot :global(.personal-lab-day-strip__mobile) button[aria-current="date"] {
-    background: #222;
-    color: #f1f1f1;
-    box-shadow: inset 0 -1px #eee;
+    background: var(--lab-surface-selected);
+    color: var(--lab-text-primary);
+    box-shadow: inset 0 -1px var(--lab-text-primary);
   }
 
   :global(.meals-page) .labRoot :global(.personal-lab-day-strip__mobile) button[aria-current="date"] span {
-    color: #f1f1f1;
+    color: var(--lab-text-primary);
   }
 
   :global(.meals-page) .labRoot .personal-lab-day-strip__days {
@@ -4009,8 +4009,8 @@
 }
 .datePicker:focus-visible { outline: 2px solid var(--focus-color); outline-offset: 3px; }
 .labRoot .datePickerRow label { color: var(--lab-text-secondary); }
-.labRoot .datePicker { border-color: var(--lab-border); border-radius: var(--lab-radius-xs); color: var(--lab-text-primary); color-scheme: dark; }
-.mealsPageRoot .datePicker { color-scheme: dark; }
+.labRoot .datePicker { border-color: var(--lab-border); border-radius: var(--lab-radius-xs); color: var(--lab-text-primary); color-scheme: light; }
+.mealsPageRoot .datePicker { color-scheme: light; }
 
 .noteCounter { margin: 4px 0 0; color: var(--muted); font-family: var(--font-soma-mono, ui-monospace, monospace); font-size: 12px; line-height: 16px; }
 .labRoot .noteCounter,

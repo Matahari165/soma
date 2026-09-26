@@ -1,11 +1,11 @@
 /* Arrival worlds: a Swiss ledger and a warm editorial studio. */
 .lab-arrival[data-arrival-theme="index"],
 .lab-arrival[data-arrival-theme="atelier"] {
-  --arrival-ink: #eceeed;
-  --arrival-ink-soft: #a7adb0;
-  --arrival-canvas: #111416;
-  --arrival-rule: #3a4043;
-  --arrival-mark: #d8e0e1;
+  --arrival-ink: var(--lab-text-primary);
+  --arrival-ink-soft: var(--lab-text-secondary);
+  --arrival-canvas: var(--lab-canvas);
+  --arrival-rule: var(--lab-rule);
+  --arrival-mark: var(--lab-text-primary);
   min-height: calc(100dvh - 88px);
   padding: clamp(24px, 3.5vw, 58px) clamp(18px, 5vw, 88px) 30px;
   overflow: clip;
@@ -15,22 +15,22 @@
 }
 
 .lab-arrival[data-arrival-theme="index"] {
-  --arrival-ink: #eef0ef;
-  --arrival-ink-soft: #a6afb2;
-  --arrival-canvas: #0d1012;
-  --arrival-rule: #3a4246;
-  --arrival-mark: #e0e7e7;
+  --arrival-ink: var(--lab-text-primary);
+  --arrival-ink-soft: var(--lab-text-secondary);
+  --arrival-canvas: var(--lab-canvas);
+  --arrival-rule: var(--lab-rule);
+  --arrival-mark: var(--lab-text-primary);
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: clamp(32px, 6vh, 76px);
 }
 
 .lab-arrival[data-arrival-theme="atelier"] {
-  --arrival-ink: #282825;
-  --arrival-ink-soft: #625f58;
-  --arrival-canvas: #b9b5ac;
-  --arrival-rule: #817d74;
-  --arrival-mark: #373632;
+  --arrival-ink: var(--lab-text-primary);
+  --arrival-ink-soft: var(--lab-text-secondary);
+  --arrival-canvas: var(--lab-canvas);
+  --arrival-rule: var(--lab-rule);
+  --arrival-mark: var(--lab-text-primary);
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 28px;
@@ -249,11 +249,11 @@
   .lab-arrival[data-arrival-theme="index"] .arrival-heading { max-width: none; }
   .lab-arrival[data-arrival-theme="index"] .arrival-heading h1 { font-size: clamp(4.5rem, 6.2vw, 7rem); }
   .lab-arrival[data-arrival-theme="atelier"] {
-    --arrival-ink: #f1eee4;
-    --arrival-ink-soft: #bdb6aa;
-    --arrival-canvas: #292725;
-    --arrival-rule: #615c56;
-    --arrival-mark: #e4dfd3;
+    --arrival-ink: var(--lab-text-primary);
+    --arrival-ink-soft: var(--lab-text-secondary);
+    --arrival-canvas: var(--lab-canvas);
+    --arrival-rule: var(--lab-rule);
+    --arrival-mark: var(--lab-text-primary);
   }
   .lab-arrival[data-arrival-theme="atelier"] .arrival-composition {
     grid-template-columns: minmax(390px, .9fr) minmax(420px, 1.1fr);
@@ -262,16 +262,16 @@
   }
   .lab-arrival[data-arrival-theme="atelier"] .arrival-heading { max-width: none; padding-top: clamp(20px, 4vh, 52px); }
   .lab-arrival[data-arrival-theme="atelier"] .arrival-heading h1 { max-width: none; font-size: clamp(4.5rem, 7.8vw, 8.4rem); }
-  .lab-arrival[data-arrival-theme="atelier"] .arrival-art { min-height: 300px; color: #d8d0c1; }
+  .lab-arrival[data-arrival-theme="atelier"] .arrival-art { min-height: 300px; color: var(--lab-text-secondary); }
 }
 
 @media (max-width: 900px) {
   .lab-arrival[data-arrival-theme="atelier"] {
-    --arrival-ink: #f1eee4;
-    --arrival-ink-soft: #bdb6aa;
-    --arrival-canvas: #292725;
-    --arrival-rule: #615c56;
-    --arrival-mark: #e4dfd3;
+    --arrival-ink: var(--lab-text-primary);
+    --arrival-ink-soft: var(--lab-text-secondary);
+    --arrival-canvas: var(--lab-canvas);
+    --arrival-rule: var(--lab-rule);
+    --arrival-mark: var(--lab-text-primary);
   }
 }
 

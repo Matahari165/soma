@@ -1,20 +1,6 @@
 /* Focus: a near-black pine instrument for quiet, continuous work. */
 html[data-lab-theme="focus"] {
-  color-scheme: dark;
-  --lab-canvas: #0b100f;
-  --lab-sidebar: #080c0b;
-  --lab-surface: #121a17;
-  --lab-surface-subtle: #18231e;
-  --lab-surface-selected: #284238;
-  --lab-control-track: #1c2a24;
-  --lab-border: #2b3b34;
-  --lab-border-strong: #4b6053;
-  --lab-text-primary: #edf4ee;
-  --lab-text-secondary: #b5c5b9;
-  --lab-brand: #c4dcc8;
-  --lab-signal: #91bda0;
-  --lab-error: #efb2aa;
-  --lab-warning: #d9c794;
+  color-scheme: light;
   --lab-radius-xs: 4px;
   --lab-radius-sm: 4px;
   --lab-radius-md: 4px;

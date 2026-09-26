@@ -16,22 +16,22 @@ export type MealFoodCategoryTrendsProps = {
 };
 
 const CATEGORY_COLORS: Record<MealFoodGroup, string> = {
-  fruit: "#f1f1f1",
-  vegetable: "#dddddd",
-  legume: "#c9c9c9",
-  whole_grain: "#b5b5b5",
-  refined_grain: "#a1a1a1",
-  potato: "#8d8d8d",
-  animal_protein: "#797979",
-  plant_protein: "#e7e7e7",
-  egg: "#d3d3d3",
-  dairy: "#bfbfbf",
-  nuts_seeds: "#ababab",
-  added_fat: "#979797",
-  sauce: "#838383",
-  sweet: "#6f6f6f",
-  beverage: "#5b5b5b",
-  other: "#474747",
+  fruit: "var(--lab-category-fruit)",
+  vegetable: "var(--lab-category-vegetable)",
+  legume: "var(--lab-category-legume)",
+  whole_grain: "var(--lab-category-whole_grain)",
+  refined_grain: "var(--lab-category-refined_grain)",
+  potato: "var(--lab-category-potato)",
+  animal_protein: "var(--lab-category-animal_protein)",
+  plant_protein: "var(--lab-category-plant_protein)",
+  egg: "var(--lab-category-egg)",
+  dairy: "var(--lab-category-dairy)",
+  nuts_seeds: "var(--lab-category-nuts_seeds)",
+  added_fat: "var(--lab-category-added_fat)",
+  sauce: "var(--lab-category-sauce)",
+  sweet: "var(--lab-category-sweet)",
+  beverage: "var(--lab-category-beverage)",
+  other: "var(--lab-category-other)",
 };
 
 function formatDate(date: string) {
