@@ -975,18 +975,20 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-numbe
   html[data-lab-theme="observatory"] .lab-global-nav,
   html[data-lab-theme="observatory"] body.local-preview .lab-global-nav {
     position: fixed;
-    inset: auto max(12px, env(safe-area-inset-right, 0px)) var(--soma-mobile-nav-gap, max(12px, env(safe-area-inset-bottom, 0px))) max(12px, env(safe-area-inset-left, 0px));
+    inset: auto max(12px, env(safe-area-inset-right, 0px)) var(--soma-mobile-nav-gap, calc(max(12px, env(safe-area-inset-bottom, 0px)) + 8px)) max(12px, env(safe-area-inset-left, 0px));
     z-index: 60;
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     grid-template-rows: 52px;
     height: 64px;
+    max-width: 340px;
+    margin-inline: auto;
     min-height: 0;
     box-sizing: border-box;
     gap: 0;
     padding: 5px 4px;
     border: 1px solid #292929;
-    border-radius: 4px;
+    border-radius: 24px;
     background: var(--lab-surface-subtle);
     overflow: visible;
   }
@@ -1003,12 +1005,12 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-numbe
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
+    gap: 2px;
     margin: 0;
     padding: 3px 2px;
     border: 0;
     color: #aaa;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 400;
     line-height: 1.1;
     text-align: center;
@@ -1019,8 +1021,8 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-numbe
   html[data-lab-theme="observatory"] .lab-global-nav a svg,
   html[data-lab-theme="observatory"] .lab-global-nav__more-button svg {
     display: block;
-    width: 19px;
-    height: 19px;
+    width: 21px;
+    height: 21px;
     flex: none;
     stroke-width: 1.7;
     transition: transform 160ms cubic-bezier(.2, .8, .2, 1);
@@ -1045,7 +1047,7 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-numbe
   }
   html[data-lab-theme="observatory"] body.observatory-mode .app-shell .main-content {
     padding-top: var(--soma-mobile-top-space, calc(16px + env(safe-area-inset-top, 0px)));
-    padding-bottom: var(--soma-mobile-bottom-space, calc(84px + env(safe-area-inset-bottom, 0px)));
+    padding-bottom: var(--soma-mobile-bottom-space, calc(80px + max(12px, env(safe-area-inset-bottom, 0px))));
   }
   html[data-lab-theme="observatory"] body.local-preview.observatory-mode .app-shell .main-content {
     padding-top: var(--soma-mobile-top-space, calc(44px + env(safe-area-inset-top, 0px)));
@@ -1054,7 +1056,7 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-numbe
     top: 0;
   }
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-intro {
-    min-height: var(--soma-mobile-content-height, calc(100svh - 100px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)));
+    min-height: var(--soma-mobile-content-height, calc(100svh - 96px - env(safe-area-inset-top, 0px) - max(12px, env(safe-area-inset-bottom, 0px))));
   }
   html[data-lab-theme="observatory"] .lab-global-nav > .lab-global-nav__secondary,
   html[data-lab-theme="observatory"] .lab-global-nav__desktop-label { display: none; }
@@ -1065,8 +1067,11 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-numbe
   html[data-lab-theme="observatory"] .lab-global-nav__more-panel {
     position: fixed;
     right: max(12px, env(safe-area-inset-right));
-    bottom: var(--soma-mobile-bottom-space, calc(84px + env(safe-area-inset-bottom, 0px)));
+    bottom: var(--soma-mobile-bottom-space, calc(80px + max(12px, env(safe-area-inset-bottom, 0px))));
     left: max(12px, env(safe-area-inset-left));
+    max-width: 340px;
+    margin-inline: auto;
+    box-sizing: border-box;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 4px;
