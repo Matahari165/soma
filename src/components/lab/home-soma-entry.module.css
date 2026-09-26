@@ -1,5 +1,5 @@
 .entry { width:min(100%,520px); margin-top:28px; color:var(--lab-text-primary); }
-.conversation { width:min(100%,520px); margin:24px auto 0; scroll-margin-block:16px calc(var(--soma-mobile-nav-height,64px) + 16px); }
+.conversation { width:min(100%,520px); margin:24px 0 0; scroll-margin-block:16px calc(var(--soma-mobile-nav-height,64px) + 16px); }
 .observations { display:grid; gap:7px; }
 .observation { display:flex; align-items:start; gap:10px; width:100%; padding:0; border:0; background:transparent; color:#f1f1f1; text-align:left; font:400 16px/1.45 var(--font-soma-ui),sans-serif; cursor:pointer; }
 .observation > svg { flex:none; margin-top:3px; color:var(--lab-text-secondary); transition:transform 160ms ease,color 160ms ease; }
